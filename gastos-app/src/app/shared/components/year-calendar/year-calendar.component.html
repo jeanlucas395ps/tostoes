@@ -1,0 +1,89 @@
+<section class="year-calendar" [class.compact]="compact()">
+  <div class="cal-header">
+    <button type="button" class="nav-btn" (click)="prevYear()" aria-label="Ano anterior">‹</button>
+    <div class="cal-title">
+      <strong>{{ year() }}</strong>
+      @if (!compact()) {
+        <span>Confirmado · previsto (receb. / custos / saldo)</span>
+      } @else {
+        <span>Prev. receb. · gastos · saldo</span>
+      }
+    </div>
+    <button type="button" class="nav-btn" (click)="nextYear()" aria-label="Próximo ano">›</button>
+  </div>
+
+  <div class="cal-grid">
+    @for (cell of cells(); track cell.index) {
+      <button
+        type="button"
+        class="cal-cell"
+        [class.selected]="isSelected(cell.index)"
+        [class.current]="isCurrentMonth(cell.index)"
+        [class.past]="isPastMonth(cell.index)"
+        [class.positive]="cell.hasProjected ? cell.balanceProjected >= 0 : cell.balanceReal >= 0"
+        [class.negative]="cell.hasProjected ? cell.balanceProjected < 0 : cell.balanceReal < 0"
+        [class.preview-only]="cell.showPreview && !cell.hasReal"
+        [class.empty]="cell.isEmpty"
+        (click)="selectMonth(cell.index)"
+      >
+        <span class="cell-month">{{ cell.shortLabel }}</span>
+
+        @if (cell.isEmpty) {
+          <span class="cell-empty">—</span>
+        } @else if (compact()) {
+          @if (cell.showPreview) {
+            <div class="cell-preview cell-preview--compact">
+              <span class="prev-line income">↑ {{ cell.incomeProjected | currencyBrl }}</span>
+              <span class="prev-line expense">↓ {{ cell.expenseProjected | currencyBrl }}</span>
+              <span
+                class="prev-line balance"
+                [class.positive]="cell.balanceProjected >= 0"
+                [class.negative]="cell.balanceProjected < 0"
+              >= {{ cell.balanceProjected | currencyBrl }}</span>
+            </div>
+          } @else if (cell.hasReal) {
+            <span class="cell-real" [class.zero]="cell.balanceReal === 0">
+              {{ cell.balanceReal | currencyBrl }}
+            </span>
+          }
+        } @else {
+          <span class="cell-real" [class.zero]="!cell.hasReal">
+            {{ cell.balanceReal | currencyBrl }}
+          </span>
+          @if (cell.showPreview) {
+            <div class="cell-preview">
+              <span class="prev-line income">↑ {{ cell.incomeProjected | currencyBrl }}</span>
+              <span class="prev-line expense">↓ {{ cell.expenseProjected | currencyBrl }}</span>
+              <span
+                class="prev-line balance"
+                [class.negative]="cell.balanceProjected < 0"
+                [class.positive]="cell.balanceProjected >= 0"
+              >= {{ cell.balanceProjected | currencyBrl }}</span>
+            </div>
+          }
+        }
+
+        @if (isCurrentMonth(cell.index)) {
+          <span class="today-dot" title="Mês atual"></span>
+        }
+      </button>
+    }
+  </div>
+
+  <div class="cal-footer">
+    <button type="button" class="btn-today" (click)="goToToday()">Hoje</button>
+    @if (!compact()) {
+      <span class="legend">
+        <span class="leg-item"><i class="dot current"></i> Atual</span>
+        <span class="leg-item"><i class="dot selected"></i> Selecionado</span>
+        <span class="leg-item"><i class="dot preview"></i> Previsto</span>
+      </span>
+    } @else {
+      <span class="legend legend-compact">
+        <span class="leg-item"><span class="leg-sym income">↑</span> Receb.</span>
+        <span class="leg-item"><span class="leg-sym expense">↓</span> Gastos</span>
+        <span class="leg-item"><span class="leg-sym balance">=</span> Saldo</span>
+      </span>
+    }
+  </div>
+</section>

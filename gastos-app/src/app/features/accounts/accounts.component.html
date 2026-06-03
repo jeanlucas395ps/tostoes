@@ -1,0 +1,241 @@
+<div class="accounts-page">
+  <header class="page-top page-top--toolbar">
+    <p class="page-lead">Extrato completo de cada conta , com filtros por tipo, texto e mês</p>
+    <div class="header-actions">
+      <button type="button" class="btn-outline" (click)="openNew('bank')">+ Banco</button>
+      <button type="button" class="btn-fab" (click)="openNew('investment')">+ Investimento</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="muted">Carregando…</p>
+  } @else {
+    @if (summary(); as s) {
+      <div class="totals-strip">
+        <div class="total-card">
+          <span>Bancos</span>
+          <strong>{{ s.bank | currencyBrl }}</strong>
+        </div>
+        <div class="total-card inv">
+          <span>Investimentos</span>
+          <strong>{{ s.investment | currencyBrl }}</strong>
+        </div>
+        <div class="total-card all">
+          <span>Total</span>
+          <strong>{{ s.all | currencyBrl }}</strong>
+        </div>
+      </div>
+    }
+
+    <div class="layout-cols">
+      <section class="accounts-list">
+        @if (!accounts().length) {
+          <div class="empty">
+            <p>Nenhuma conta cadastrada</p>
+            <small>Cadastre o saldo que você tem hoje em cada banco ou corretora</small>
+          </div>
+        }
+
+        @if (bankAccounts().length) {
+          <h2>Contas bancárias</h2>
+          <ul>
+            @for (a of bankAccounts(); track a.id) {
+              <li
+                class="account-card"
+                [class.selected]="selectedId() === a.id"
+                (click)="selectAccount(a)"
+              >
+                <div class="acc-top">
+                  <!-- Ícone bancário -->
+                  <span class="acc-icon" [style.background]="a.color || '#3b82f6'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="3" y1="22" x2="21" y2="22"/>
+                      <line x1="6" y1="18" x2="6" y2="11"/>
+                      <line x1="10" y1="18" x2="10" y2="11"/>
+                      <line x1="14" y1="18" x2="14" y2="11"/>
+                      <line x1="18" y1="18" x2="18" y2="11"/>
+                      <polygon points="12 2 20 7 4 7"/>
+                    </svg>
+                  </span>
+                  <strong>{{ a.name }}</strong>
+                  <button type="button" class="btn-icon" (click)="openEdit(a); $event.stopPropagation()">Editar</button>
+                </div>
+                <p class="balance">{{ accountBalanceLabel(a) }}</p>
+                <small>Saldo em {{ a.initialBalanceDate | slice:0:10 }}: {{ accountInitialLabel(a) }}</small>
+              </li>
+            }
+          </ul>
+        }
+
+        @if (investmentAccounts().length) {
+          <h2>Contas de investimento</h2>
+          <ul>
+            @for (a of investmentAccounts(); track a.id) {
+              <li
+                class="account-card inv"
+                [class.selected]="selectedId() === a.id"
+                (click)="selectAccount(a)"
+              >
+                <div class="acc-top">
+                  <!-- Ícone de investimento -->
+                  <span class="acc-icon" [style.background]="a.color || '#a371f7'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                      <polyline points="16 7 22 7 22 13"/>
+                    </svg>
+                  </span>
+                  <strong>{{ a.name }}</strong>
+                  <button type="button" class="btn-icon" (click)="openEdit(a); $event.stopPropagation()">Editar</button>
+                </div>
+                <p class="balance">{{ accountBalanceLabel(a) }}</p>
+                <small>Saldo em {{ a.initialBalanceDate | slice:0:10 }}: {{ accountInitialLabel(a) }}</small>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="statement-panel">
+        @if (!selectedId()) {
+          <div class="empty-state">
+            <p>Selecione uma conta para ver o extrato</p>
+          </div>
+        } @else {
+          @if (statement(); as st) {
+            <div class="stmt-header">
+              <h2>{{ st.name }}</h2>
+              <p class="stmt-balance">Saldo atual: <strong>{{ accountBalanceLabel(st) }}</strong></p>
+              <app-month-nav
+                [year]="year()"
+                [month]="month()"
+                (yearChange)="onYearChange($event)"
+                (monthChange)="onMonthChange($event)"
+              />
+              <div class="stmt-filters">
+                <label>
+                  <span>Tipo</span>
+                  <select
+                    [ngModel]="stmtKindFilter()"
+                    (ngModelChange)="stmtKindFilter.set($event); applyStatementFilters()"
+                  >
+                    <option value="">Todos</option>
+                    <option value="income">Entradas</option>
+                    <option value="expense">Saídas</option>
+                    <option value="investment">Aportes</option>
+                    <option value="leisure">Lazer</option>
+                  </select>
+                </label>
+                <label class="search-field">
+                  <span>Buscar</span>
+                  <input
+                    type="search"
+                    [ngModel]="stmtSearch()"
+                    (ngModelChange)="stmtSearch.set($event)"
+                    (keyup.enter)="applyStatementFilters()"
+                    placeholder="Descrição ou categoria…"
+                  />
+                </label>
+                <button type="button" class="btn-outline-sm" (click)="applyStatementFilters()">Filtrar</button>
+                @if (stmtFiltersActive()) {
+                  <button type="button" class="btn-muted-sm" (click)="clearStatementFilters()">Limpar</button>
+                }
+              </div>
+              @if (stmtFiltersActive()) {
+                <p class="filter-hint">Com filtros ativos, o saldo acumulado da tabela reflete só as linhas exibidas.</p>
+              }
+            </div>
+
+            @if (!st.statement?.length) {
+              <p class="muted">Sem movimentos neste período.</p>
+            } @else {
+              <table class="stmt-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th class="num">Valor</th>
+                    <th class="num">Saldo ({{ st.currency === 'EUR' ? '€ / R$' : 'R$' }})</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (line of st.statement!; track line.date + line.description + $index) {
+                    <tr [class.opening]="line.kind === 'opening'">
+                      <td>{{ line.date | slice:8:10 }}/{{ line.date | slice:5:7 }}</td>
+                      <td>
+                        <span class="kind-tag">{{ lineKindLabel(line.kind) }}</span>
+                        {{ line.description }}
+                        @if (line.category) { <small>{{ line.category }}</small> }
+                        @if (line.eurToBrl) {
+                          <small class="fx-line">€1 = R$ {{ line.eurToBrl | number:'1.4-4':'pt-BR' }}</small>
+                        }
+                      </td>
+                      <td class="num" [class.pos]="line.signedAmount > 0" [class.neg]="line.signedAmount < 0">
+                        {{ lineSignedLabel(line, st) }}
+                      </td>
+                      <td class="num">{{ lineBalanceLabel(line, st) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        }
+      </section>
+    </div>
+  }
+</div>
+
+@if (showForm()) {
+  <div class="modal-backdrop" (click)="cancelForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>{{ editing() ? 'Editar conta' : 'Nova conta' }}</h3>
+
+      <label>
+        <span>Nome</span>
+        <input [(ngModel)]="form.name" placeholder="Ex.: Nubank, XP, Caixa…" />
+      </label>
+
+      <label>
+        <span>Tipo</span>
+        <select [(ngModel)]="form.type">
+          <option value="bank">Conta bancária</option>
+          <option value="investment">Conta de investimento</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Moeda</span>
+        <select [(ngModel)]="form.currency">
+          <option value="BRL">Real (R$)</option>
+          <option value="EUR">Euro (€)</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Saldo inicial (hoje) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+        <input type="number" [(ngModel)]="form.initialBalance" step="0.01" />
+        @if (form.currency === 'EUR') {
+          <small class="hint">≈ {{ formInitialBrlPreview() | currencyBrl }} em reais (fallback {{ eurToBrl() }})</small>
+        }
+      </label>
+
+      <label>
+        <span>Data do saldo inicial</span>
+        <input type="date" [(ngModel)]="form.initialBalanceDate" />
+      </label>
+
+      <label>
+        <span>Cor</span>
+        <input type="color" [(ngModel)]="form.color" />
+      </label>
+
+      <div class="modal-actions">
+        @if (editing()) {
+          <button type="button" class="btn-danger" (click)="remove(editing()!)">Remover</button>
+        }
+        <button type="button" class="btn-muted" (click)="cancelForm()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="save()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}

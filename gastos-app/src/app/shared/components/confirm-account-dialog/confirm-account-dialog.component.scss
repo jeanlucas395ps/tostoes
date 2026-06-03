@@ -1,0 +1,153 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(26, 29, 46, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 1.5rem 1.25rem 2rem;
+  box-shadow: 0 -10px 50px rgba(26, 29, 46, 0.2);
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 900;
+  }
+}
+
+.entry-name {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.entry-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.confirm-fields {
+  margin-bottom: 1rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.field-readonly {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.field input[type='number'] {
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface-elevated);
+  font-family: inherit;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+
+  span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  select {
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface-elevated);
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+}
+
+.warn,
+.transfer-hint {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+
+  a {
+    color: var(--primary);
+    font-weight: 700;
+  }
+}
+
+.transfer-hint {
+  padding: 0.65rem 0.75rem;
+  background: var(--surface-elevated);
+  border-radius: var(--radius);
+  border-left: 3px solid #a371f7;
+}
+
+.preset {
+  display: block;
+  font-size: 0.75rem;
+  color: #a371f7;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.btn-muted,
+.btn-primary {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-muted {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

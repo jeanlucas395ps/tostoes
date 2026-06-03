@@ -1,0 +1,102 @@
+<div class="modal-backdrop" (click)="cancelled.emit()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h3>Confirmar lançamento</h3>
+    <p class="entry-name">{{ entry().name }}</p>
+
+    @if (entry().investmentTypeName) {
+      <p class="entry-meta">Tipo: {{ entry().investmentTypeName }}</p>
+    }
+
+    <div class="confirm-fields">
+      <label class="field">
+        <span>Tipo</span>
+        @if (canEditKind()) {
+          <select [(ngModel)]="editKind">
+            @for (k of kindOptions; track k) {
+              <option [ngValue]="k">{{ kindLabels[k] }}</option>
+            }
+          </select>
+        } @else {
+          <p class="field-readonly">{{ kindLabels[editKind()] }}</p>
+        }
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Moeda</span>
+          <select [(ngModel)]="editCurrency">
+            <option value="BRL">Real (R$)</option>
+            <option value="EUR">Euro (€)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Valor {{ editCurrency() === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <input type="number" [(ngModel)]="editAmount" step="0.01" min="0" />
+        </label>
+      </div>
+    </div>
+
+    @if (!accounts().length) {
+      <p class="warn">
+        Nenhuma conta cadastrada.
+        <a routerLink="/contas">Cadastre em Contas</a>
+      </p>
+    } @else if (isInvestment()) {
+      <p class="transfer-hint">O valor sai do banco e entra na conta de investimento.</p>
+
+      <label class="field">
+        <span>Conta bancária (origem)</span>
+        <select [(ngModel)]="bankAccountId">
+          <option [ngValue]="null">— Selecione ,</option>
+          @for (a of bankAccounts(); track a.id) {
+            <option [ngValue]="a.id">
+              {{ a.name }} ({{ accountBalanceLabel(a) }})
+            </option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Conta de investimento (destino)</span>
+        @if (presetInvestmentAccountName(); as accountName) {
+          <small class="preset">Fixo vinculado: {{ accountName }}</small>
+        }
+        <select [(ngModel)]="investmentAccountId">
+          <option [ngValue]="null">— Selecione ,</option>
+          @for (a of investmentAccounts(); track a.id) {
+            <option [ngValue]="a.id">
+              {{ a.name }} ({{ accountBalanceLabel(a) }})
+            </option>
+          }
+        </select>
+      </label>
+    } @else {
+      <label class="field">
+        <span>
+          @if (editKind() === 'income') { Em qual conta entrou? } @else { De qual conta saiu? }
+        </span>
+        <select [(ngModel)]="bankAccountId">
+          <option [ngValue]="null">— Selecione a conta ,</option>
+          @for (a of accounts(); track a.id) {
+            <option [ngValue]="a.id">
+              {{ a.type === 'investment' ? 'Investimento' : 'Banco' }} · {{ a.name }}
+              ({{ accountBalanceLabel(a) }})
+            </option>
+          }
+        </select>
+      </label>
+    }
+
+    <div class="actions">
+      <button type="button" class="btn-muted" (click)="cancelled.emit()">Cancelar</button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="!canSubmit()"
+        (click)="submit()"
+      >
+        Confirmar
+      </button>
+    </div>
+  </div>
+</div>

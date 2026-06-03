@@ -1,0 +1,177 @@
+<div class="goals-page">
+  <header class="page-top page-top--toolbar">
+    <p class="page-lead">
+      Vincule uma conta de investimento: o progresso e o aporte mensal usam o saldo atual dela e atualizam ao confirmar em Movimentos.
+    </p>
+    <button type="button" class="btn-brand" (click)="openCreate()">+ Nova meta</button>
+  </header>
+
+  @if (loading()) {
+    <p class="muted">Carregando…</p>
+  } @else if (!items().length) {
+    <div class="empty-panel">
+      <p>Nenhuma meta cadastrada.</p>
+      <button type="button" class="btn-brand" (click)="openCreate()">Criar primeira meta</button>
+    </div>
+  } @else {
+    <div class="goals-grid">
+      @for (g of items(); track g.id) {
+        <article class="goal-card" [style.--goal-color]="g.color">
+          <div class="goal-card-head">
+            <span class="goal-icon"></span>
+            <div class="goal-titles">
+              <h2>{{ g.name }}</h2>
+              @if (g.description) {
+                <p>{{ g.description }}</p>
+              }
+            </div>
+            <div class="goal-actions">
+              <button type="button" class="btn-icon-sm" (click)="openEdit(g)">Editar</button>
+              <button type="button" class="btn-icon-sm btn-icon-danger" (click)="remove(g)">Excluir</button>
+            </div>
+          </div>
+
+          <div class="goal-range-chart" [attr.title]="g.name">
+            <div class="goal-range-axis">
+              <span>{{ formatDate(g.startDate) }}</span>
+              <span>{{ formatDate(g.endDate) }}</span>
+            </div>
+            <div class="goal-range-track">
+              <div
+                class="goal-range-planned"
+                [style.width.%]="g.plannedPct"
+                [style.background]="g.color + '33'"
+              ></div>
+              <div
+                class="goal-range-confirmed"
+                [style.width.%]="g.confirmedBarPct"
+                [style.background]="g.color"
+              ></div>
+            </div>
+            <div class="goal-range-legend">
+              <span class="leg-planned">Estimativa até hoje</span>
+              <span class="leg-confirmed">Aportes confirmados</span>
+            </div>
+          </div>
+
+          <div class="goal-amounts">
+            <strong>{{ g.currentAmountBrl | currencyBrl }}</strong>
+            <span>/ {{ g.targetAmountBrl | currencyBrl }}</span>
+            <em>{{ g.pct }}%</em>
+            @if (g.tracksAccountBalance && g.targetFinancialAccountName) {
+              <small class="goal-balance-hint">Saldo em {{ g.targetFinancialAccountName }}</small>
+            }
+          </div>
+
+          <!-- Destaque: aporte mensal necessário -->
+          <div class="goal-monthly-cta">
+            <span class="goal-monthly-label">Aporte mensal necessário</span>
+            <div class="goal-monthly-row">
+              <strong class="goal-monthly-value">{{ g.monthlyAmountBrl | currencyBrl }}</strong>
+              <span class="goal-monthly-unit">/mês</span>
+              <span class="goal-months-badge">{{ g.monthCount }} meses</span>
+            </div>
+          </div>
+
+          <div class="goal-meta">
+            @if (g.sourceFinancialAccountName && g.targetFinancialAccountName) {
+              <span class="goal-meta-accounts">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                {{ g.sourceFinancialAccountName }} → {{ g.targetFinancialAccountName }}
+              </span>
+            }
+            <span class="hint-movements">Confirme os aportes em Movimentos</span>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+@if (showForm()) {
+  <div class="modal-backdrop" (click)="closeForm()">
+    <div class="modal modal--wide" (click)="$event.stopPropagation()">
+      <h3>{{ editingId() ? 'Editar meta' : 'Nova meta' }}</h3>
+
+      <label>
+        <span>Nome</span>
+        <input [(ngModel)]="form.name" placeholder="Ex.: Reserva de emergência" />
+      </label>
+
+      <label>
+        <span>Descrição (opcional)</span>
+        <input [(ngModel)]="form.description" />
+      </label>
+
+      <label>
+        <span>Conta de investimento — destino</span>
+        <select [(ngModel)]="form.targetFinancialAccountId" required>
+          <option [ngValue]="null">— Selecione a conta —</option>
+          @for (a of investmentAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }} · {{ a.balanceBrl | currencyBrl }}</option>
+          }
+        </select>
+        @if (form.targetFinancialAccountId) {
+          <small class="hint">
+            Saldo atual (referência da meta):
+            <strong>{{ accountBalanceBrl() | currencyBrl }}</strong>
+          </small>
+        }
+      </label>
+
+      <label>
+        <span>Valor final desejado (R$)</span>
+        <input type="number" [(ngModel)]="form.targetAmountBrl" step="0.01" min="0" />
+      </label>
+
+      <div class="field-row">
+        <label>
+          <span>Data de início</span>
+          <input type="date" [(ngModel)]="form.startDate" />
+        </label>
+        <label>
+          <span>Data de fim</span>
+          <input type="date" [(ngModel)]="form.endDate" />
+        </label>
+      </div>
+
+      <label>
+        <span>Dia do aporte no mês</span>
+        <input type="number" [(ngModel)]="form.dueDay" min="1" max="28" />
+      </label>
+
+      @if (computedMonthly() > 0) {
+        <p class="computed-monthly">
+          Aporte mensal sugerido:
+          <strong>{{ computedMonthly() | currencyBrl }}</strong>
+          ({{ monthCountFromForm() }} meses)
+        </p>
+      }
+
+      <label>
+        <span>Conta bancária de saída (opcional)</span>
+        <select [(ngModel)]="form.sourceFinancialAccountId">
+          <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+          @for (a of bankAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+
+
+      <div class="field-row">
+        <label>
+          <span>Cor</span>
+          <input type="color" [(ngModel)]="form.color" />
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeForm()">Cancelar</button>
+        <button type="button" class="btn-primary" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

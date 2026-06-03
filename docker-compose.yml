@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: gastos-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gastos
+    ports:
+      - "3308:3306"
+    volumes:
+      - gastos_mysql_data:/var/lib/mysql
+      - ./api/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: gastos-api
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    env_file:
+      - ./api/.env.docker
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  gastos_mysql_data:

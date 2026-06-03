@@ -1,0 +1,8 @@
+<div class="month-nav">
+  <button type="button" class="nav-btn" (click)="prevMonth()" aria-label="Mês anterior">‹</button>
+  <div class="month-label">
+    <span class="month-name">{{ MONTH_LABELS[month()] }}</span>
+    <span class="year">{{ year() }}</span>
+  </div>
+  <button type="button" class="nav-btn" (click)="nextMonth()" aria-label="Próximo mês">›</button>
+</div>

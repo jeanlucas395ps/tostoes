@@ -1,0 +1,345 @@
+<div class="fixed-page" [style.--accent]="meta().accent">
+  <header class="page-top page-top--toolbar">
+    <p class="page-lead">{{ meta().subtitle }}</p>
+    <button type="button" class="btn-fab" (click)="openNew()">+</button>
+  </header>
+
+  @if (useUserOverviewTabs() && userTabOverviews().length) {
+    <nav class="user-overview-tabs" aria-label="Filtrar por responsável">
+      @for (tab of userTabOverviews(); track tab.key) {
+        <button
+          type="button"
+          class="user-tab-card"
+          [class.active]="activeUserTab() === tab.key"
+          (click)="setUserTab(tab.key)"
+        >
+          <span class="user-tab-avatar-wrap">
+            @if (userForTabKey(tab.key); as u) {
+              <app-user-avatar [user]="u" size="sm" />
+            } @else if (tab.key === 'conjunto') {
+              <app-user-avatar name="Conjunto" size="sm" />
+            } @else {
+              <span class="user-tab-avatar-all" aria-hidden="true">⊞</span>
+            }
+          </span>
+          <span class="user-tab-name">{{ tab.label }}</span>
+          <strong class="user-tab-total">{{ tab.totalBrl | currencyBrl }}</strong>
+          <small class="user-tab-meta">
+            {{ tab.count }} {{ tab.count === 1 ? 'item' : 'itens' }} · mensal previsto
+          </small>
+        </button>
+      }
+    </nav>
+    @if (activeUserOverview(); as overview) {
+      <p class="user-overview-banner">
+        <strong>{{ overview.label }}</strong>:
+        {{ overview.totalBrl | currencyBrl }} previsto/mês
+        ({{ overview.count }} itens)
+      </p>
+    }
+  }
+
+  @if (usesCustomTabs() && customTabs().length) {
+    <nav class="custom-tabs" aria-label="Abas personalizadas">
+      <button
+        type="button"
+        [class.active]="activeTab() === 'all'"
+        (click)="setTab('all')"
+      >
+        Todos
+        <em>{{ tabCounts()['all'] }}</em>
+      </button>
+      @for (tab of customTabs(); track tab.id) {
+        <button
+          type="button"
+          [class.active]="activeTab() === tab.id"
+          (click)="setTab(tab.id)"
+        >
+          {{ tab.name }}
+          <em>{{ tabCounts()[tab.id] }}</em>
+        </button>
+      }
+      <button
+        type="button"
+        [class.active]="activeTab() === 'geral'"
+        (click)="setTab('geral')"
+      >
+        Geral
+        <em>{{ tabCounts()['geral'] }}</em>
+      </button>
+    </nav>
+    <p class="tab-hint">
+      Abas personalizadas indicam de onde é o custo (ex.: Brasil, Portugal).
+      <a routerLink="/configuracoes">Gerenciar abas e categorias</a>
+    </p>
+  }
+
+  @if (showCategoryFilters()) {
+    <nav class="category-filters" aria-label="Filtrar por categoria">
+      @for (f of categoryFilters(); track f.id) {
+        <button
+          type="button"
+          class="cat-chip"
+          [class.active]="activeCategory() === f.id"
+          (click)="setCategory(f.id)"
+        >
+          <span class="cat-icon">{{ f.icon }}</span>
+          <span class="cat-name">{{ f.name }}</span>
+          <em>{{ f.count }}</em>
+        </button>
+      }
+    </nav>
+  }
+
+  <ng-template #categoryPieSection>
+    <section class="chart-card category-pie-card" aria-label="Gastos por categoria">
+      <header class="category-pie-header">
+        <h2>Gastos por categoria</h2>
+        <p>Distribuição dos valores mensais previstos (visão atual)</p>
+      </header>
+      @if (categoryPieChart(); as pie) {
+        <div class="donut-body">
+          <div class="donut-svg-wrap">
+            <svg viewBox="0 0 200 200" width="160" height="160" role="img" aria-hidden="true">
+              @for (slice of pie.slices; track slice.label) {
+                <path [attr.d]="slice.path" [attr.fill]="slice.color" />
+              }
+              <text
+                x="100"
+                y="96"
+                text-anchor="middle"
+                class="donut-center-label"
+              >Total</text>
+              <text
+                x="100"
+                y="112"
+                text-anchor="middle"
+                class="donut-center-value"
+              >{{ pie.total | currencyBrl }}</text>
+            </svg>
+          </div>
+          <div class="donut-legend">
+            @for (slice of pie.slices; track slice.label) {
+              <div class="donut-leg-item">
+                <span class="donut-leg-dot" [style.background]="slice.color"></span>
+                <span class="donut-leg-icon" aria-hidden="true">{{ slice.icon }}</span>
+                <span class="donut-leg-label">{{ slice.label }}</span>
+                <span class="donut-leg-pct" [style.color]="slice.color">{{ slice.pct }}%</span>
+                <span class="donut-leg-val">{{ slice.value | currencyBrl }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="donut-empty">Cadastre itens com valor para ver a distribuição por categoria.</p>
+      }
+    </section>
+  </ng-template>
+
+  <ng-template #recurringItemForm>
+    <label><span>Nome</span>
+      <input [(ngModel)]="form.name" placeholder="Descrição" />
+    </label>
+    <label><span>Dia do mês</span>
+      <input type="number" [(ngModel)]="form.dueDay" min="1" max="31" />
+    </label>
+    <label><span>Moeda</span>
+      <select [(ngModel)]="form.currency">
+        <option value="BRL">Real (R$)</option>
+        <option value="EUR">Euro (€)</option>
+      </select>
+    </label>
+    <label><span>Valor mensal ({{ form.currency === 'EUR' ? '€' : 'R$' }})</span>
+      <input type="number" [(ngModel)]="form.amount" step="0.01" min="0" />
+    </label>
+    @if (form.currency === 'EUR') {
+      <small class="hint">≈ {{ formPreviewBrl() | number:'1.2-2':'pt-BR' }} em reais (estimativa; na confirmação usa cotação do dia)</small>
+    }
+
+    @if (usesCustomTabs()) {
+      <label><span>Aba personalizada</span>
+        <select [(ngModel)]="form.customTabId">
+          <option [ngValue]="null">— Sem aba</option>
+          @for (tab of customTabs(); track tab.id) {
+            <option [ngValue]="tab.id">{{ tab.name }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    <label><span>Categoria do item</span>
+    @if (!newCategoryMode()) {
+      <select
+        [ngModel]="form.itemCategoryId"
+        (ngModelChange)="onCategorySelect($event)"
+      >
+        <option [ngValue]="null">— Selecione</option>
+        @for (cat of itemCategories(); track cat.id) {
+          <option [ngValue]="cat.id">{{ categoryIconFor(cat.name, cat.icon) }} {{ cat.name }}</option>
+        }
+        <option value="__new__">+ Nova categoria…</option>
+      </select>
+    } @else {
+      <input
+        [(ngModel)]="form.newCategoryName"
+        (ngModelChange)="onNewCategoryNameChange($event)"
+        placeholder="Nome da nova categoria"
+      />
+      <label class="icon-picker-label">Ícone</label>
+      <div class="icon-picker">
+        @for (opt of categoryIconOptions; track opt.icon) {
+          <button
+            type="button"
+            class="icon-opt"
+            [class.selected]="form.newCategoryIcon === opt.icon"
+            [title]="opt.label"
+            (click)="form.newCategoryIcon = opt.icon"
+          >{{ opt.icon }}</button>
+        }
+      </div>
+      <button type="button" class="btn-link" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
+    }
+    </label>
+
+    <label><span>Responsável</span>
+      <select [(ngModel)]="form.responsibleUserId">
+        <option [ngValue]="null">Conjunto</option>
+        @for (u of householdUsers(); track u.id) {
+          <option [ngValue]="u.id">{{ u.name }}</option>
+        }
+      </select>
+    </label>
+
+    @if (!isInvestment()) {
+      <label>
+        <span>{{ meta().kind === 'income' ? 'Conta bancária de destino (opcional)' : 'Conta bancária de saída (opcional)' }}</span>
+        @if (!bankFinancialAccounts().length) {
+          <p class="hint-warn">
+            Sem contas bancárias — a conta será escolhida ao confirmar em
+            <a routerLink="/movimentos">Movimentos</a>.
+          </p>
+        } @else {
+          <select [(ngModel)]="form.sourceFinancialAccountId">
+            <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+            @for (a of bankFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+          <small class="hint">
+            Vincule aqui para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a> (aba Prevista).
+          </small>
+        }
+      </label>
+    }
+
+    @if (isInvestment()) {
+      <label><span>Conta bancária de saída (opcional)</span>
+        @if (!bankFinancialAccounts().length) {
+          <p class="hint-warn">
+            Cadastre uma conta bancária em
+            <a routerLink="/contas">Contas</a> ou defina na confirmação em Movimentos.
+          </p>
+        } @else {
+          <select [(ngModel)]="form.sourceFinancialAccountId">
+            <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+            @for (a of bankFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        }
+      </label>
+      <label><span>Conta de investimento — destino (opcional)</span>
+        @if (!investmentFinancialAccounts().length) {
+          <p class="hint-warn">
+            Cadastre uma conta de investimento em
+            <a routerLink="/contas">Contas</a>.
+          </p>
+        } @else {
+          <select [(ngModel)]="form.financialAccountId">
+            <option [ngValue]="null">— Sem destino fixo</option>
+            @for (a of investmentFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+          <small class="hint">
+            Com banco e destino, o fluxo aparece completo no <a routerLink="/grafo-contas">Grafo previsto</a>.
+          </small>
+        }
+      </label>
+      <label><span>Tipo de aporte</span>
+        <select [(ngModel)]="form.investmentTypeId">
+          <option [ngValue]="null">—</option>
+          @for (it of investmentTypes(); track it.id) {
+            <option [ngValue]="it.id">{{ it.name }}</option>
+          }
+        </select>
+      </label>
+    }
+  </ng-template>
+
+  <div
+    class="fixed-body"
+    [class.fixed-body--split]="showCategoryPie() && !loading()"
+  >
+    <div class="fixed-main">
+      @if (loading()) {
+        <p class="muted">Carregando…</p>
+      } @else if (!filteredItems().length) {
+        <p class="empty">Nenhum item nesta aba. Use + para cadastrar.</p>
+      } @else {
+        <ul class="item-list">
+          @for (item of filteredItems(); track item.id) {
+            <li [class.is-editing]="showForm() && editing()?.id === item.id">
+              <div class="item-row">
+                <span
+                  class="item-responsible-avatar"
+                  [title]="'Responsável: ' + responsibleAvatarName(item)"
+                >
+                  @if (responsibleAvatarUser(item); as respUser) {
+                    <app-user-avatar [user]="respUser" size="sm" />
+                  } @else {
+                    <app-user-avatar [name]="responsibleAvatarName(item)" size="sm" />
+                  }
+                </span>
+                <span class="item-cat-icon" [title]="item.itemCategoryName ?? item.category">{{ itemCategoryIcon(item) }}</span>
+                <div class="item-main">
+                  <strong>{{ item.name }}</strong>
+                  <small class="item-meta">{{ itemSubtitle(item) }}</small>
+                  @if (itemAccountLabel(item); as acc) {
+                    <small class="item-bank" [title]="acc">{{ acc }}</small>
+                  }
+                </div>
+                <div class="item-right">
+                  <span class="amount">{{ itemLabel(item) }}</span>
+                  <button type="button" class="btn-icon" (click)="openEdit(item)">✎</button>
+                  <button type="button" class="btn-icon danger" (click)="remove(item)">×</button>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    @if (showCategoryPie() && !loading()) {
+      <aside class="fixed-chart-panel">
+        <ng-container *ngTemplateOutlet="categoryPieSection" />
+      </aside>
+    }
+  </div>
+</div>
+
+@if (showForm()) {
+  <div class="modal-backdrop" (click)="cancelForm()">
+    <div class="modal modal--form" (click)="$event.stopPropagation()">
+      <h3>{{ editing() ? 'Editar' : 'Novo' }} · {{ meta().title }}</h3>
+      <div class="modal-body">
+        <ng-container *ngTemplateOutlet="recurringItemForm" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="cancelForm()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="save()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}

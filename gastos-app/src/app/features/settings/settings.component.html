@@ -1,0 +1,96 @@
+<div class="settings-page">
+<header class="page-top">
+  <p class="page-lead">Câmbio, abas personalizadas e categorias dos itens fixos</p>
+</header>
+
+<section class="card">
+  <h2>Parâmetros financeiros</h2>
+  <p class="hint">
+    Nos lançamentos em euro, usamos a cotação do dia (API Frankfurter). O valor abaixo só entra em ação
+    quando a API não responder , é o <strong>fallback</strong>, não a cotação diária.
+  </p>
+  <form (ngSubmit)="save()">
+    <label>
+      EUR → BRL (fallback manual)
+      <input type="number" step="0.01" [(ngModel)]="form.eurToBrl" name="eur" />
+    </label>
+    <label>
+      Taxa CDI mensal (ex: 0.0095 = 0,95%)
+      <input type="number" step="0.0001" [(ngModel)]="form.cdiMonthlyRate" name="cdi" />
+    </label>
+    <button type="submit" class="btn-primary">Salvar</button>
+    @if (saved()) {
+      <span class="ok">Salvo</span>
+    }
+  </form>
+</section>
+
+<section class="card">
+  <h2>Abas personalizadas</h2>
+  <p class="hint">
+    Organizam gastos e recebimentos fixos por origem (ex.: Brasil, Portugal). Aparecem como abas nas telas de fixos.
+  </p>
+  <ul class="taxonomy-list">
+    @for (tab of customTabs(); track tab.id) {
+      <li>
+        <span>{{ tab.name }}</span>
+        <button type="button" class="btn-remove" (click)="removeTab(tab)">Remover</button>
+      </li>
+    } @empty {
+      <li class="empty-row">Nenhuma aba cadastrada.</li>
+    }
+  </ul>
+  <div class="add-row">
+    <input [(ngModel)]="newTabName" placeholder="Nova aba (ex.: Brasil)" name="newTab" />
+    <button type="button" class="btn-primary" (click)="addTab()">Adicionar aba</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Categorias do item</h2>
+  <p class="hint">
+    Tipo do gasto em si (Mercado, Talho, Moradia…). Cada uma tem ícone e vira filtro na lista de fixos.
+  </p>
+  <ul class="taxonomy-list category-rows">
+    @for (cat of itemCategories(); track cat.id) {
+      <li>
+        <span class="cat-row-name">{{ cat.icon }} {{ cat.name }}</span>
+        <div class="cat-row-icons">
+          @for (opt of categoryIconOptions; track opt.icon) {
+            <button
+              type="button"
+              class="icon-opt-sm"
+              [class.selected]="cat.icon === opt.icon"
+              [title]="opt.label"
+              (click)="updateCategoryIcon(cat, opt.icon)"
+            >{{ opt.icon }}</button>
+          }
+        </div>
+        <button type="button" class="btn-remove" (click)="removeCategory(cat)">Remover</button>
+      </li>
+    } @empty {
+      <li class="empty-row">Nenhuma categoria cadastrada.</li>
+    }
+  </ul>
+  <div class="add-row add-category">
+    <input
+      [(ngModel)]="newCategoryName"
+      (ngModelChange)="onNewCategoryNameChange($event)"
+      placeholder="Nova categoria (ex.: Mercado, Talho)"
+      name="newCat"
+    />
+    <div class="icon-picker">
+      @for (opt of categoryIconOptions; track opt.icon) {
+        <button
+          type="button"
+          class="icon-opt-sm"
+          [class.selected]="newCategoryIcon === opt.icon"
+          [title]="opt.label"
+          (click)="newCategoryIcon = opt.icon"
+        >{{ opt.icon }}</button>
+      }
+    </div>
+    <button type="button" class="btn-primary" (click)="addCategory()">Adicionar categoria</button>
+  </div>
+</section>
+</div>

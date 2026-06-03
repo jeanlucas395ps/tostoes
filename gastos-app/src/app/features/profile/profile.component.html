@@ -1,0 +1,80 @@
+<div class="profile-page">
+  @if (auth.user(); as u) {
+    <section class="card profile-hero">
+      <div class="avatar-block">
+        <app-user-avatar [user]="u" size="md" class="hero-avatar" />
+        <label class="btn-upload">
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onAvatarSelected($event)" [disabled]="uploadingAvatar()" />
+          {{ uploadingAvatar() ? 'Enviando…' : 'Alterar foto' }}
+        </label>
+        @if (avatarError()) {
+          <p class="error">{{ avatarError() }}</p>
+        }
+      </div>
+      <div class="identity">
+        <h2>{{ u.name }}</h2>
+        <p>{{ '@' + u.username }}</p>
+        @if (u.email) {
+          <p class="email">{{ u.email }}</p>
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Dados do perfil</h3>
+      <form (ngSubmit)="saveProfile()">
+        <div class="field">
+          <label>Nome exibido</label>
+          <input type="text" name="name" [(ngModel)]="name" required />
+        </div>
+        <div class="field">
+          <label>Gênero (ícone)</label>
+          <select name="gender" [(ngModel)]="gender">
+            <option value="male">Masculino</option>
+            <option value="female">Feminino</option>
+          </select>
+        </div>
+        <div class="field readonly">
+          <label>Usuário</label>
+          <input type="text" [value]="u.username" readonly />
+        </div>
+        @if (profileError()) {
+          <p class="error">{{ profileError() }}</p>
+        }
+        @if (profileSuccess()) {
+          <p class="success">{{ profileSuccess() }}</p>
+        }
+        <button type="submit" class="btn-brand" [disabled]="savingProfile()">
+          {{ savingProfile() ? 'Salvando…' : 'Salvar perfil' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3>Alterar senha</h3>
+      <form (ngSubmit)="changePassword()">
+        <div class="field">
+          <label>Senha atual</label>
+          <input type="password" name="current" [(ngModel)]="currentPassword" autocomplete="current-password" required />
+        </div>
+        <div class="field">
+          <label>Nova senha</label>
+          <input type="password" name="new" [(ngModel)]="newPassword" autocomplete="new-password" required minlength="8" />
+        </div>
+        <div class="field">
+          <label>Confirmar nova senha</label>
+          <input type="password" name="confirm" [(ngModel)]="newPasswordConfirm" autocomplete="new-password" required />
+        </div>
+        @if (passwordError()) {
+          <p class="error">{{ passwordError() }}</p>
+        }
+        @if (passwordSuccess()) {
+          <p class="success">{{ passwordSuccess() }}</p>
+        }
+        <button type="submit" class="btn-brand" [disabled]="savingPassword()">
+          {{ savingPassword() ? 'Salvando…' : 'Atualizar senha' }}
+        </button>
+      </form>
+    </section>
+  }
+</div>

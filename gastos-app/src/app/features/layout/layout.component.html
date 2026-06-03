@@ -1,0 +1,250 @@
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 0 1 0 4H8"/>
+          <path d="M12 6v2"/>
+          <path d="M12 16v2"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <strong>Tostoes</strong>
+        @if (planning.active(); as p) {
+          <small>{{ p.name }}</small>
+        }
+      </div>
+    </div>
+
+    <section class="planning-section">
+      <div class="planning-head">
+        <span class="planning-label">Planejamento</span>
+        <button type="button" class="planning-add" (click)="openCreateModal()" title="Novo planejamento">+</button>
+      </div>
+      <div class="planning-list">
+        @for (p of planning.items(); track p.id) {
+          <button
+            type="button"
+            class="planning-item"
+            [class.active]="p.id === planning.activeId()"
+            (click)="selectPlanning(p.id)"
+          >
+            <span class="planning-name">{{ p.name }}</span>
+            <small>{{ p.memberCount }} {{ p.memberCount === 1 ? 'membro' : 'membros' }}</small>
+          </button>
+        }
+      </div>
+      @if (planning.items().length) {
+        <button type="button" class="planning-link" (click)="openInviteModal()">
+          Convidar por e-mail
+        </button>
+      }
+    </section>
+
+    <nav class="sidebar-nav">
+      @for (group of navGroups; track group.title) {
+        <div class="nav-group">
+          <span class="nav-group-title">{{ group.title }}</span>
+          @for (item of group.items; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.path === '/home' }"
+            >
+              <span class="nav-icon" [innerHTML]="item.icon | safeHtml"></span>
+              <span class="nav-label">{{ item.label }}</span>
+            </a>
+          }
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      @if (auth.user(); as u) {
+        <a routerLink="/perfil" class="foot-profile" title="Meu perfil">
+          <app-user-avatar [user]="u" />
+          <span class="foot-name">{{ u.name }}</span>
+        </a>
+      }
+      <button type="button" class="logout" (click)="logout()" title="Sair">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="content-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <!-- Logo da marca — visível apenas no mobile (desktop fica na sidebar) -->
+        <div class="topbar-brand-mobile" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 0 1 0 4H8"/>
+            <path d="M12 6v2M12 16v2"/>
+          </svg>
+        </div>
+        <div class="topbar-title-block">
+          <h1 class="topbar-title">{{ pageTitle() }}</h1>
+          <span class="topbar-date">{{ today }}</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        @if (auth.user(); as u) {
+          <div class="topbar-user-wrap">
+            <a routerLink="/perfil" class="topbar-user topbar-user--desktop" title="Meu perfil">
+              <span class="topbar-user-name">{{ u.name }}</span>
+              <app-user-avatar [user]="u" size="sm" />
+            </a>
+            <button
+              type="button"
+              class="topbar-user topbar-user--mobile"
+              (click)="openUserMenu()"
+              [attr.aria-expanded]="showUserMenu()"
+              aria-haspopup="dialog"
+              aria-label="Menu da conta"
+            >
+              <span class="topbar-user-name">{{ u.name }}</span>
+              <app-user-avatar [user]="u" size="sm" />
+            </button>
+          </div>
+        }
+        <button
+          type="button"
+          class="theme-btn"
+          (click)="theme.toggle()"
+          [title]="theme.isDark() ? 'Modo claro' : 'Modo escuro'"
+          [attr.aria-label]="theme.isDark() ? 'Ativar modo claro' : 'Ativar modo escuro'"
+        >
+          @if (theme.isDark()) {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          } @else {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          }
+        </button>
+      </div>
+    </header>
+    <main class="main">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+@if (showCreateModal()) {
+  <div class="modal-backdrop" (click)="closeCreateModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Novo planejamento</h3>
+      <p>Crie um espaço zerado para organizar receitas, gastos e investimentos.</p>
+      <label class="modal-field">
+        <span>Nome</span>
+        <input
+          type="text"
+          placeholder="Ex: Viagem 2026, Casa nova…"
+          [ngModel]="createName()"
+          (ngModelChange)="createName.set($event)"
+          (keyup.enter)="submitCreatePlanning()"
+        />
+      </label>
+      @if (createError()) {
+        <p class="modal-error">{{ createError() }}</p>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeCreateModal()">Cancelar</button>
+        <button type="button" class="btn-brand" [disabled]="createLoading()" (click)="submitCreatePlanning()">
+          {{ createLoading() ? 'Criando…' : 'Criar planejamento' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showUserMenu()) {
+  <div class="modal-backdrop user-menu-backdrop" (click)="closeUserMenu()">
+    <div class="user-menu-sheet" role="dialog" aria-label="Conta" (click)="$event.stopPropagation()">
+      @if (auth.user(); as u) {
+        <div class="user-menu-head">
+          <app-user-avatar [user]="u" />
+          <div>
+            <strong>{{ u.name }}</strong>
+            <span>{{ '@' + u.username }}</span>
+          </div>
+        </div>
+        <nav class="user-menu-actions">
+          <button type="button" class="user-menu-item" (click)="goToProfile()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Meu perfil
+          </button>
+          <button type="button" class="user-menu-item user-menu-item--danger" (click)="logoutFromMenu()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sair
+          </button>
+        </nav>
+      }
+    </div>
+  </div>
+}
+
+@if (showInviteModal()) {
+  <div class="modal-backdrop" (click)="closeInviteModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Convidar para um planejamento</h3>
+      <p>Escolha o planejamento e o e-mail da pessoa. Ela receberá um link para aceitar e entrar.</p>
+      <label class="modal-field">
+        <span>Planejamento</span>
+        <select
+          [ngModel]="invitePlanningId()"
+          (ngModelChange)="invitePlanningId.set($event ? +$event : null)"
+        >
+          @for (p of planning.items(); track p.id) {
+            <option [ngValue]="p.id">{{ p.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="modal-field">
+        <span>E-mail</span>
+        <input
+          type="email"
+          placeholder="pessoa@email.com"
+          [ngModel]="inviteEmail()"
+          (ngModelChange)="inviteEmail.set($event)"
+          (keyup.enter)="sendInvite()"
+        />
+      </label>
+      @if (inviteError()) {
+        <p class="modal-error">{{ inviteError() }}</p>
+      }
+      @if (inviteSuccess()) {
+        <p class="modal-success">{{ inviteSuccess() }}</p>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeInviteModal()">
+          {{ inviteSuccess() ? 'Fechar' : 'Cancelar' }}
+        </button>
+        @if (!inviteSuccess()) {
+          <button type="button" class="btn-brand" [disabled]="inviteLoading()" (click)="sendInvite()">
+            {{ inviteLoading() ? 'Enviando…' : 'Enviar convite' }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

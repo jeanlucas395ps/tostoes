@@ -1,0 +1,452 @@
+<div class="home">
+
+  <!-- Header compacto com mês inline -->
+  <header class="dash-header dash-header--with-nav">
+    <p class="page-lead">Resumo mensal e anual</p>
+    <app-month-nav
+      [year]="year()"
+      [month]="month()"
+      (yearChange)="onYearChange($event)"
+      (monthChange)="onMonthChange($event)"
+    />
+  </header>
+
+  @if (loading()) {
+    <div class="skeleton-grid">
+      <div class="skeleton-card tall"></div>
+      <div class="skeleton-card tall"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  } @else {
+    @if (data(); as d) {
+      @if (selectedMonth(); as m) {
+        <section class="home-overview-grid">
+          @if (accountsSummary(); as acc) {
+            @if (acc.accounts.length) {
+              <div class="patrimony-panel">
+                <div class="patrimony-panel-header">
+                  <div>
+                    <h2>Patrimônio</h2>
+                    <p class="patrimony-total">{{ acc.totals.all | currencyBrl }}</p>
+                  </div>
+                  <a routerLink="/contas" class="patrimony-link">Extratos →</a>
+                </div>
+                <div class="patrimony-chips">
+                  <span class="chip bank">
+                    Bancos <strong>{{ acc.totals.bank | currencyBrl }}</strong>
+                  </span>
+                  <span class="chip inv">
+                    Invest. <strong>{{ acc.totals.investment | currencyBrl }}</strong>
+                  </span>
+                </div>
+                <div class="patrimony-accounts">
+                  @for (a of acc.accounts; track a.id) {
+                    <a
+                      class="account-mini-card"
+                      routerLink="/contas"
+                      [style.--acc-color]="a.color || (a.type === 'investment' ? '#a371f7' : '#3b82f6')"
+                      [title]="a.name"
+                    >
+                      <span class="account-mini-icon" aria-hidden="true">
+                        @if (a.type === 'investment') {
+                          <!-- Trending up — investimento -->
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                            <polyline points="16 7 22 7 22 13"/>
+                          </svg>
+                        } @else {
+                          <!-- Bank building — conta bancária -->
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="22" x2="21" y2="22"/>
+                            <line x1="6" y1="18" x2="6" y2="11"/>
+                            <line x1="10" y1="18" x2="10" y2="11"/>
+                            <line x1="14" y1="18" x2="14" y2="11"/>
+                            <line x1="18" y1="18" x2="18" y2="11"/>
+                            <polygon points="12 2 20 7 4 7"/>
+                          </svg>
+                        }
+                      </span>
+                      <span class="account-mini-name">{{ a.name }}</span>
+                      <strong class="account-mini-balance">
+                        {{ a.currency === 'EUR' ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
+                      </strong>
+                      @if (a.currency === 'EUR') {
+                        <small class="account-mini-fx">{{ accountEurBalance(a) }}</small>
+                      }
+                    </a>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="patrimony-panel patrimony-panel--empty">
+                <h2>Patrimônio</h2>
+                <p>Nenhuma conta cadastrada.</p>
+                <a routerLink="/contas" class="patrimony-link">Cadastrar contas →</a>
+              </div>
+            }
+          } @else {
+            <div class="patrimony-panel patrimony-panel--empty">
+              <p class="muted">Carregando patrimônio…</p>
+            </div>
+          }
+
+          <div class="calendar-panel">
+            <app-year-calendar
+              [compact]="true"
+              [year]="year()"
+              [selectedMonth]="month()"
+              [months]="d.months"
+              [planningUsageStart]="d.planningUsageStart ?? null"
+              (yearChange)="onYearChange($event)"
+              (monthChange)="onMonthChange($event)"
+            />
+          </div>
+        </section>
+
+      <!-- 3. KPIs do mês -->
+      <div class="kpi-trio">
+        <a routerLink="/movimentos" class="kpi kpi-income">
+          <div class="kpi-icon">↑</div>
+          <span class="kpi-label">Recebimentos</span>
+          <strong class="kpi-value">{{ m.real.income | currencyBrl }}</strong>
+          @if (m.projected.income > 0) {
+            <small class="projected-line">Previsto {{ m.projected.income | currencyBrl }}</small>
+          }
+        </a>
+        <a routerLink="/movimentos" class="kpi kpi-expense">
+          <div class="kpi-icon">↓</div>
+          <span class="kpi-label">Gastos</span>
+          <strong class="kpi-value">{{ m.real.expense | currencyBrl }}</strong>
+          @if (m.projected.expense > 0) {
+            <small class="projected-line">Previsto {{ m.projected.expense | currencyBrl }}</small>
+          }
+        </a>
+        <a routerLink="/investimentos-fixos" class="kpi kpi-invest">
+          <div class="kpi-icon">◆</div>
+          <span class="kpi-label">Investimentos</span>
+          <strong class="kpi-value">{{ m.real.investment | currencyBrl }}</strong>
+          @if (m.projected.investment > 0) {
+            <small class="projected-line">Previsto {{ m.projected.investment | currencyBrl }}</small>
+          }
+        </a>
+      </div>
+
+        <!-- 4. Gráfico: Recebimentos vs Gastos -->
+        <section class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h2>Recebimentos vs Gastos</h2>
+              <p>Mês a mês , clique para detalhar</p>
+            </div>
+            <div class="chart-legend">
+              <span class="leg-dot leg-income"></span><span>Recebimentos</span>
+              <span class="leg-dot" style="background:#EF4444"></span><span>Gastos</span>
+              <span class="leg-dot leg-dashed"></span><span>Previsto</span>
+            </div>
+          </div>
+
+          @if (flowData(); as c) {
+            <div class="flow-chart">
+              @for (col of c.months; track col.month) {
+                <div class="flow-col"
+                     [class.inactive]="col.inactive"
+                     [class.selected]="col.month === month() + 1"
+                     (click)="!col.inactive && onMonthChange(col.month - 1)">
+                  <div class="flow-bars">
+                    @if (col.incomeProjH > 0) {
+                      <div class="flow-bar income-proj" [style.height.px]="col.incomeProjH"></div>
+                    }
+                    @if (col.expenseProjH > 0) {
+                      <div class="flow-bar expense-proj" [style.height.px]="col.expenseProjH"></div>
+                    }
+                    <div class="flow-bar income-bar" [style.height.px]="col.incomeH">
+                      @if (col.incomeVal > 0) {
+                        <span class="bar-tip">{{ col.incomeVal | currencyBrl }}</span>
+                      }
+                    </div>
+                    <div class="flow-bar expense-bar" [style.height.px]="col.expenseH">
+                      @if (col.expenseVal > 0) {
+                        <span class="bar-tip">{{ col.expenseVal | currencyBrl }}</span>
+                      }
+                    </div>
+                  </div>
+                  <span class="flow-label">{{ col.label }}</span>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- 5. Distribuição do mês (donut) e investimentos -->
+        <div class="charts-row">
+
+          <section class="chart-card chart-donut">
+            <div class="chart-header">
+              <div>
+                <h2>Distribuição do mês</h2>
+                <p>Como o dinheiro foi distribuído em {{ donutData()?.label ?? m.label }}</p>
+              </div>
+            </div>
+
+            @if (donutData(); as dnt) {
+              <div class="donut-body">
+                <!-- SVG donut -->
+                <div class="donut-svg-wrap">
+                  <svg viewBox="0 0 200 200" style="width:160px;height:160px;display:block;">
+                    @for (arc of dnt.paths; track arc.label) {
+                      <path [attr.d]="arc.path" [attr.fill]="arc.color" stroke="var(--surface)" stroke-width="2"/>
+                    }
+                    <!-- Center -->
+                    <text x="100" y="93" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text-muted)" font-family="Nunito,sans-serif">Saldo</text>
+                    <text x="100" y="114" text-anchor="middle" font-size="14" font-weight="900" [attr.fill]="dnt.balance >= 0 ? '#10B981' : '#EF4444'" font-family="JetBrains Mono,monospace">
+                      {{ dnt.balance | currencyBrl }}
+                    </text>
+                  </svg>
+                </div>
+
+                <!-- Legend -->
+                <div class="donut-legend">
+                  @for (arc of dnt.paths; track arc.label) {
+                    <div class="donut-leg-item">
+                      <span class="donut-leg-dot" [style.background]="arc.color"></span>
+                      <span class="donut-leg-label">{{ arc.label }}</span>
+                      <span class="donut-leg-pct" [style.color]="arc.color">{{ arc.pct }}%</span>
+                      <span class="donut-leg-val">{{ arc.value | currencyBrl }}</span>
+                    </div>
+                  }
+                  <div class="donut-leg-item income-line">
+                    <span class="donut-leg-dot" style="background:var(--income);"></span>
+                    <span class="donut-leg-label">Recebimentos</span>
+                    <span class="donut-leg-pct" style="color:var(--income-dark)">100%</span>
+                    <span class="donut-leg-val">{{ dnt.income | currencyBrl }}</span>
+                  </div>
+                </div>
+              </div>
+
+            } @else {
+              <div class="donut-empty">Sem dados de recebimentos neste mês</div>
+            }
+
+            <div class="donut-months">
+              @for (mo of monthNavPills(); track mo.month) {
+                <button
+                  type="button"
+                  class="donut-month-pill"
+                  [class.active]="mo.month === month() + 1"
+                  (click)="onMonthChange(mo.month - 1)"
+                >
+                  {{ mo.label }}
+                </button>
+              }
+            </div>
+          </section>
+
+          <div class="col-right">
+            <section class="chart-card chart-card--compact">
+              <div class="chart-header">
+                <div>
+                  <h2>Metas</h2>
+                  @if (goalsChart(); as g) {
+                    <p>Progresso em {{ year() }}</p>
+                  } @else {
+                    <p>Objetivos financeiros do planejamento</p>
+                  }
+                </div>
+                @if (goalsChart(); as g) {
+                  <div class="goals-header-totals">
+                    <span>{{ g.totalCurrent | currencyBrl }}</span>
+                    <small>/ {{ g.totalTarget | currencyBrl }}</small>
+                  </div>
+                }
+              </div>
+              @if (goalsChart(); as g) {
+                <div class="goals-chart-legend">
+                  <span><i class="leg-swatch leg-swatch--proj"></i> Estimativa até hoje</span>
+                  <span><i class="leg-swatch leg-swatch--balance"></i> Confirmado</span>
+                </div>
+                <div class="goals-chart">
+                  @for (item of g.items; track item.id) {
+                    <div class="goals-row" [attr.title]="item.fullName">
+                      <div class="goals-row-head">
+                        <span class="goals-row-name">{{ item.name }}</span>
+                        <span class="goals-row-pct" [style.color]="item.color">{{ item.pct }}%</span>
+                      </div>
+                      <div class="goals-row-axis">
+                        <span>{{ item.startDate }}</span>
+                        <span>{{ item.monthlyAmountBrl | currencyBrl }}/mês</span>
+                        <span>{{ item.endDate }}</span>
+                      </div>
+                      <div class="goals-row-track">
+                        <div
+                          class="goals-row-planned"
+                          [style.width.%]="item.plannedPct"
+                          [style.background]="item.color + '40'"
+                        ></div>
+                        <div
+                          class="goals-row-confirmed"
+                          [style.width.%]="item.confirmedBarPct"
+                          [style.background]="item.color"
+                        ></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+                @if (g.monthProjected > 0) {
+                  <p class="goals-month-prev">
+                    Previsto no mês: <strong>{{ g.monthProjected | currencyBrl }}</strong>
+                  </p>
+                }
+              } @else {
+                <div class="donut-empty">
+                  <a routerLink="/metas">Cadastre metas</a> para acompanhar o progresso aqui.
+                </div>
+              }
+            </section>
+
+          </div>
+        </div>
+
+        <!-- 6. Totais do ano -->
+        <!-- <section class="year-strip">
+          <h2>Totais {{ year() }}</h2>
+          <div class="year-totals">
+            <div>
+              <span>Recebimentos</span>
+              <strong class="income">{{ d.yearTotals.real.income | currencyBrl }}</strong>
+              <small>Prev. {{ d.yearTotals.projected.income | currencyBrl }}</small>
+            </div>
+            <div>
+              <span>Gastos</span>
+              <strong class="expense">{{ d.yearTotals.real.expense | currencyBrl }}</strong>
+              <small>Prev. {{ d.yearTotals.projected.expense | currencyBrl }}</small>
+            </div>
+            <div>
+              <span>Investido</span>
+              <strong class="invest">{{ d.yearTotals.real.investment | currencyBrl }}</strong>
+              <small>Prev. {{ d.yearTotals.projected.investment | currencyBrl }}</small>
+            </div>
+            <div>
+              <span>Saldo confirmado</span>
+              <strong>{{ d.yearTotals.balanceReal | currencyBrl }}</strong>
+              <small class="projected-line">Prev. {{
+                d.yearTotals.projected.income - d.yearTotals.projected.expense - d.yearTotals.projected.investment | currencyBrl
+              }}</small>
+            </div>
+          </div>
+        </section> -->
+
+        <!-- 7. Tabela detalhada -->
+        <section class="months-table-wrap">
+          <div class="months-table-head">
+            <h2>Detalhe mensal</h2>
+            <div class="detail-table-view-toggle" role="group" aria-label="Colunas da tabela">
+              <button
+                type="button"
+                class="detail-view-btn"
+                [class.active]="detailTableView() === 'all'"
+                (click)="detailTableView.set('all')"
+              >Ver tudo</button>
+              <button
+                type="button"
+                class="detail-view-btn"
+                [class.active]="detailTableView() === 'real'"
+                (click)="detailTableView.set('real')"
+              >Só real</button>
+              <button
+                type="button"
+                class="detail-view-btn"
+                [class.active]="detailTableView() === 'projected'"
+                (click)="detailTableView.set('projected')"
+              >Só previsto</button>
+            </div>
+          </div>
+          <div
+            class="table-scroll"
+            [class.table-view--all]="detailTableView() === 'all'"
+            [class.table-view--real]="detailTableView() === 'real'"
+            [class.table-view--projected]="detailTableView() === 'projected'"
+          >
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                @if (detailTableShowProjected()) {
+                  <th>Rec. prev.</th>
+                }
+                @if (detailTableShowReal()) {
+                  <th>Rec. real</th>
+                }
+                @if (detailTableShowProjected()) {
+                  <th>Gastos prev.</th>
+                }
+                @if (detailTableShowReal()) {
+                  <th>Gastos real</th>
+                }
+                @if (detailTableShowProjected()) {
+                  <th title="Aportes previstos no plano do mês (fixos + metas)">Invest./Metas prev.</th>
+                }
+                @if (detailTableShowReal()) {
+                  <th title="Aportes confirmados (investimentos fixos e metas)">Invest./Metas real</th>
+                }
+                @if (detailTableShowProjected()) {
+                  <th title="Recebimentos − gastos (sem investimentos nem metas)">Saldo oper. prev.</th>
+                  <th>Saldo prev.</th>
+                }
+                @if (detailTableShowReal()) {
+                  <th>Saldo conf.</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of d.months; track row.month) {
+                <tr
+                  [class.active]="row.month === month() + 1"
+                  [class.inactive-row]="row.beforePlanningStart"
+                  (click)="!row.beforePlanningStart && onMonthChange(row.month - 1)"
+                >
+                  <td>{{ row.label }}</td>
+                  @if (detailTableShowProjected()) {
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.projected.income, !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowReal()) {
+                    <td class="income" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.real.income, !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowProjected()) {
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.projected.expense, !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowReal()) {
+                    <td class="expense" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.real.expense, !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowProjected()) {
+                    <td class="muted projected-cell invest" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(investMetasProjected(row), !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowReal()) {
+                    <td class="invest" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(investMetasReal(row), !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowProjected()) {
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart" [class.positive]="!row.beforePlanningStart && (row.projected.income - row.projected.expense) >= 0">
+                      {{ formatBrlOrDash(row.projected.income - row.projected.expense, !!row.beforePlanningStart) }}
+                    </td>
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart" [class.positive]="!row.beforePlanningStart && row.balanceProjected >= 0">{{ formatBrlOrDash(row.balanceProjected, !!row.beforePlanningStart) }}</td>
+                  }
+                  @if (detailTableShowReal()) {
+                    <td [class.positive]="row.balanceReal >= 0" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.balanceReal, !!row.beforePlanningStart) }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+          </div><!-- /.table-scroll -->
+        </section>
+      }
+    } @else {
+      <section class="home-empty-state">
+        <p>Não foi possível carregar o resumo. Use o seletor de mês acima e tente mudar de ano.</p>
+        <button type="button" class="btn-retry" (click)="load()">Tentar novamente</button>
+      </section>
+    }
+  }
+</div>

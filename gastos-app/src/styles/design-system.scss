@@ -1,0 +1,205 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+
+   TOSTOES , Design System Guidelines v2.0
+   UI: Minimals · Marca primária inspirada no Mobills (roxo)
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  Este arquivo é a referência viva do design system. Não é importado  │
+   │  diretamente no build , serve como documentação executável em SCSS.   │
+   └─────────────────────────────────────────────────────────────────────┘
+
+   ═══════════════════════════════════════════════════════════════════════════
+
+   1. FILOSOFIA
+   ─────────────
+   • Clean & Functional: cada elemento justifica sua presença
+   • Data-first: números são os protagonistas (JetBrains Mono)
+   • Consistência sistemática: tokens → componentes → páginas
+   • Acessibilidade: contraste mínimo AA (4.5:1 texto normal, 3:1 large)
+
+   2. TIPOGRAFIA
+   ─────────────
+   Display / Headings / UI:   Public Sans  (Google Fonts)
+   Valores numéricos:         JetBrains Mono (Google Fonts)
+
+   Escala tipográfica:
+   ┌──────────┬───────────┬──────────┬─────────────────────────────────┐
+   │ Token    │ Size      │ Weight   │ Uso                             │
+   ├──────────┼───────────┼──────────┼─────────────────────────────────┤
+   │ h1       │ 1.5rem    │ 800      │ Títulos de página               │
+   │ h2       │ 1.125rem  │ 700      │ Seções / cards                  │
+   │ h3       │ 1rem      │ 700      │ Sub-seções                      │
+   │ body     │ 0.875rem  │ 400/500  │ Texto corrido                   │
+   │ label    │ 0.8125rem │ 600      │ Labels de formulário            │
+   │ caption  │ 0.75rem   │ 600      │ Metadados, datas                │
+   │ overline │ 0.6875rem │ 700 CAPS │ Section headers, nav groups     │
+   │ kpi-lg   │ 2.25rem   │ 700 Mono │ Hero balance                    │
+   │ kpi-md   │ 1.5rem    │ 700 Mono │ KPI cards                       │
+   │ kpi-sm   │ 1rem      │ 700 Mono │ Total cards                     │
+   └──────────┴───────────┴──────────┴─────────────────────────────────┘
+
+   3. PALETA DE CORES
+   ───────────────────
+
+   PRIMÁRIA , Marca (roxo Mobills)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --primary           │ #6B4EE6    │ CTA, nav ativa, links          │
+   │ --primary-dark      │ #5538D1    │ Hover, texto sobre fundo claro │
+   │ --primary-light     │ #9B85F5    │ Destaques suaves               │
+   │ --primary-soft      │ 8% alpha   │ Fundos suaves, hover states    │
+   │ --primary-lighter   │ 12% alpha  │ Chips, seleção                 │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   RECEITAS , Ganhos (verde, separado da marca)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --income            │ #22C55E    │ Valores de recebimento         │
+   │ --income-dark       │ #16A34A    │ Texto / KPI receitas           │
+   │ --income-soft       │ 8% alpha   │ Badges de entrada              │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   PERIGO , Gastos / Despesas (vermelho)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --danger            │ #FF5630    │ Valores negativos, erros       │
+   │ --danger-dark       │ #B71D18    │ Texto sobre fundo claro        │
+   │ --danger-soft       │ 8% alpha   │ Fundos suaves                  │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   INVESTIMENTOS (azul royal)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --accent-invest     │ #2065D1    │ Valores de investimento        │
+   │ --accent-invest-dark│ #103996    │ Texto sobre fundo claro        │
+   │ --accent-invest-soft│ 8% alpha   │ Fundos suaves                  │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   ATENÇÃO / PLANEJADO (âmbar , WARNING)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --warning           │ #FFAB00    │ Valores projetados, alertas    │
+   │ --warning-dark      │ #B76E00    │ Texto                          │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   MARCA , Logo / Brand mark (âmbar, EXCLUSIVO para logo)
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --brand             │ #D97706    │ Logo mark, gradiente da marca  │
+   │ --brand-dark        │ #92400E    │ Gradiente escuro               │
+   │ --brand-glow        │ shadow     │ Box-shadow no logo             │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+   ⚠ Cor âmbar reservada ao logo. NÃO usar para estados de nav ativo.
+
+   NEUTROS , Interface
+   ┌─────────────────────┬────────────┬────────────────────────────────┐
+   │ --text              │ #1C252E    │ Texto principal                │
+   │ --text-muted        │ #637381    │ Labels, subtítulos             │
+   │ --text-faint        │ #919EAB    │ Placeholders, metadados        │
+   │ --bg                │ #F4F6F8    │ Fundo da aplicação             │
+   │ --surface           │ #FFFFFF    │ Cards, modais, dropdowns       │
+   │ --surface-elevated  │ #F9FAFB    │ Table headers, nav foot        │
+   │ --surface-hover     │ 8% alpha   │ Hover states                   │
+   │ --border            │ 20% alpha  │ Bordas sutis                   │
+   │ --border-strong     │ #DFE3E8    │ Bordas visíveis                │
+   └─────────────────────┴────────────┴────────────────────────────────┘
+
+   4. SOMBRAS
+   ──────────
+   Sistema idêntico ao Minimals , muito sutil, sem sombras dramáticas.
+
+   --shadow-xs:       0 1px 2px rgba(145,158,171, 0.16)
+   --shadow-card:     0 0 2px rgba(…, 0.08), 0 12px 24px -4px rgba(…, 0.12)
+   --shadow-card-hover: 0 0 2px rgba(…, 0.08), 0 16px 32px -4px rgba(…, 0.24)
+   --shadow-lg:       0 24px 48px -8px rgba(…, 0.24)
+   --shadow-primary:  0 8px 16px rgba(0,167,111, 0.24)   ← verde
+   --shadow-danger:   0 8px 16px rgba(255,86,48, 0.24)   ← vermelho
+
+   5. BORDER RADIUS
+   ─────────────────
+   --radius:      8px   → botões, inputs, nav links
+   --radius-lg:   12px  → ícones KPI, total cards, chips
+   --radius-xl:   16px  → CARDS (padrão Minimals)
+   --radius-2xl:  20px  → modais grandes, hero cards
+   --radius-full: 9999px → pills, badges, avatares
+
+   6. ESPAÇAMENTO (base 4px)
+   ──────────────────────────
+   --sp-1:  4px    --sp-2:  8px    --sp-3:  12px
+   --sp-4:  16px   --sp-5:  20px   --sp-6:  24px
+   --sp-8:  32px   --sp-10: 40px   --sp-12: 48px
+
+   Card padding padrão: 1.5rem (24px) = --sp-6
+   Page padding lateral: 2rem (32px)  = --sp-8
+   Gap entre cards: 1rem (16px) ou 1.25rem (20px)
+
+   7. COMPONENTES , PADRÕES
+   ─────────────────────────
+
+   KPI Cards:
+   • Padding: 1.5rem
+   • border-radius: --radius-xl (16px)
+   • Ícone: 48×48, border-radius: --radius-lg (12px), fundo soft da cor
+   • Valor: JetBrains Mono, 1.5rem, -0.04em tracking
+   • Label: Public Sans, 0.875rem, 600, --text-muted
+   • Trend pill: 0.6875rem, bold, fundo 12% alpha da cor
+
+   Hero Balance:
+   • Gradient: --gradient-hero (violeta escuro → roxo Mobills)
+   • Valor: JetBrains Mono, 2.25rem, branco
+   • Sparkline na direita
+   • border-radius: --radius-xl
+
+   Navigation sidebar:
+   • Active: fundo --primary-soft, texto --primary-dark, barra esquerda --primary
+   • Hover: fundo --surface-hover, texto --text
+   • Label: Public Sans, 0.875rem, 600/700
+   • Group title: 0.6875rem, 700, UPPERCASE, 0.10em spacing
+
+   Tables:
+   • Header: 0.75rem, 700, CAPS, --text-faint, 0.06em spacing
+   • Row hover: --surface-hover
+   • Row active: --primary-soft
+   • Números: JetBrains Mono com .font-variant-numeric: tabular-nums
+
+   Badges:
+   • Height: ~22px (padding 0.1875rem 0.625rem)
+   • border-radius: --radius-full
+   • Font: 0.6875rem, 700
+   • Income: fundo --income-lighter, texto --income-dark
+   • Expense: fundo --danger-fill, texto --danger-dark
+   • Invest: fundo --accent-invest-fill, texto --accent-invest-dark
+
+   8. DARK MODE
+   ─────────────
+   Ativado via [data-theme="dark"] no <body> ou elemento raiz.
+   Principais mudanças:
+   • --bg: #141A21 (azul muito escuro)
+   • --surface: #1C252E
+   • --primary: #A78BFA (roxo mais claro para contraste)
+   • Sombras mais opacas (rgba preto em vez de cinza)
+
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tokens de referência (não importados, só documentação) ─────────────── */
+
+// Exemplo de uso em componentes:
+//
+// .meu-card {
+//   background: var(--surface);
+//   border: 1px solid var(--border);
+//   border-radius: var(--radius-xl);
+//   box-shadow: var(--shadow-card);
+//   padding: var(--card-padding);
+// }
+//
+// .meu-valor {
+//   font-family: 'JetBrains Mono', monospace;
+//   font-size: 1.5rem;
+//   font-weight: 700;
+//   letter-spacing: -0.04em;
+//   color: var(--income-dark);
+// }
+//
+// .meu-badge-receita {
+//   background: var(--income-lighter);
+//   color: var(--income-dark);
+//   padding: 0.1875rem 0.625rem;
+//   border-radius: var(--radius-full);
+//   font-size: 0.6875rem;
+//   font-weight: 700;
+// }

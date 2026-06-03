@@ -1,0 +1,131 @@
+<div class="inv-page">
+  <header class="page-top">
+    <div>
+      <h1>Investimentos</h1>
+      <p>Aportes reais e metas por tipo (Reserva, Apartamento, etc.)</p>
+    </div>
+    <button type="button" class="btn-fab" (click)="openNewReal()">+</button>
+  </header>
+
+  <app-month-nav
+    [year]="year()"
+    [month]="month()"
+    (yearChange)="year.set($event); load()"
+    (monthChange)="month.set($event); load()"
+  />
+
+  <div class="tabs">
+    <button type="button" [class.active]="tab() === 'real'" (click)="tab.set('real')">Real</button>
+    <button type="button" [class.active]="tab() === 'projecao'" (click)="tab.set('projecao')">Projeção</button>
+  </div>
+
+  <div class="summary-row">
+    <div class="sum-card">
+      <span>Aportado (mês)</span>
+      <strong>{{ monthRealTotal() | currencyBrl }}</strong>
+    </div>
+    <div class="sum-card muted">
+      <span>Meta (mês)</span>
+      <strong>{{ monthProjectedTotal() | currencyBrl }}</strong>
+    </div>
+  </div>
+
+  <section class="type-cards">
+    @for (t of types(); track t.id) {
+      <article class="type-card" [style.--tc]="t.color">
+        <div class="type-head">
+          <span class="dot"></span>
+          <strong>{{ t.name }}</strong>
+          <span class="target">{{ t.targetMonthlyBrl | currencyBrl }}/mês</span>
+        </div>
+        <div class="progress-bar">
+          <div class="fill" [style.width.%]="progress(t)"></div>
+        </div>
+        <span class="pct">{{ progress(t) }}% da meta no mês</span>
+      </article>
+    }
+  </section>
+
+  @if (tab() === 'real') {
+    <h2 class="section-title">Lançamentos do mês</h2>
+
+    <ng-template #txForm>
+      <form (ngSubmit)="saveReal()">
+        <label>Tipo
+          <select [(ngModel)]="form.investmentTypeId" name="type" required>
+            @for (t of types(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </label>
+        <label>Data <input type="date" [(ngModel)]="form.transactionDate" name="date" required /></label>
+        <label>Descrição <input [(ngModel)]="form.description" name="desc" required /></label>
+        <div class="row-2">
+          <label>Valor <input type="number" step="0.01" [(ngModel)]="form.amount" name="amt" required /></label>
+          <label>Moeda
+            <select [(ngModel)]="form.currency" name="cur">
+              <option value="BRL">BRL</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="cancelForm()">Cancelar</button>
+          <button type="submit" class="btn-save">Salvar</button>
+        </div>
+      </form>
+    </ng-template>
+
+    @if (showForm() && !editingTx()) {
+      <div class="form-card">
+        <h2>Novo aporte</h2>
+        <ng-container *ngTemplateOutlet="txForm" />
+      </div>
+    }
+
+    @if (realItems().length === 0 && !(showForm() && !editingTx())) {
+      <p class="empty">Nenhum aporte registrado.</p>
+    } @else {
+      <ul class="tx-list">
+        @for (tx of realItems(); track tx.id) {
+          <li [class.is-editing]="editingTx()?.id === tx.id">
+            <div class="tx-row" (click)="openEditReal(tx)">
+              @if (tx.registeredBy) {
+                <app-user-avatar [user]="tx.registeredBy" size="sm" />
+              }
+              <span class="badge" [style.background]="tx.investmentTypeColor || '#3fb950'">
+                {{ tx.investmentTypeName || '—' }}
+              </span>
+              <span class="desc">{{ tx.description }}</span>
+              <strong>{{ tx.amountBrl | currencyBrl }}</strong>
+              <button type="button" class="del" (click)="$event.stopPropagation(); removeReal(tx.id)">×</button>
+            </div>
+            @if (editingTx()?.id === tx.id) {
+              <div class="form-card inline" (click)="$event.stopPropagation()">
+                <h2>Editar aporte</h2>
+                <ng-container *ngTemplateOutlet="txForm" />
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <h2 class="section-title">Projeção mensal por tipo</h2>
+    @if (projectionsForMonth().length === 0) {
+      <p class="empty">Sem projeções , configure metas nos tipos ou importe da planilha.</p>
+    } @else {
+      <ul class="proj-list">
+        @for (p of projectionsForMonth(); track p.id) {
+          <li>
+            <span class="badge" [style.background]="p.investmentTypeColor || '#a371f7'">
+              {{ p.investmentTypeName || p.name }}
+            </span>
+            <span>{{ p.name }}</span>
+            <strong>{{ p.amountBrl | currencyBrl }}</strong>
+          </li>
+        }
+      </ul>
+    }
+  }
+</div>

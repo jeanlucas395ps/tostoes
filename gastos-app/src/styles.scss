@@ -1,0 +1,358 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOSTOES , Design System v2.0
+   UI: Minimals · Marca primária inspirada no Mobills (roxo)
+   Light (default) + Dark via [data-theme="dark"]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@use './styles/ui-system.scss' as *;
+
+/* ── Fonts ─────────────────────────────────────────────────────────────── */
+/* Public Sans: corpo e headings  |  JetBrains Mono: valores numéricos     */
+
+:root,
+[data-theme="light"] {
+
+  /* ── Backgrounds ──────────────────────────────────────────────────────── */
+  --bg:               #F4F6F8;
+  --surface:          #FFFFFF;
+  --surface-elevated: #F9FAFB;
+  --surface-hover:    rgba(145, 158, 171, 0.08);
+
+  /* ── Borders ──────────────────────────────────────────────────────────── */
+  --border:           rgba(145, 158, 171, 0.20);
+  --border-strong:    #DFE3E8;
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --text:        #1C252E;
+  --text-muted:  #637381;
+  --text-faint:  #919EAB;
+
+  /* ── Primary , Mobills-like violet (marca, CTAs, nav) ───────────────── */
+  --primary:             #6B4EE6;
+  --primary-dark:        #5538D1;
+  --primary-light:       #9B85F5;
+  --primary-soft:        rgba(107, 78, 230, 0.08);
+  --primary-soft-hover:  rgba(107, 78, 230, 0.16);
+  --primary-lighter:     rgba(107, 78, 230, 0.12);
+  --gradient-brand:      linear-gradient(135deg, #4527A0 0%, #6B4EE6 100%);
+  --gradient-hero:       linear-gradient(135deg, #2E1065 0%, #5538D1 50%, #6B4EE6 100%);
+
+  /* ── Income , receitas (verde, separado da marca) ───────────────────── */
+  --income:             #22C55E;
+  --income-dark:        #16A34A;
+  --income-light:       #4ADE80;
+  --income-soft:        rgba(34, 197, 94, 0.08);
+  --income-soft-hover:  rgba(34, 197, 94, 0.16);
+  --income-lighter:     rgba(34, 197, 94, 0.12);
+  --income-fill-border: rgba(34, 197, 94, 0.24);
+
+  /* ── Semantic aliases ─────────────────────────────────────────────────── */
+  --accent:             var(--primary);
+  --accent-dark:        var(--primary-dark);
+  --accent-soft:        var(--primary-soft);
+  --accent-soft-hover:  var(--primary-soft-hover);
+  --accent-fill:        var(--income-soft);
+  --accent-fill-border: var(--income-fill-border);
+
+  /* ── Danger / expense ─────────────────────────────────────────────────── */
+  --danger:             #FF5630;
+  --danger-dark:        #B71D18;
+  --danger-soft:        rgba(255, 86, 48, 0.08);
+  --danger-soft-hover:  rgba(255, 86, 48, 0.16);
+  --danger-fill:        rgba(255, 86, 48, 0.08);
+  --danger-fill-border: rgba(255, 86, 48, 0.24);
+
+  /* ── Warning ──────────────────────────────────────────────────────────── */
+  --warning:      #FFAB00;
+  --warning-dark: #B76E00;
+  --warning-soft: rgba(255, 171, 0, 0.12);
+
+  /* ── Info ─────────────────────────────────────────────────────────────── */
+  --info:      #00B8D9;
+  --info-soft: rgba(0, 184, 217, 0.08);
+
+  /* ── Investments ──────────────────────────────────────────────────────── */
+  --accent-invest:             #2065D1;
+  --accent-invest-dark:        #103996;
+  --accent-invest-soft:        rgba(32, 101, 209, 0.08);
+  --accent-invest-soft-hover:  rgba(32, 101, 209, 0.16);
+  --accent-invest-fill:        rgba(32, 101, 209, 0.06);
+  --accent-invest-fill-border: rgba(32, 101, 209, 0.20);
+
+  /* ── Brand amber , SOMENTE para o logo / marca visual ────────────────── */
+  --brand:                    #D97706;
+  --brand-dark:               #92400E;
+  --brand-light:              #F59E0B;
+  --brand-soft:               rgba(217, 119, 6, 0.08);
+  --brand-soft-hover:         rgba(217, 119, 6, 0.16);
+  --brand-lighter:            rgba(217, 119, 6, 0.12);
+  --brand-glow:               0 4px 14px rgba(217, 119, 6, 0.35);
+  --gradient-brand-identity:  linear-gradient(135deg, #4527A0 0%, #6B4EE6 100%);
+
+  /* ── Border Radius ────────────────────────────────────────────────────── */
+  --radius:     8px;
+  --radius-md:  10px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Spacing scale (base 4px) ─────────────────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ── Cards ────────────────────────────────────────────────────────────── */
+  --card-padding:    1.5rem;
+  --shadow-card:     0 0 2px 0 rgba(145, 158, 171, 0.08),
+                     0 12px 24px -4px rgba(145, 158, 171, 0.12);
+  --shadow-card-hover: 0 0 2px 0 rgba(145, 158, 171, 0.08),
+                       0 16px 32px -4px rgba(145, 158, 171, 0.24);
+
+  /* ── Shadow scale ─────────────────────────────────────────────────────── */
+  --shadow-xs:      0 1px 2px 0 rgba(145, 158, 171, 0.16);
+  --shadow-sm:      0 0 2px 0 rgba(145, 158, 171, 0.08),
+                    0 4px 8px -4px rgba(145, 158, 171, 0.12);
+  --shadow:         var(--shadow-card);
+  --shadow-lg:      0 0 2px 0 rgba(145, 158, 171, 0.08),
+                    0 24px 48px -8px rgba(145, 158, 171, 0.24);
+  --shadow-primary: 0 8px 16px 0 rgba(107, 78, 230, 0.28);
+  --shadow-income:  0 8px 16px 0 rgba(34, 197, 94, 0.18);
+  --shadow-danger:  0 8px 16px 0 rgba(255, 86, 48, 0.24);
+  --shadow-invest:  0 8px 16px 0 rgba(32, 101, 209, 0.18);
+
+  --topbar-bg:     rgba(255, 255, 255, 0.88);
+  --mobile-nav-bg: rgba(255, 255, 255, 0.97);
+  --logo-glow:     0 4px 14px rgba(107, 78, 230, 0.35);
+
+  --sidebar-width: 280px;
+}
+
+/* ── Dark Mode ─────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  --bg:               #141A21;
+  --surface:          #1C252E;
+  --surface-elevated: #28343F;
+  --surface-hover:    rgba(145, 158, 171, 0.08);
+
+  --border:        rgba(145, 158, 171, 0.12);
+  --border-strong: #2E3A45;
+
+  --text:       #FFFFFF;
+  --text-muted: #919EAB;
+  --text-faint: #637381;
+
+  /* Brand amber dark */
+  --brand:                   #F59E0B;
+  --brand-dark:              #D97706;
+  --brand-light:             #FCD34D;
+  --brand-soft:              rgba(245, 158, 11, 0.12);
+  --brand-soft-hover:        rgba(245, 158, 11, 0.20);
+  --brand-lighter:           rgba(245, 158, 11, 0.16);
+  --brand-glow:              0 4px 14px rgba(245, 158, 11, 0.30);
+  --gradient-brand-identity: linear-gradient(135deg, #5538D1 0%, #6B4EE6 100%);
+
+  --topbar-bg: rgba(20, 26, 33, 0.94);
+  --mobile-nav-bg: rgba(22, 28, 36, 0.97);
+
+  /* Primary violet dark */
+  --primary:            #A78BFA;
+  --primary-dark:       #6B4EE6;
+  --primary-light:      #C4B5FD;
+  --primary-soft:       rgba(167, 139, 250, 0.14);
+  --primary-soft-hover: rgba(167, 139, 250, 0.22);
+  --primary-lighter:    rgba(107, 78, 230, 0.18);
+  --gradient-brand:     linear-gradient(135deg, #5538D1 0%, #6B4EE6 100%);
+  --gradient-hero:      linear-gradient(135deg, #1e1040 0%, #5538D1 50%, #6B4EE6 100%);
+
+  --income:             #4ADE80;
+  --income-dark:        #22C55E;
+  --income-light:       #86EFAC;
+  --income-soft:        rgba(74, 222, 128, 0.12);
+  --income-soft-hover:  rgba(74, 222, 128, 0.20);
+  --income-lighter:     rgba(34, 197, 94, 0.16);
+  --income-fill-border: rgba(74, 222, 128, 0.28);
+
+  --accent:             var(--primary);
+  --accent-dark:        var(--primary-dark);
+  --accent-soft:        var(--income-soft);
+  --accent-soft-hover:  var(--income-soft-hover);
+  --accent-fill:        var(--income-soft);
+  --accent-fill-border: var(--income-fill-border);
+
+  --danger:            #FFAC82;
+  --danger-dark:       #FF5630;
+  --danger-soft:       rgba(255, 86, 48, 0.14);
+  --danger-soft-hover: rgba(255, 86, 48, 0.22);
+  --danger-fill:       rgba(255, 86, 48, 0.10);
+  --danger-fill-border: rgba(255, 86, 48, 0.28);
+
+  --accent-invest:             #76B0F1;
+  --accent-invest-dark:        #2065D1;
+  --accent-invest-soft:        rgba(118, 176, 241, 0.12);
+  --accent-invest-soft-hover:  rgba(118, 176, 241, 0.20);
+  --accent-invest-fill:        rgba(118, 176, 241, 0.10);
+  --accent-invest-fill-border: rgba(118, 176, 241, 0.28);
+
+  --shadow-xs:      0 0 2px 0 rgba(0, 0, 0, 0.36);
+  --shadow-sm:      0 4px 8px rgba(0, 0, 0, 0.32);
+  --shadow-card:    0 0 2px 0 rgba(0, 0, 0, 0.24), 0 12px 24px -4px rgba(0, 0, 0, 0.24);
+  --shadow-card-hover: 0 0 2px 0 rgba(0, 0, 0, 0.24), 0 16px 32px -4px rgba(0, 0, 0, 0.32);
+  --shadow:         var(--shadow-card);
+  --shadow-lg:      0 24px 48px rgba(0, 0, 0, 0.48);
+  --shadow-primary: 0 8px 24px rgba(107, 78, 230, 0.32);
+  --shadow-income:  0 8px 20px rgba(74, 222, 128, 0.14);
+  --shadow-danger:  0 8px 20px rgba(255, 86, 48, 0.20);
+  --shadow-invest:  0 8px 20px rgba(118, 176, 241, 0.14);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.57143;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth theme transitions */
+body,
+.sidebar,
+.topbar,
+.chart-card,
+.col-panel,
+.stat-card,
+.kpi,
+.item-card,
+.patrimony-panel,
+.year-calendar,
+table {
+  transition: background 0.2s ease, border-color 0.2s ease,
+              color 0.2s ease, box-shadow 0.2s ease;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font-family: inherit; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Public Sans', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL PRIMITIVES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+
+  &:hover:not(:disabled) { opacity: 0.88; }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.48; cursor: not-allowed; }
+}
+
+.btn-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5625rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+}
+
+.btn-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-primary);
+  transition: background 0.15s, transform 0.1s;
+
+  &:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+  &:disabled { opacity: 0.48; cursor: not-allowed; }
+}
+
+/* ── Typography utilities ─────────────────────────────────────────────── */
+
+.num, .currency, .mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.text-income  { color: var(--primary); }
+.text-expense { color: var(--danger); }
+.text-invest  { color: var(--accent-invest); }
+.text-muted   { color: var(--text-muted); }
+.text-primary { color: var(--primary); }
+.text-warning { color: var(--warning); }
+
+.label-caps {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   {
+  background: var(--border-strong);
+  border-radius: 6px;
+  &:hover { background: var(--text-faint); }
+}

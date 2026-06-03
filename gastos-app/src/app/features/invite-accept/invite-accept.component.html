@@ -1,0 +1,73 @@
+<div class="invite-shell">
+  <div class="invite-card">
+
+    <!-- Logo -->
+    <div class="invite-brand">
+      <div class="invite-brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 0 1 0 4H8"/>
+          <path d="M12 6v2M12 16v2"/>
+        </svg>
+      </div>
+      <span>Tostoes</span>
+    </div>
+
+    @if (loading()) {
+
+      <div class="invite-loading">
+        <p>Carregando convite…</p>
+      </div>
+
+    } @else if (done()) {
+
+      <div class="invite-done">
+        <div class="done-icon">✓</div>
+        <h1>Pronto!</h1>
+        <p>{{ doneMessage() }}</p>
+        <a routerLink="/home" class="btn-submit">Ir para o app</a>
+      </div>
+
+    } @else if (error() && !invite()) {
+
+      <div class="invite-error-state">
+        <div class="error-icon">✕</div>
+        <h1>Convite indisponível</h1>
+        <p class="error">{{ error() }}</p>
+        <a routerLink="/login" class="btn-muted-link">Entrar</a>
+      </div>
+
+    } @else if (invite()) {
+
+      <!-- Badge de convite -->
+      <div class="invite-badge">Convite recebido</div>
+
+      <h1 class="invite-title">{{ invite()!.planningName }}</h1>
+
+      <p class="invite-msg">
+        <strong>{{ invite()!.inviterName }}</strong> convidou você para participar deste planejamento
+        financeiro no e-mail <strong>{{ invite()!.email }}</strong>.
+      </p>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      @if (isPending()) {
+        @if (auth.isAuthenticated()) {
+          <button type="button" class="btn-submit" [disabled]="accepting()" (click)="tryAccept()">
+            {{ accepting() ? 'Aceitando…' : 'Aceitar e entrar no planejamento' }}
+          </button>
+        } @else {
+          <p class="invite-hint">Entre ou crie uma conta com o e-mail acima para aceitar.</p>
+          <div class="invite-actions">
+            <a routerLink="/login" [queryParams]="loginQueryParams()" class="btn-submit">Entrar na minha conta</a>
+            <a routerLink="/register" [queryParams]="registerQueryParams()" class="btn-muted-link">Criar conta grátis</a>
+          </div>
+        }
+      }
+
+    }
+
+  </div>
+</div>

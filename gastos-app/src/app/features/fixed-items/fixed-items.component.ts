@@ -1,0 +1,580 @@
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { FinanceApiService } from '../../core/services/finance-api.service';
+import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
+import {
+  Currency,
+  EntryKind,
+  FinancialAccount,
+  InvestmentType,
+  PlanningCustomTab,
+  PlanningItemCategory,
+  RecurringItem,
+  User,
+  UserRef,
+} from '../../core/models/api.models';
+import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
+import { responsibleLabel } from '../../core/utils/responsible.util';
+import {
+  entryAmount,
+  formatMoneyWithBrl,
+  previewBrl,
+} from '../../core/utils/money.util';
+import {
+  CATEGORY_ICON_OPTIONS,
+  categoryIcon,
+  resolveItemIcon,
+  suggestCategoryIcon,
+} from '../../core/utils/category-icon.util';
+import {
+  buildDonutSlices,
+  CATEGORY_PIE_COLORS,
+} from '../../core/utils/donut-chart.util';
+
+export interface FixedPageMeta {
+  kind: EntryKind;
+  title: string;
+  subtitle: string;
+  accent: string;
+  categoryDefault: string;
+  userOverviewTabs?: boolean;
+}
+
+export interface UserOverviewTab {
+  key: 'all' | 'conjunto' | number;
+  label: string;
+  count: number;
+  totalBrl: number;
+}
+
+type TabFilter = 'all' | 'geral' | number;
+type UserTabFilter = 'all' | 'conjunto' | number;
+type CategoryFilter = 'all' | 'sem' | number;
+
+@Component({
+  selector: 'app-fixed-items',
+  standalone: true,
+  imports: [
+    FormsModule,
+    CurrencyBrlPipe,
+    DecimalPipe,
+    NgTemplateOutlet,
+    RouterLink,
+    UserAvatarComponent,
+  ],
+  templateUrl: './fixed-items.component.html',
+  styleUrl: './fixed-items.component.scss',
+})
+export class FixedItemsComponent implements OnInit {
+  private api = inject(FinanceApiService);
+  private route = inject(ActivatedRoute);
+
+  meta = signal<FixedPageMeta>({
+    kind: 'expense',
+    title: 'Itens fixos',
+    subtitle: '',
+    accent: '#f85149',
+    categoryDefault: 'Geral',
+  });
+
+  items = signal<RecurringItem[]>([]);
+  customTabs = signal<PlanningCustomTab[]>([]);
+  itemCategories = signal<PlanningItemCategory[]>([]);
+  investmentTypes = signal<InvestmentType[]>([]);
+  householdUsers = signal<User[]>([]);
+  loading = signal(true);
+  showForm = signal(false);
+  editing = signal<RecurringItem | null>(null);
+  investmentFinancialAccounts = signal<FinancialAccount[]>([]);
+  bankFinancialAccounts = signal<FinancialAccount[]>([]);
+  eurToBrl = signal(6.2);
+  activeTab = signal<TabFilter>('all');
+  activeUserTab = signal<UserTabFilter>('all');
+  activeCategory = signal<CategoryFilter>('all');
+  newCategoryMode = signal(false);
+  categoryIconOptions = CATEGORY_ICON_OPTIONS;
+
+  form: Partial<RecurringItem> & {
+    currency?: Currency;
+    amount?: number;
+    newCategoryName?: string;
+    newCategoryIcon?: string;
+  } = {};
+
+  isInvestment = computed(() => this.meta().kind === 'investment');
+  usesCustomTabs = computed(() => {
+    const k = this.meta().kind;
+    return k === 'expense' || k === 'income';
+  });
+
+  useUserOverviewTabs = computed(() => this.meta().userOverviewTabs === true);
+
+  userTabOverviews = computed((): UserOverviewTab[] => {
+    const items = this.items();
+    const users = this.householdUsers();
+    const sumBrl = (list: RecurringItem[]) =>
+      list.reduce((acc, i) => acc + this.itemMonthlyBrl(i), 0);
+
+    const conjunto = items.filter((i) => !i.responsibleUserId);
+    const tabs: UserOverviewTab[] = [
+      {
+        key: 'all',
+        label: 'Total',
+        count: items.length,
+        totalBrl: sumBrl(items),
+      },
+    ];
+
+    if (conjunto.length > 0) {
+      tabs.push({
+        key: 'conjunto',
+        label: 'Conjunto',
+        count: conjunto.length,
+        totalBrl: sumBrl(conjunto),
+      });
+    }
+
+    const tabbedUserIds = new Set<number>();
+
+    for (const u of users) {
+      tabbedUserIds.add(u.id);
+      const mine = items.filter((i) => i.responsibleUserId === u.id);
+      tabs.push({
+        key: u.id,
+        label: u.name,
+        count: mine.length,
+        totalBrl: sumBrl(mine),
+      });
+    }
+
+    for (const item of items) {
+      const id = item.responsibleUserId;
+      if (id == null || tabbedUserIds.has(id)) continue;
+      tabbedUserIds.add(id);
+      const mine = items.filter((i) => i.responsibleUserId === id);
+      tabs.push({
+        key: id,
+        label: item.responsibleUser?.name ?? item.responsible ?? 'Outro',
+        count: mine.length,
+        totalBrl: sumBrl(mine),
+      });
+    }
+
+    return tabs;
+  });
+
+  activeUserOverview = computed(() => {
+    const key = this.activeUserTab();
+    return this.userTabOverviews().find((t) => t.key === key) ?? this.userTabOverviews()[0];
+  });
+
+  itemsByUserTab = computed(() => {
+    const list = this.items();
+    if (!this.useUserOverviewTabs()) return list;
+    const tab = this.activeUserTab();
+    if (tab === 'all') return list;
+    if (tab === 'conjunto') return list.filter((i) => !i.responsibleUserId);
+    return list.filter((i) => i.responsibleUserId === tab);
+  });
+
+  itemsByTab = computed(() => {
+    const list = this.itemsByUserTab();
+    const tab = this.activeTab();
+    if (!this.usesCustomTabs() || tab === 'all') return list;
+    if (tab === 'geral') return list.filter((i) => !i.customTabId);
+    return list.filter((i) => i.customTabId === tab);
+  });
+
+  filteredItems = computed(() => {
+    const list = this.itemsByTab();
+    const cat = this.activeCategory();
+    if (cat === 'all') return list;
+    if (cat === 'sem') return list.filter((i) => !i.itemCategoryId);
+    return list.filter((i) => i.itemCategoryId === cat);
+  });
+
+  categoryFilters = computed(() => {
+    const list = this.itemsByTab();
+    const counts = new Map<number | 'sem', number>();
+    for (const item of list) {
+      const key = item.itemCategoryId ?? 'sem';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const filters: {
+      id: CategoryFilter;
+      name: string;
+      icon: string;
+      count: number;
+    }[] = [{ id: 'all', name: 'Todas', icon: '⊞', count: list.length }];
+    for (const cat of this.itemCategories()) {
+      const n = counts.get(cat.id) ?? 0;
+      if (n > 0) {
+        filters.push({
+          id: cat.id,
+          name: cat.name,
+          icon: categoryIcon(cat.name, cat.icon),
+          count: n,
+        });
+      }
+    }
+    const sem = counts.get('sem') ?? 0;
+    if (sem > 0) {
+      filters.push({ id: 'sem', name: 'Sem categoria', icon: '📌', count: sem });
+    }
+    return filters;
+  });
+
+  showCategoryFilters = computed(
+    () => this.categoryFilters().length > 2 && this.itemCategories().length > 0
+  );
+
+  showCategoryPie = computed(() => this.meta().kind === 'expense');
+
+  categoryPieChart = computed(() => {
+    if (!this.showCategoryPie()) return null;
+
+    const buckets = new Map<
+      string,
+      { label: string; icon: string; value: number }
+    >();
+
+    for (const item of this.itemsByTab()) {
+      const key =
+        item.itemCategoryId != null ? String(item.itemCategoryId) : 'sem';
+      const label =
+        item.itemCategoryName ?? item.category ?? 'Sem categoria';
+      const icon = this.itemCategoryIcon(item);
+      const value = this.itemMonthlyBrl(item);
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.value += value;
+      } else {
+        buckets.set(key, { label, icon, value });
+      }
+    }
+
+    const sorted = [...buckets.values()]
+      .filter((b) => b.value > 0.001)
+      .sort((a, b) => b.value - a.value);
+
+    const colored = sorted.map((b, i) => ({
+      ...b,
+      color: CATEGORY_PIE_COLORS[i % CATEGORY_PIE_COLORS.length],
+    }));
+
+    const built = buildDonutSlices(colored);
+    if (!built) return null;
+
+    return {
+      slices: built.slices,
+      total: built.total,
+    };
+  });
+
+  tabCounts = computed(() => {
+    const list = this.itemsByUserTab();
+    const counts: Record<string, number> = { all: list.length, geral: 0 };
+    for (const t of this.customTabs()) {
+      counts[String(t.id)] = 0;
+    }
+    for (const i of list) {
+      if (!i.customTabId) {
+        counts['geral']++;
+      } else {
+        const key = String(i.customTabId);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
+
+  responsibleLabel = responsibleLabel;
+  formatMoneyWithBrl = formatMoneyWithBrl;
+  entryAmount = entryAmount;
+
+  /** Utilizador do planejamento para exibir avatar (campo responsável do formulário). */
+  householdUserById(id: number): User | undefined {
+    return this.householdUsers().find((u) => u.id === id);
+  }
+
+  responsibleAvatarUser(item: RecurringItem): User | UserRef | null {
+    if (item.responsibleUser) {
+      const u = item.responsibleUser;
+      const full = this.householdUserById(u.id);
+      return full ?? u;
+    }
+    const id = item.responsibleUserId;
+    if (id != null) {
+      return this.householdUserById(id) ?? null;
+    }
+    return null;
+  }
+
+  responsibleAvatarName(item: RecurringItem): string {
+    return this.responsibleAvatarUser(item)?.name ?? this.responsibleLabel(item);
+  }
+
+  userForTabKey(key: UserTabFilter): User | null {
+    if (typeof key !== 'number') return null;
+    return this.householdUserById(key) ?? null;
+  }
+
+  formPreviewBrl = computed(() =>
+    previewBrl(this.form.amount ?? 0, this.form.currency ?? 'BRL', this.eurToBrl())
+  );
+
+  ngOnInit(): void {
+    const data = this.route.snapshot.data as Partial<FixedPageMeta>;
+    if (data['kind']) {
+      this.meta.set({
+        kind: data['kind'] as EntryKind,
+        title: data['title'] ?? 'Itens fixos',
+        subtitle: data['subtitle'] ?? '',
+        accent: data['accent'] ?? '#58a6ff',
+        categoryDefault: data['categoryDefault'] ?? 'Geral',
+        userOverviewTabs: data['userOverviewTabs'] === true,
+      });
+    }
+    this.activeTab.set('all');
+    this.activeUserTab.set('all');
+    this.activeCategory.set('all');
+    this.api.getSettings().subscribe((s) =>
+      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl)
+    );
+    this.loadTaxonomy();
+    this.load();
+    this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
+    this.api.getAccounts('bank').subscribe((r) => this.bankFinancialAccounts.set(r.items));
+    if (this.isInvestment()) {
+      this.api.getInvestmentTypes().subscribe((r) => this.investmentTypes.set(r.items));
+      this.api.getAccounts('investment').subscribe((r) => {
+        this.investmentFinancialAccounts.set(r.items);
+        if (this.showForm() && !this.form.financialAccountId && r.items.length) {
+          this.form.financialAccountId = r.items[0].id;
+        }
+      });
+    }
+  }
+
+  loadTaxonomy(): void {
+    this.api.getPlanningTaxonomy().subscribe({
+      next: (t) => {
+        this.customTabs.set(t.customTabs);
+        this.itemCategories.set(t.itemCategories);
+        // Recebimentos fixos: manter «Todos» como aba padrão (não pular para a 1ª aba personalizada).
+        if (
+          this.usesCustomTabs() &&
+          !this.useUserOverviewTabs() &&
+          this.meta().kind !== 'income' &&
+          this.activeTab() === 'all' &&
+          t.customTabs.length
+        ) {
+          this.activeTab.set(t.customTabs[0].id);
+        }
+      },
+    });
+  }
+
+  load(): void {
+    this.loading.set(true);
+    const kind = this.meta().kind;
+    this.api.getRecurringItems(kind).subscribe({
+      next: (r) => {
+        this.items.set(r.items);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  setUserTab(tab: UserTabFilter): void {
+    this.activeUserTab.set(tab);
+    this.activeCategory.set('all');
+  }
+
+  setTab(tab: TabFilter): void {
+    this.activeTab.set(tab);
+    this.activeCategory.set('all');
+  }
+
+  itemMonthlyBrl(item: RecurringItem): number {
+    const currency = item.currency ?? 'BRL';
+    const storedBrl = item.defaultAmountBrl ?? 0;
+    if (currency === 'BRL') {
+      return storedBrl > 0 ? storedBrl : entryAmount(item);
+    }
+    if (storedBrl > 0) {
+      return storedBrl;
+    }
+    return previewBrl(entryAmount(item), 'EUR', this.eurToBrl());
+  }
+
+  setCategory(cat: CategoryFilter): void {
+    this.activeCategory.set(cat);
+  }
+
+  categoryIconFor = categoryIcon;
+
+  itemCategoryIcon(item: RecurringItem): string {
+    return resolveItemIcon(
+      item.itemCategoryName ?? item.category,
+      item.itemCategoryIcon,
+      item.name
+    );
+  }
+
+  defaultTabId(): number | null {
+    const tabs = this.customTabs();
+    return tabs.length ? tabs[0].id : null;
+  }
+
+  defaultInvestmentAccountId(): number | null {
+    const list = this.investmentFinancialAccounts();
+    return list.length ? list[0].id : null;
+  }
+
+  defaultBankAccountId(): number | null {
+    const list = this.bankFinancialAccounts();
+    return list.length ? list[0].id : null;
+  }
+
+  defaultCategoryId(): number | null {
+    const cats = this.itemCategories();
+    const match = cats.find(
+      (c) => c.name.toLowerCase() === this.meta().categoryDefault.toLowerCase()
+    );
+    return match?.id ?? cats[0]?.id ?? null;
+  }
+
+  openNew(): void {
+    this.editing.set(null);
+    this.newCategoryMode.set(false);
+    this.form = {
+      kind: this.meta().kind,
+      category: this.meta().categoryDefault,
+      itemCategoryId: this.defaultCategoryId(),
+      customTabId: this.usesCustomTabs() ? this.defaultTabId() : null,
+      region: 'geral',
+      dueDay: 1,
+      currency: 'BRL',
+      amount: 0,
+      responsibleUserId: null,
+      financialAccountId: null,
+      sourceFinancialAccountId: null,
+    };
+    this.showForm.set(true);
+  }
+
+  openEdit(item: RecurringItem): void {
+    if (this.editing()?.id === item.id) {
+      this.cancelForm();
+      return;
+    }
+    this.editing.set(item);
+    this.newCategoryMode.set(false);
+    this.form = {
+      ...item,
+      currency: item.currency ?? 'BRL',
+      amount: entryAmount(item),
+      itemCategoryId: item.itemCategoryId ?? this.defaultCategoryId(),
+      customTabId: item.customTabId ?? this.defaultTabId(),
+      financialAccountId: item.financialAccountId ?? null,
+      sourceFinancialAccountId: item.sourceFinancialAccountId ?? null,
+    };
+    this.showForm.set(true);
+  }
+
+  cancelForm(): void {
+    this.showForm.set(false);
+    this.editing.set(null);
+    this.newCategoryMode.set(false);
+  }
+
+  onCategorySelect(value: string | number | null): void {
+    if (value === '__new__') {
+      this.newCategoryMode.set(true);
+      this.form.itemCategoryId = null;
+      this.form.newCategoryName = '';
+      this.form.newCategoryIcon = suggestCategoryIcon('');
+      return;
+    }
+    this.newCategoryMode.set(false);
+    const id = typeof value === 'number' ? value : value ? Number(value) : null;
+    this.form.itemCategoryId = Number.isFinite(id) ? id : null;
+    const cat = this.itemCategories().find((c) => c.id === this.form.itemCategoryId);
+    if (cat) this.form.category = cat.name;
+  }
+
+  save(): void {
+    const name = this.form.name?.trim();
+    if (!name) return;
+    if (this.isInvestment()) {
+      this.form.financialAccountId = this.form.financialAccountId || null;
+      this.form.sourceFinancialAccountId = this.form.sourceFinancialAccountId || null;
+    } else {
+      this.form.sourceFinancialAccountId = this.form.sourceFinancialAccountId || null;
+      this.form.financialAccountId = null;
+    }
+    const id = this.editing()?.id;
+    const payload = {
+      ...this.form,
+      kind: this.meta().kind,
+      name,
+      newCategoryName: this.newCategoryMode() ? this.form.newCategoryName?.trim() : undefined,
+      newCategoryIcon: this.newCategoryMode() ? this.form.newCategoryIcon : undefined,
+    };
+    this.api.saveRecurringItem(payload, id).subscribe({
+      next: () => {
+        this.cancelForm();
+        this.loadTaxonomy();
+        this.load();
+      },
+    });
+  }
+
+  remove(item: RecurringItem): void {
+    if (!confirm(`Remover "${item.name}"?`)) return;
+    this.api.deleteRecurringItem(item.id).subscribe(() => this.load());
+  }
+
+  onNewCategoryNameChange(name: string): void {
+    this.form.newCategoryName = name;
+    if (this.newCategoryMode()) {
+      this.form.newCategoryIcon = suggestCategoryIcon(name);
+    }
+  }
+
+  /** Conta(s) vinculadas para exibir na listagem. */
+  itemAccountLabel(item: RecurringItem): string | null {
+    const kind = this.meta().kind;
+    if (kind === 'investment') {
+      const src = item.sourceFinancialAccountName?.trim();
+      const dest = item.financialAccountName?.trim();
+      if (src && dest) return `${src} → ${dest}`;
+      if (src) return `Saída: ${src}`;
+      if (dest) return `Entrada: ${dest}`;
+      return null;
+    }
+    const bank = item.sourceFinancialAccountName?.trim();
+    if (!bank) return null;
+    return kind === 'income' ? `Banco (destino): ${bank}` : `Banco (saída): ${bank}`;
+  }
+
+  itemSubtitle(item: RecurringItem): string {
+    const parts = [`Dia ${item.dueDay ?? '?'}`];
+    if (item.itemCategoryName || item.category) {
+      parts.push(item.itemCategoryName ?? item.category);
+    }
+    if (this.usesCustomTabs() && item.customTabName) {
+      parts.push(item.customTabName);
+    }
+    return parts.join(' · ');
+  }
+
+  itemLabel(item: RecurringItem): string {
+    const brl = this.itemMonthlyBrl(item);
+    return formatMoneyWithBrl(entryAmount(item), item.currency ?? 'BRL', brl);
+  }
+}

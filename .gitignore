@@ -1,0 +1,38 @@
+# Ambiente / credenciais
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.hosting.example
+!**/.env.docker.example
+api/.env.hosting
+
+# Builds e cache
+gastos-app/dist/
+gastos-app/.angular/
+gastos-app/node_modules/
+api/deploy/out/
+
+# Dados locais / dumps / planilhas
+*.sql
+!api/database/schema.sql
+!api/database/migrations/*.sql
+*.xlsx
+*.xls
+*.xlsm
+api/database/dumps/
+api/storage/avatars/*
+!api/storage/avatars/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+.claude/
+.cursor/
+
+# Logs
+*.log
+
+# Vercel (deploy manual da pasta dist)
+gastos-app/dist/**/.vercel/

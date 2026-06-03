@@ -1,0 +1,418 @@
+<div class="movements-page">
+
+  <!-- ── Page header: título + navegação de mês + botão ── -->
+  <header class="page-top">
+    <div class="page-title">
+      <p>
+        Confirme gastos, recebimentos e investimentos (fixos ou variáveis).
+        Investimentos exigem conta de origem (banco) e destino (investimento).
+        <a routerLink="/investimentos-fixos">Investimentos fixos</a> ·
+        <a routerLink="/gastos-fixos">Gastos fixos</a> ·
+        <a routerLink="/recebimentos-fixos">Receb. fixos</a>
+      </p>
+    </div>
+    <div class="header-controls">
+      <app-month-nav
+        [year]="year()"
+        [month]="month()"
+        (yearChange)="onYearChange($event)"
+        (monthChange)="onMonthChange($event)"
+      />
+      <button type="button" class="btn-fab" (click)="openNewVariable()" title="Novo lançamento variável">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="muted">Carregando…</p>
+  } @else {
+    @if (ledger(); as L) {
+
+      <!-- ── Stats strip horizontal ── -->
+      <div class="stats-strip">
+        <div class="stat-card income-stat">
+          <span class="stat-icon">↑</span>
+          <div>
+            <p class="stat-label">Recebimentos</p>
+            <strong class="stat-value">{{ L.summary.incomeTotal | currencyBrl }}</strong>
+          </div>
+        </div>
+        <div class="stat-card expense-stat">
+          <span class="stat-icon">↓</span>
+          <div>
+            <p class="stat-label">Gastos</p>
+            <strong class="stat-value">{{ L.summary.expenseTotal | currencyBrl }}</strong>
+          </div>
+        </div>
+        <div class="stat-card balance-stat" [class.negative]="L.summary.balance < 0">
+          <span class="stat-icon">＝</span>
+          <div>
+            <p class="stat-label">Saldo confirmado</p>
+            <strong class="stat-value">{{ L.summary.balance | currencyBrl }}</strong>
+          </div>
+        </div>
+        @if (showProjected() && L.summary.pendingCount > 0) {
+          <div class="stat-card pending-stat">
+            <span class="stat-icon">⏳</span>
+            <div>
+              <p class="stat-label">Pendentes</p>
+              <strong class="stat-value">{{ L.summary.pendingCount }} itens</strong>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ── Linha de projeção (compacta) ── -->
+      @if (showProjected() && (L.summary.projected.income > 0 || L.summary.projected.expense > 0)) {
+        <div class="projected-strip">
+          <span class="proj-tag">Previsto</span>
+          <span>Receb. <strong>{{ L.summary.projected.income | currencyBrl }}</strong></span>
+          <span>Gastos <strong>{{ L.summary.projected.expense | currencyBrl }}</strong></span>
+          <span>Saldo <strong>{{ L.summary.projected.balance | currencyBrl }}</strong></span>
+        </div>
+      }
+
+      <!-- ── Layout 2 colunas ── -->
+      <div class="content-cols">
+
+        <!-- Coluna esquerda: Pendentes -->
+        <section class="col-panel">
+          <div class="col-header">
+            <h2>A confirmar <span class="col-hint">sugestões dos fixos</span></h2>
+            @if (sortedPending().length) {
+              <span class="col-badge pending">{{ sortedPending().length }}</span>
+            }
+          </div>
+
+          @if (!sortedPending().length) {
+            <div class="empty-panel">
+              <div class="empty-icon">✓</div>
+              <p>Nenhum item pendente</p>
+              <small>Todos os fixos estão confirmados</small>
+            </div>
+          } @else {
+            <ul class="item-list">
+              @for (e of sortedPending(); track e.id) {
+                <li
+                  class="item-card"
+                  [class.income]="e.kind === 'income'"
+                  [class.expense]="e.kind === 'expense'"
+                  [class.investment]="e.kind === 'investment' && !e.isGoal"
+                  [class.goal]="e.isGoal"
+                  [style.--goal-color]="e.isGoal ? goalColor(e) : null"
+                >
+                  <div class="item-top">
+                    <div
+                      class="item-kind-badge"
+                      [class.income]="e.kind === 'income'"
+                      [class.expense]="e.kind === 'expense'"
+                      [class.investment]="e.kind === 'investment' && !e.isGoal"
+                      [class.goal]="e.isGoal"
+                    >
+                      @if (e.isGoal) {
+                        <span class="goal-badge-label">◇ Meta</span>
+                      } @else if (e.kind === 'income') { ↑ Receb. }
+                      @else if (e.kind === 'investment') { ◆ Invest. }
+                      @else { ↓ Gasto }
+                      @if (!e.isGoal) {
+                        · {{ e.currency ?? 'BRL' }}
+                        @if (e.recurringItemId) { · Fixo }
+                        @else { · Variável }
+                      } @else {
+                        · {{ e.currency ?? 'BRL' }}
+                      }
+                    </div>
+                    @if (!e.recurringItemId && !e.isGoal) {
+                      <button type="button" class="btn-icon-sm" (click)="openEditPending(e)">Editar</button>
+                    }
+                  </div>
+                  <p class="item-name">
+                    @if (!e.recurringItemId) {
+                      <span class="item-cat-icon" [title]="entryCategoryLabel(e)">{{ entryIcon(e) }}</span>
+                    }
+                    {{ e.name }}
+                  </p>
+                  <p class="item-meta">Dia {{ e.dueDay ?? '?' }} · {{ entryCategoryLabel(e) }}
+                    @if (e.isGoal) { · Aporte recalculado conforme falta na meta }
+                    @if (e.customTabName) { · {{ e.customTabName }} }
+                    @if (responsibleLabel(e)) { · {{ responsibleLabel(e) }} }
+                  </p>
+                  <div class="item-bottom">
+                    @if (e.recurringItemId || e.isGoal) {
+                      <input
+                        type="number"
+                        class="amount-input"
+                        [ngModel]="amountFor(e)"
+                        (ngModelChange)="setAmount(e, $event)"
+                        (blur)="saveAmount(e)"
+                        step="0.01"
+                        [attr.placeholder]="e.currency === 'EUR' ? '€' : 'R$'"
+                      />
+                    } @else {
+                      <span class="item-amount">{{ pendingLabel(e) }}</span>
+                    }
+                    <div class="item-actions">
+                      <button type="button" class="btn-confirm" [disabled]="busyId() === e.id" (click)="confirm(e)">
+                        ✓ Confirmar
+                      </button>
+                      @if (isVariablePending(e)) {
+                        <button
+                          type="button"
+                          class="btn-remove"
+                          [disabled]="busyId() === e.id"
+                          title="Remover variável deste mês"
+                          (click)="removePending(e)"
+                        >
+                          Remover
+                        </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn-skip"
+                          [disabled]="busyId() === e.id"
+                          title="Ignorar neste mês"
+                          (click)="skip(e)"
+                        >
+                          ✕
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <!-- Coluna direita: Confirmados -->
+        <section class="col-panel">
+          <div class="col-header">
+            <h2>Confirmados</h2>
+            <span class="col-badge done">{{ sortedConfirmed().length }}</span>
+          </div>
+
+          @if (!sortedConfirmed().length) {
+            <div class="empty-panel">
+              <div class="empty-icon">📋</div>
+              <p>Sem lançamentos ainda</p>
+              <small>Confirme os pendentes ou adicione um variável</small>
+            </div>
+          } @else {
+            <ul class="history-list">
+              @for (t of sortedConfirmed(); track t.id) {
+                <li class="history-item">
+                  <div class="hist-date">
+                    {{ t.transactionDate | slice:8:10 }}
+                    <span>{{ t.transactionDate | slice:5:7 }}</span>
+                  </div>
+                  <div class="hist-body">
+                    <p class="hist-name">{{ t.description }}</p>
+                    <p class="hist-meta">{{ t.category }}
+                      @if (t.accountName) { · {{ t.accountName }} }
+                      @if (responsibleLabel(t)) { · {{ responsibleLabel(t) }} }
+                    </p>
+                  </div>
+                  <div class="hist-right">
+                    <span class="hist-amount" [class.income]="isIncome(t)" [class.expense]="!isIncome(t)">
+                      {{ isIncome(t) ? '+' : '−' }}{{ txLabel(t) }}
+                    </span>
+                    <div class="hist-actions">
+                      @if (t.canUnconfirm || t.monthPlanEntryId) {
+                        <button
+                          type="button"
+                          class="btn-unconfirm"
+                          [disabled]="busyId() === t.id"
+                          title="Voltar para a confirmar (ajusta saldo da conta)"
+                          (click)="unconfirmConfirmed(t)"
+                        >
+                          Desfazer
+                        </button>
+                      }
+                      @if (isVariableTx(t)) {
+                        <button type="button" class="btn-icon-sm" (click)="openEditConfirmed(t)">Editar</button>
+                      }
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+      </div>
+
+    }
+  }
+</div>
+
+<!-- Modal: novo / editar variável -->
+@if (confirmEntry(); as ce) {
+  <app-confirm-account-dialog
+    [entry]="ce"
+    [accounts]="accounts()"
+    [amount]="amountFor(ce)"
+    (confirmed)="submitConfirm($event)"
+    (cancelled)="cancelConfirm()"
+  />
+}
+
+@if (showVariableModal()) {
+  <div class="modal-backdrop" (click)="closeVariableModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>{{ variableModalTitle() }}</h3>
+      <p>Registre gastos, recebimentos ou investimentos variáveis do mês.</p>
+
+      <label class="modal-field">
+        <span>Tipo</span>
+        <select [(ngModel)]="variableForm.kind" (ngModelChange)="onVariableKindChange()">
+          <option value="expense">Gasto</option>
+          <option value="income">Recebimento</option>
+          <option value="investment">Investimento</option>
+        </select>
+      </label>
+
+      @if (variableIsInvestment()) {
+        <label class="modal-field">
+          <span>Tipo de investimento</span>
+          <select [(ngModel)]="variableForm.investmentTypeId">
+            <option [ngValue]="null">— Selecione ,</option>
+            @for (t of investmentTypes(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="modal-field">
+          <span>Conta de investimento (destino sugerida)</span>
+          <select [(ngModel)]="variableForm.financialAccountId">
+            <option [ngValue]="null">Definir na confirmação</option>
+            @for (a of investmentAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        <p class="modal-hint">Na confirmação, escolha o banco de origem e a conta de destino.</p>
+      }
+
+      @if (variableUsesTabs()) {
+        <label class="modal-field">
+          <span>Aba personalizada</span>
+          <select [(ngModel)]="variableForm.customTabId">
+            <option [ngValue]="null">— Sem aba ,</option>
+            @for (tab of customTabs(); track tab.id) {
+              <option [ngValue]="tab.id">{{ tab.name }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      <label class="modal-field">
+        <span>Categoria</span>
+        @if (!newCategoryMode()) {
+          <select
+            [ngModel]="variableForm.itemCategoryId"
+            (ngModelChange)="onCategorySelect($event)"
+          >
+            <option [ngValue]="null">— Selecione ,</option>
+            @for (cat of itemCategories(); track cat.id) {
+              <option [ngValue]="cat.id">{{ categoryIconFor(cat.name, cat.icon) }} {{ cat.name }}</option>
+            }
+            <option value="__new__">+ Nova categoria…</option>
+          </select>
+        } @else {
+          <input
+            [(ngModel)]="variableForm.newCategoryName"
+            (ngModelChange)="onNewCategoryNameChange($event)"
+            placeholder="Nome da nova categoria"
+          />
+          <span class="icon-picker-label">Ícone</span>
+          <div class="icon-picker">
+            @for (opt of categoryIconOptions; track opt.icon) {
+              <button
+                type="button"
+                class="icon-opt"
+                [class.selected]="variableForm.newCategoryIcon === opt.icon"
+                [title]="opt.label"
+                (click)="variableForm.newCategoryIcon = opt.icon"
+              >{{ opt.icon }}</button>
+            }
+          </div>
+          <button type="button" class="btn-link" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
+        }
+      </label>
+
+      <label class="modal-field">
+        <span>Descrição</span>
+        <input [(ngModel)]="variableForm.name" placeholder="Ex.: Mercado, Uber, Aluguel…" />
+      </label>
+
+      @if (editingTx()) {
+        <label class="modal-field">
+          <span>Data</span>
+          <input
+            type="date"
+            [(ngModel)]="variableForm.transactionDate"
+            (ngModelChange)="onVariableDateOrCurrencyChange()"
+          />
+        </label>
+      }
+
+      <div class="modal-row-2">
+        <label class="modal-field">
+          <span>Moeda</span>
+          <select [(ngModel)]="variableForm.currency" (ngModelChange)="onVariableDateOrCurrencyChange()">
+            <option value="BRL">Real (R$)</option>
+            <option value="EUR">Euro (€)</option>
+          </select>
+        </label>
+
+        <label class="modal-field">
+          <span>Valor {{ variableForm.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <input type="number" [(ngModel)]="variableForm.amount" step="0.01" placeholder="0,00" />
+        </label>
+      </div>
+
+      @if (variableForm.currency === 'EUR') {
+        <p class="modal-hint">
+          ≈ R$ {{ formPreviewBrl() | number:'1.2-2':'pt-BR' }}
+          @if (fxPreview(); as fx) {
+            <span class="fx-tag" [class.fallback]="fx.fallback">
+              · €1 = R$ {{ fx.eurToBrl | number:'1.4-4':'pt-BR' }}
+              {{ fx.fallback ? '(fallback)' : '(cotação do dia)' }}
+            </span>
+          }
+        </p>
+      }
+
+      @if (editingTx()) {
+        <label class="modal-field">
+          <span>Conta do lançamento</span>
+          <select [(ngModel)]="variableForm.accountId" required>
+            <option [ngValue]="null">— Selecione ,</option>
+            @for (a of accounts(); track a.id) {
+              <option [ngValue]="a.id">
+                {{ a.type === 'investment' ? 'Investimento' : 'Banco' }} · {{ a.name }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+
+      <label class="modal-field">
+        <span>Responsável</span>
+        <select [(ngModel)]="variableForm.responsibleUserId">
+          <option [ngValue]="null">Conjunto</option>
+          @for (u of householdUsers(); track u.id) {
+            <option [ngValue]="u.id">{{ u.name }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeVariableModal()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="saveVariable()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}

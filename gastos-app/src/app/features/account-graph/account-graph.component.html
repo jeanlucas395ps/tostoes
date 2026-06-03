@@ -1,0 +1,226 @@
+<div class="account-graph-page">
+
+  <!-- Header -->
+  <header class="page-top page-top--toolbar">
+    <div class="page-lead-block">
+      <p class="page-lead">Fluxos previstos e confirmados entre bancos, investimentos, gastos e metas.</p>
+    </div>
+    <app-month-nav
+      [year]="year()"
+      [month]="month()"
+      (yearChange)="onYearChange($event)"
+      (monthChange)="onMonthChange($event)"
+    />
+  </header>
+
+  <!-- Toolbar: modo + sumário + controles do grafo -->
+  <div class="graph-toolbar">
+    <!-- Tabs previsto / real -->
+    <div class="graph-tabs" role="tablist">
+      <button type="button" role="tab"
+        [class.active]="mode() === 'confirmed'"
+        (click)="setMode('confirmed')">
+        Real
+      </button>
+      <button type="button" role="tab"
+        [class.active]="mode() === 'planned'"
+        (click)="setMode('planned')">
+        Previsto
+      </button>
+      <button type="button" role="tab"
+        [class.active]="mode() === 'current'"
+        (click)="setMode('current')"
+        title="Previsto (fixos, metas) + variáveis pendentes do mês">
+        Mês atual
+      </button>
+    </div>
+
+    <!-- Sumário de totais -->
+    @if (totals(); as t) {
+      <div class="graph-totals">
+        <span class="total-chip total-chip--out">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          Saídas {{ t.outflowBrl | currencyBrl }}
+        </span>
+        <span class="total-chip total-chip--in">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          Entradas {{ t.inflowBrl | currencyBrl }}
+        </span>
+        @if (unassignedCnt() > 0 && (mode() === 'planned' || mode() === 'current')) {
+          <span class="total-chip total-chip--warn">
+            ⚠ {{ unassignedCnt() }} sem conta definida
+          </span>
+        }
+      </div>
+    }
+
+    <!-- Botão de filtros -->
+    <button type="button" class="filter-toggle-btn"
+      [class.active]="showFilters() || activeFilterCount() > 0"
+      (click)="toggleFilters()"
+      title="Filtros">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      Filtros
+      @if (activeFilterCount() > 0) {
+        <span class="filter-badge">{{ activeFilterCount() }}</span>
+      }
+    </button>
+
+    <!-- Controles de zoom/fit -->
+    <div class="graph-zoom-controls">
+      <button type="button" class="zoom-btn" title="Ajustar ao canvas" (click)="fitView()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V3h4"/><path d="M21 7V3h-4"/><path d="M3 17v4h4"/><path d="M21 17v4h-4"/></svg>
+      </button>
+      <button type="button" class="zoom-btn" title="Zoom +" (click)="zoomIn()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="zoom-pct">{{ zoomPct() }}%</span>
+      <button type="button" class="zoom-btn" title="Zoom −" (click)="zoomOut()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Painel de filtros ────────────────────────────────────────────── -->
+  @if (showFilters()) {
+    <div class="filter-panel">
+      <div class="filter-panel-head">
+        <span class="filter-panel-title">Filtros</span>
+        @if (activeFilterCount() > 0) {
+          <button type="button" class="filter-clear-btn" (click)="clearFilters()">Limpar tudo</button>
+        }
+      </div>
+
+      <div class="filter-groups">
+
+        <!-- Tipo -->
+        @if (availableTypes().length) {
+          <div class="filter-group">
+            <span class="filter-group-label">Tipo</span>
+            <div class="filter-chips">
+              @for (t of availableTypes(); track t.key) {
+                <button type="button" class="filter-chip"
+                  [class.active]="isTypeActive(t.key)"
+                  (click)="toggleType(t.key)">
+                  {{ t.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Contas bancárias / investimentos -->
+        @if (availableAccounts().length) {
+          <div class="filter-group">
+            <span class="filter-group-label">Contas</span>
+            <div class="filter-chips">
+              @for (a of availableAccounts(); track a.id) {
+                <button type="button" class="filter-chip filter-chip--account"
+                  [class.active]="isAccountActive(a.id)"
+                  [style.--chip-acc-color]="a.color"
+                  (click)="toggleAccount(a.id)">
+                  <span class="chip-dot" [style.background]="a.color"></span>
+                  {{ a.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Categorias (Mercado, Exercícios, …) -->
+        @if (availableCategories().length) {
+          <div class="filter-group">
+            <span class="filter-group-label">Categorias</span>
+            <div class="filter-chips filter-chips--wrap">
+              @for (cat of availableCategories(); track cat.id) {
+                <button type="button" class="filter-chip"
+                  [class.active]="isCategoryActive(cat.id)"
+                  (click)="toggleCategory(cat.id)">
+                  <span class="chip-icon" aria-hidden="true">{{ cat.icon }}</span>
+                  {{ cat.name }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Abas personalizadas (Brasil, Portugal, …) -->
+        @if (availableTabs().length) {
+          <div class="filter-group">
+            <span class="filter-group-label">Abas</span>
+            <div class="filter-chips">
+              @for (tab of availableTabs(); track tab.id) {
+                <button type="button" class="filter-chip"
+                  [class.active]="isTabActive(tab.id)"
+                  (click)="toggleTab(tab.id)">
+                  {{ tab.name }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+      </div>
+    </div>
+  }
+
+  <!-- Legenda dos tipos de nó -->
+  <div class="graph-legend">
+    <span><i class="leg-dot leg-bank"></i>Banco</span>
+    <span><i class="leg-dot leg-invest"></i>Investimento</span>
+    <span><i class="leg-dot leg-expense"></i>Gasto</span>
+    <span><i class="leg-dot leg-income"></i>Recebimento</span>
+    <span><i class="leg-dot leg-goal"></i>Meta</span>
+    <span class="leg-hint">· · ·  conta a definir</span>
+    <span class="leg-hint">Clique em um nó para realçar conexões</span>
+  </div>
+
+  <!-- Container do grafo Cytoscape -->
+  <div class="graph-canvas-card">
+    @if (loading()) {
+      <div class="graph-overlay graph-overlay--loading">
+        <div class="graph-spinner"></div>
+        <span>Carregando diagrama…</span>
+      </div>
+    }
+    @if (isEmpty() && !loading()) {
+      <div class="graph-overlay graph-overlay--empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.35">
+          <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+        </svg>
+        <p>Sem fluxos neste mês.</p>
+        <small>Cadastre gastos fixos, metas ou investimentos com conta de origem.</small>
+      </div>
+    }
+    <!-- O Cytoscape monta o canvas aqui -->
+    <div #cyContainer class="cy-container" [style.visibility]="isEmpty() || loading() ? 'hidden' : 'visible'"></div>
+
+    <!-- Tooltip de hover -->
+    @if (tooltip().visible) {
+      <div class="cy-tooltip"
+           [style.left.px]="tooltip().x"
+           [style.top.px]="tooltip().y">
+        <div class="cy-tooltip-title">
+          <span class="cy-tooltip-dot" [style.background]="tooltip().color"></span>
+          {{ tooltip().title }}
+        </div>
+        @for (row of tooltip().rows; track row.label) {
+          @if (row.value) {
+            <div class="cy-tooltip-row">
+              <span class="cy-tooltip-label">{{ row.label }}</span>
+              <span class="cy-tooltip-value" [style.color]="row.color || ''">{{ row.value }}</span>
+            </div>
+          } @else {
+            <div class="cy-tooltip-name">{{ row.label }}</div>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Dica de uso -->
+  <p class="graph-tip">
+    Arraste nós para reorganizar · Scroll para zoom · Arraste o fundo para navegar
+  </p>
+
+</div>

@@ -1,0 +1,150 @@
+<div class="plan-page">
+  <header class="page-top">
+    <div>
+      <h1>Confirmar mês</h1>
+      <p>Fixos aparecem no dia de vencimento. Variáveis você registra quando acontecem.</p>
+    </div>
+    <a routerLink="/fixo" class="btn-link">Catálogo de fixos</a>
+  </header>
+
+  <app-month-nav
+    [year]="year()"
+    [month]="month()"
+    (yearChange)="onYearChange($event)"
+    (monthChange)="onMonthChange($event)"
+  />
+
+  @if (loading()) {
+    <p class="muted">Carregando…</p>
+  } @else {
+    @if (plan(); as planData) {
+      <div class="insight-banner">
+        <p>{{ planData.insights.message }}</p>
+        @if (planData.todayDay) {
+          <span class="badge">Hoje: dia {{ planData.todayDay }}</span>
+        }
+      </div>
+
+      <div class="summary-compact">
+        <span>Saldo previsto <strong>{{ planData.summary.balanceProjected | currencyBrl }}</strong></span>
+        @if (planData.summary.pendingCount > 0) {
+          <span class="pill">{{ planData.summary.pendingCount }} pendente(s)</span>
+        }
+      </div>
+
+      <nav class="tabs">
+        @for (t of tabs(); track t.id) {
+          <button
+            type="button"
+            [class.active]="activeTab() === t.id"
+            (click)="activeTab.set(t.id)"
+          >
+            {{ t.label }}
+            @if (t.count > 0) {
+              <em>{{ t.count }}</em>
+            }
+          </button>
+        }
+      </nav>
+
+      @if (activeTab() === 'variable' && showAddVariable()) {
+        <div class="add-form">
+          <h3>Novo item variável</h3>
+          <p class="hint">Gastos ou receitas que não estão no catálogo de fixos</p>
+          <select [(ngModel)]="addForm.kind">
+            <option value="expense">Despesa</option>
+            <option value="income">Recebimento</option>
+            <option value="investment">Investimento</option>
+            <option value="leisure">Lazer</option>
+          </select>
+          <input [(ngModel)]="addForm.name" placeholder="Descrição" />
+          <input type="number" [(ngModel)]="addForm.amount" placeholder="Valor R$" step="0.01" />
+          <div class="add-actions">
+            <button type="button" class="btn-confirm" (click)="addVariable()">Adicionar</button>
+            <button type="button" class="btn-skip" (click)="showAddVariable.set(false)">Cancelar</button>
+          </div>
+        </div>
+      }
+
+      @if (activeTab() === 'variable' && !showAddVariable()) {
+        <button type="button" class="btn-add" (click)="showAddVariable.set(true)">
+          + Registrar variável
+        </button>
+      }
+
+      @if (activeTab() === 'today' && listForTab().length === 0) {
+        <p class="empty">Nada com vencimento hoje. Veja <button type="button" class="link" (click)="activeTab.set('upcoming')">próximos</button> ou <a routerLink="/fixo">cadastre fixos</a>.</p>
+      }
+
+      <ul class="entry-list">
+        @for (e of listForTab(); track e.id) {
+          <li [class]="'status-' + e.status">
+            <div class="entry-main">
+              <div class="entry-title">
+                <strong>{{ e.name }}</strong>
+                <small>
+                  {{ e.category }}
+                  @if (e.dueDay) { · dia {{ e.dueDay }} }
+                  @if (e.isVariable) { · variável }
+                </small>
+              </div>
+              @if (e.status === 'pending') {
+                <input
+                  type="number"
+                  class="amount-input"
+                  [ngModel]="amountFor(e)"
+                  (ngModelChange)="setAmount(e, $event)"
+                  (blur)="saveAmount(e)"
+                  step="0.01"
+                  min="0"
+                />
+              } @else if (e.status === 'confirmed') {
+                <span class="amount-done">{{ (e.confirmedAmountBrl ?? e.suggestedAmountBrl) | currencyBrl }}</span>
+              } @else {
+                <span class="skipped">Não ocorreu</span>
+              }
+            </div>
+            @if (e.status === 'pending') {
+              <div class="entry-actions">
+                <button type="button" class="btn-confirm" [disabled]="busyId() === e.id" (click)="confirm(e)">
+                  Confirmar
+                </button>
+                <button type="button" class="btn-skip" [disabled]="busyId() === e.id" (click)="skip(e)">
+                  Não ocorreu
+                </button>
+              </div>
+            } @else if (e.status === 'confirmed') {
+              <span class="tag ok">✓ Lançado</span>
+            }
+          </li>
+        }
+
+        @if (activeTab() === 'upcoming') {
+          @for (f of forecastForTab(); track f.recurringItemId) {
+            <li class="status-forecast">
+              <div class="entry-main">
+                <div class="entry-title">
+                  <strong>{{ f.name }}</strong>
+                  <small>{{ f.category }} · dia {{ f.dueDay }} · ainda não chegou</small>
+                </div>
+                <span class="amount-muted">{{ f.suggestedAmountBrl | currencyBrl }}</span>
+              </div>
+              <button
+                type="button"
+                class="btn-early"
+                [disabled]="busyId() === f.recurringItemId"
+                (click)="spawnAndConfirm(f)"
+              >
+                Confirmar antes
+              </button>
+            </li>
+          }
+        }
+      </ul>
+
+      @if (activeTab() === 'done' && listForTab().length === 0) {
+        <p class="empty muted">Nenhum item confirmado ou ignorado ainda neste mês.</p>
+      }
+    }
+  }
+</div>

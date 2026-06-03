@@ -1,0 +1,14 @@
+.env
+.env.local
+.env.hosting
+deploy/out/
+!deploy/out/.gitkeep
+deploy/out/gastos_data.sql
+*.xlsx
+*.xls
+*.xlsm
+database/dumps/
+database/balanco_seed.json
+storage/*
+!storage/avatars/
+!storage/avatars/.gitkeep
