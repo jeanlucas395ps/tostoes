@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Importa um dump .sql no banco configurado em .env (rodar no servidor cPanel).
+ * Importa um dump .sql no banco configurado em .env.
  *
- * Uso (SSH/Terminal cPanel):
- *   cd ~/public_html
+ * Uso:
  *   php scripts/import-database.php /caminho/para/gastos_data.sql
  */
 

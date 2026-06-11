@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Gastos\Api;
 
 /**
- * CORS para SPA (Vercel, localhost, tostoes.com.br).
- * Lista em CORS_ORIGIN (vírgula). Suporta curinga: https://*.vercel.app
+ * CORS para o frontend (origens em CORS_ORIGIN, separadas por vírgula).
+ * Suporta curinga, ex.: https://*.seudominio.com
  */
 final class Cors
 {
@@ -43,7 +43,7 @@ final class Cors
         return false;
     }
 
-    /** Ex.: https://*.vercel.app casa com https://gastos-xxx.vercel.app */
+    /** Ex.: https://*.example.com casa com https://app.example.com */
     private static function wildcardMatch(string $pattern, string $origin): bool
     {
         $quoted = preg_quote($pattern, '#');

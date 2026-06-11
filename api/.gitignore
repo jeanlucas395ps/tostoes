@@ -1,13 +1,8 @@
 .env
-.env.hosting
-deploy/out/
-!deploy/out/.gitkeep
-deploy/out/gastos_data.sql
+database/dumps/*.sql
 *.xlsx
 *.xls
 *.xlsm
-database/dumps/
-database/balanco_seed.json
 storage/*
 !storage/avatars/
 !storage/avatars/.gitkeep

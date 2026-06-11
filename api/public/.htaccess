@@ -1,8 +1,18 @@
-RewriteEngine On
+# Tostoes API — document root = api/public
+<IfModule mod_rewrite.c>
+  RewriteEngine On
 
-# Apache/CGI remove Authorization , repassar para o PHP
-RewriteCond %{HTTP:Authorization} .
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  Options -Indexes
 
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.php [L]
+  # Apache/CGI remove Authorization — repassar para o PHP
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+<FilesMatch "^(\.env|\.env\.|composer\.(json|lock))$">
+  Require all denied
+</FilesMatch>

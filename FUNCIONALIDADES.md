@@ -357,7 +357,7 @@ Arquivo `.env` do app: `API_URL=/api`
 
 ## Arquivos legados (não usados nas rotas atuais)
 
-Existem no código componentes da versão inicial com `localStorage` (`folha-1`, `folha-2`, `storage.service`). As rotas ativas usam a API e os módulos **Ganhos**, **Custos** e **Investimentos**.
+Todas as rotas ativas usam a API REST (JWT + planejamentos compartilhados).
 
 ---
 
@@ -374,5 +374,4 @@ Existem no código componentes da versão inicial com `localStorage` (`folha-1`,
 ## Documentos relacionados
 
 - [README.md](README.md) , como subir o projeto  
-- [CHECKLIST.md](CHECKLIST.md) , roadmap e itens pendentes  
 - [gastos-app/README.md](gastos-app/README.md) , detalhes do frontend

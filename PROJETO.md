@@ -90,7 +90,7 @@ flowchart LR
 | API | PHP 8.3, PDO, roteador manual em `Router.php`, sem framework full-stack |
 | Auth | JWT no header `Authorization: Bearer` + `X-Planning-Id` para o planejamento ativo |
 | DB | MySQL 8.4 (Docker porta **3308**) |
-| Deploy local | `docker-compose.yml` (serviços `mysql` + `api`) |
+| Ambiente local | `docker-compose.yml` (serviços `mysql` + `api`) |
 
 A API expõe rotas sob o prefixo `/api` (proxy do Angular em desenvolvimento: `environment.apiUrl = "/api"`).
 
@@ -115,7 +115,7 @@ gastos/
 │   │   └── migrations/     ← 002–021 incrementais
 │   ├── scripts/
 │   │   ├── migrate.php     ← schema + migrações + seed
-│   │   └── migrate.php, reset-data.php, clear-months-before.php, …
+│   │   └── migrate.php, reset-data.php, import-database.php
 │   └── .env (copie de .env.example)
 └── gastos-app/
     ├── src/app/
@@ -615,7 +615,6 @@ Tabela `monthly_projections` ainda existe no schema antigo; o fluxo principal pa
 | Script | Uso |
 |--------|-----|
 | `php api/scripts/migrate.php` | Schema + migrações + usuários seed |
-| `api/scripts/clear-months-before.php` | Limpeza de meses antigos |
 
 ---
 
@@ -674,7 +673,6 @@ O Angular serve com `apiUrl: "/api"`; configure o proxy (`proxy.conf.json` se ex
 ## Referências rápidas
 
 - Início rápido Docker: [README.md](README.md)
-- Checklist de evolução: [CHECKLIST.md](CHECKLIST.md) (se existir no repo)
 - Portas: API **8090**, MySQL **3308**, Angular **4200**
 
 ---

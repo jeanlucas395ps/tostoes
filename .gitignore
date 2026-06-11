@@ -1,14 +1,13 @@
 # Credenciais locais (use .env.example como modelo)
 .env
 api/.env
+api/.env.server
 gastos-app/.env
-api/.env.hosting
 
 # Builds e cache
 gastos-app/dist/
 gastos-app/.angular/
 gastos-app/node_modules/
-api/deploy/out/
 
 # Dados locais / dumps / planilhas
 *.sql
@@ -17,7 +16,7 @@ api/deploy/out/
 *.xlsx
 *.xls
 *.xlsm
-api/database/dumps/
+api/database/dumps/*.sql
 api/storage/avatars/*
 !api/storage/avatars/.gitkeep
 
