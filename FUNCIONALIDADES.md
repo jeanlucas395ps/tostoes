@@ -27,7 +27,7 @@ Documentação das funcionalidades do aplicativo **Tostoes** — controle financ
 
 ### Usuário inicial (opcional)
 
-A migração `api/scripts/migrate.php` pode criar um usuário se `SETUP_USER` e `SETUP_PASSWORD` estiverem no `.env`. Caso contrário, use o cadastro na web.
+A migração `api/scripts/migrate.php` cria o usuário **admin** / **admin** se ainda não existir (ambiente local/Docker). Também é possível cadastro em `/cadastro`.
 
 ### Segurança
 

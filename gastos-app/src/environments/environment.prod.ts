@@ -1,5 +1,5 @@
-// Gerado por scripts/generate-env.mjs — PROD_API_URL na Vercel
+// Gerado por scripts/generate-env.mjs — não edite manualmente
 export const environment = {
   production: true,
-  apiUrl: 'https://api.tostoes.com.br/api',
+  apiUrl: "/api",
 };

@@ -24,9 +24,6 @@ final class Config
             'APP_TIMEZONE' => 'America/Sao_Paulo',
             'MAIL_DRIVER' => 'log',
             'MAIL_FROM' => 'Tostoes <noreply@tostoes.app>',
-            'SETUP_USER' => '',
-            'SETUP_PASSWORD' => '',
-            'SETUP_NAME' => '',
         ];
 
         self::$env = $defaults;

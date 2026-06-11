@@ -30,6 +30,8 @@ cp "$DENY" "$OUT/storage/.htaccess"
 echo "→ .env de produção (servidor)"
 if [[ ! -f "$ENV_SRC" ]]; then
   echo "Arquivo não encontrado: $ENV_SRC" >&2
+  echo "Crie api/.env.hosting com credenciais de produção (modelo em deploy/DEPLOY-ALPHA-MEDIA.md §3)." >&2
+  echo "Esse arquivo não vai para o Git." >&2
   exit 1
 fi
 {

@@ -1,94 +1,151 @@
-# Gastos , controle financeiro
+# Tostoes
 
-App Angular + API PHP + MySQL. Inspirado no Mobills, com separação clara por mês: **Ganhos**, **Custos** e **Investimentos**.
+**Planejamento financeiro compartilhado** para casais e famílias — com clareza entre o que é **previsto** e o que já **aconteceu** de verdade.
 
-Documentação completa do produto e de todas as funcionalidades: **[PROJETO.md](PROJETO.md)**.
+Angular no frontend, API PHP enxuta, MySQL no Docker. Sem SaaS obrigatório: rode tudo na sua máquina em minutos.
 
-## Estrutura
+[![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
+[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-| Pasta | Descrição |
-|-------|-----------|
-| `gastos-app/` | Frontend Angular |
-| `api/` | API REST PHP |
-| `docker-compose.yml` | MySQL 8 + API PHP (Apache) |
+---
 
-## Subir com Docker (recomendado)
+## Por que o Tostoes?
 
-Na raiz do projeto:
+Apps de finanças pessoais costumam misturar **meta**, **previsão** e **extrato real** na mesma tela. O Tostoes separa isso de propósito:
+
+| Você define | Você confirma | Você enxerga |
+|-------------|---------------|--------------|
+| Gastos e recebimentos **fixos** | Pendências do mês em **Movimentos** | **Previsto vs real** no dashboard |
+| **Metas** com prazo e parcela | Lançamentos nas **contas** | **Grafo de fluxos** entre bancos e categorias |
+| **Planejamentos** (Casa, Viagem…) | Convites por **e-mail** | Extrato, investimentos, categorias |
+
+Ideal para quem quer visão de casal ou família sem planilha infinita.
+
+---
+
+## Stack
+
+```
+gastos-app/     → Angular 19 (standalone, signals)
+api/            → PHP 8.3 REST + JWT
+docker-compose  → MySQL 8.4 + Apache (API)
+```
+
+---
+
+## Começar em 3 passos
+
+**Pré-requisitos:** [Docker](https://docs.docker.com/get-docker/), [Node.js](https://nodejs.org/) 20+
 
 ```bash
-cp api/.env.docker.example api/.env.docker   # primeira vez
+git clone https://github.com/jeanlucas395ps/tostoes.git
+cd tostoes
+
+# 1. Ambiente
+cp api/.env.example api/.env
+cp gastos-app/.env.example gastos-app/.env
+
+# 2. API + banco
 docker compose up -d --build
+
+# 3. Frontend
+cd gastos-app && npm install && npm start
 ```
 
-| Serviço | URL / porta |
-|---------|-------------|
+| O quê | Onde |
+|-------|------|
+| App | http://localhost:4200 |
 | API | http://localhost:8090/api |
-| MySQL | `localhost:3308` (user `root`, senha `root`, DB `gastos`) |
+| MySQL | `localhost:3308` — `root` / `root` — DB `gastos` |
 
-### API na Alpha Media (produção)
+**Login local:** `admin` / `admin` (criado na primeira migração) ou cadastro em `/cadastro`.
 
-Pacote `public_html` para cPanel: [api/deploy/DEPLOY-ALPHA-MEDIA.md](api/deploy/DEPLOY-ALPHA-MEDIA.md)
+O proxy do Angular encaminha `/api` → `http://localhost:8090` automaticamente.
 
-```bash
-cd api/deploy && ./build-public_html.sh
-# Envie todo o conteúdo de api/deploy/out/ para public_html no servidor
+---
+
+## Funcionalidades em destaque
+
+- **Planejamentos compartilhados** — múltiplos membros, convite por e-mail, papéis owner/member
+- **Plano do mês** — fixos geram pendências; confirme com um clique em Movimentos
+- **Contas bancárias e de investimento** — saldo derivado dos lançamentos
+- **Metas financeiras** — valor alvo, prazo, aportes planejados vs confirmados
+- **Dashboard anual** — barras previsto/real por mês, metas e investimentos
+- **Grafo de contas** — visualização de fluxos (banco → categoria → meta)
+- **EUR/BRL** — cotação do dia com fallback manual
+- **Perfil** — foto, senha, recuperação por e-mail
+- **Tema claro/escuro**
+
+Documentação completa: **[PROJETO.md](PROJETO.md)** · **[FUNCIONALIDADES.md](FUNCIONALIDADES.md)**
+
+---
+
+## Estrutura do repositório
+
+```
+tostoes/
+├── gastos-app/          # Frontend Angular
+├── api/
+│   ├── src/             # Controllers, services, router
+│   ├── database/        # schema.sql + migrations
+│   ├── scripts/         # migrate.php, reset-data.php, …
+│   └── deploy/          # Pacote opcional para PHP compartilhado (cPanel)
+├── docker-compose.yml
+└── README.md
 ```
 
-Na primeira subida a API executa `migrate.php` (schema + migrações). Usuário inicial opcional via `SETUP_USER` / `SETUP_PASSWORD` no `.env`, ou cadastro em `/cadastro`.
+---
+
+## API (amostra)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/auth/login` | Login JWT (30 dias) |
+| `POST` | `/api/auth/register` | Cadastro |
+| `GET` | `/api/plannings` | Planejamentos do usuário |
+| `POST` | `/api/plannings/{id}/invites` | Convidar por e-mail |
+| `GET` | `/api/invites/{token}` | Preview do convite |
+| `GET` | `/api/dashboard/summary` | Resumo anual |
+| `GET` | `/api/month-plan` | Plano do mês |
+
+---
+
+## Deploy (opcional)
+
+- **Frontend:** Vercel — `Root Directory` = `gastos-app`, variável `API_URL` apontando para sua API pública.
+- **API:** qualquer host PHP 8.3 + MySQL — veja [api/deploy/DEPLOY-ALPHA-MEDIA.md](api/deploy/DEPLOY-ALPHA-MEDIA.md).
+
+---
+
+## Scripts úteis
 
 ```bash
-docker compose logs -f api    # logs da API
-docker compose down           # parar
-docker compose down -v        # parar e apagar volume do MySQL
+docker compose logs -f api      # logs da API
+docker compose down -v          # para tudo e apaga volume do MySQL
+php api/scripts/reset-data.php  # zera lançamentos (mantém usuários)
 ```
 
-### Frontend
+---
 
-```bash
-cd gastos-app
-cp .env.example .env   # API_URL=http://localhost:8080/api
-npm install
-npm start
-```
+## Contribuindo
 
-Abra http://localhost:4200 e faça login (cadastro em `/cadastro` ou usuário definido no `SETUP_*` do `.env`).
+Issues e PRs são bem-vindos. Para mudanças maiores, abra uma issue antes para alinharmos o escopo.
 
-## Frontend na Vercel
+1. Fork → branch → commit → PR  
+2. Mantenha `.env` fora do Git (use os `.env.example`)  
+3. Teste localmente com `docker compose up` + `npm start`
 
-1. No projeto Vercel, defina **Root Directory** = `gastos-app`.
-2. O `vercel.json` já configura build e SPA (`dist/gastos-app/browser`).
-3. Variável de ambiente (opcional, já é o padrão no build):
+---
 
-   `PROD_API_URL` = `https://api.tostoes.com.br/api`
+## Licença
 
-4. Na API em produção, configure `CORS_ORIGIN` com a URL do site (ex.: `https://tostoes.com.br`).
+[MIT](LICENSE) — use, modifique e compartilhe à vontade.
 
-Build local de produção:
+---
 
-```bash
-cd gastos-app && npm run build
-```
-
-## Sem Docker (opcional)
-
-```bash
-php api/scripts/migrate.php
-cd api/public && php -S localhost:8080 router.php
-```
-
-## Endpoints principais
-
-- `POST /api/auth/login`
-- `GET /api/dashboard/summary?year=2026`
-- `GET|POST|PUT|DELETE /api/transactions`
-- `GET /api/investment-types`
-- `GET|POST /api/projections`
-
-## Regras de negócio
-
-- **Dashboard**: totais **reais** dos lançamentos (ganhos, custos, investimentos).
-- **Projeções**: tabela `monthly_projections` (metas/planejado) , comparadas no dashboard.
-- **Investimentos**: cada aporte pode ter tipo (Reserva, Apartamento, Capitalização).
-
-Veja o progresso em [CHECKLIST.md](CHECKLIST.md).
+<p align="center">
+  <sub>Feito com foco em clareza financeira familiar — sem lock-in de nuvem.</sub>
+</p>

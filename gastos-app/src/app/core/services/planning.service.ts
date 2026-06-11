@@ -84,7 +84,7 @@ export class PlanningService {
         planningName: string;
         plannings: Planning[];
         message: string;
-      }>(`${this.base}/invites/${token}/accept`, {})
+      }>(`${this.base}/invites/${token}`, {})
       .pipe(
         tap((res) => {
           this.items.set(res.plannings);

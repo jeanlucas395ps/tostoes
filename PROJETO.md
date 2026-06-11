@@ -116,7 +116,7 @@ gastos/
 │   ├── scripts/
 │   │   ├── migrate.php     ← schema + migrações + seed
 │   │   └── migrate.php, reset-data.php, clear-months-before.php, …
-│   └── .env / .env.docker
+│   └── .env (copie de .env.example)
 └── gastos-app/
     ├── src/app/
     │   ├── core/           ← guards, services, models
@@ -140,7 +140,7 @@ docker compose up -d --build
 | API | http://localhost:8090/api |
 | MySQL | `127.0.0.1:3308`, usuário `root`, senha `root`, database `gastos` |
 
-Na subida, o entrypoint da API roda `migrate.php` (cria estrutura e usuários iniciais conforme `SETUP_PASSWORD` no `.env.docker`).
+Na subida, o entrypoint da API roda `migrate.php` (schema + usuário **admin** / **admin** se ainda não existir).
 
 ### Frontend
 
@@ -158,7 +158,7 @@ npm start   # gera environment e sobe em http://localhost:4200
 | `JWT_SECRET` | Assinatura do token |
 | `CORS_ORIGIN` | Origem permitida (ex.: `http://localhost:4200`) |
 | `APP_TIMEZONE` | Fuso (ex.: `America/Sao_Paulo`) |
-| `SETUP_USER`, `SETUP_PASSWORD`, `SETUP_NAME` | Usuário criado/atualizado no migrate |
+| — | Usuário **admin** / **admin** criado no migrate se não existir |
 
 ---
 

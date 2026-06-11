@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Aplica schema e migrações. Cria usuário inicial via SETUP_* no .env (opcional).
+ * Aplica schema e migrações. Garante usuário admin/admin (só cria se não existir).
  * Uso: php api/scripts/migrate.php
  */
 
@@ -60,28 +60,7 @@ if (!columnExists($pdo, 'recurring_items', 'default_amount_brl')) {
 
 applyMigration005($pdo);
 
-$setupUser = trim(Config::get('SETUP_USER', ''));
-$setupName = trim(Config::get('SETUP_NAME', 'Administrador'));
-$setupPassword = Config::get('SETUP_PASSWORD', '');
-
-if ($setupUser !== '' && $setupPassword !== '') {
-    echo "→ Usuário inicial (SETUP_USER)...\n";
-    $passwordHash = password_hash($setupPassword, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE username = ?');
-    $stmt->execute([$setupUser]);
-    if ($stmt->fetch()) {
-        $pdo->prepare('UPDATE users SET name = ?, password_hash = ? WHERE username = ?')
-            ->execute([$setupName, $passwordHash, $setupUser]);
-        echo "  atualizado: $setupUser\n";
-    } else {
-        $pdo->prepare(
-            'INSERT INTO users (username, password_hash, name, gender) VALUES (?, ?, ?, ?)'
-        )->execute([$setupUser, $passwordHash, $setupName, 'male']);
-        echo "  criado: $setupUser\n";
-    }
-} else {
-    echo "→ Sem SETUP_USER/SETUP_PASSWORD no .env (use cadastro ou defina no .env)\n";
-}
+ensureAdminUser($pdo);
 
 $householdId = 1;
 $stmt = $pdo->prepare('SELECT user_id FROM user_settings WHERE user_id = ?');
@@ -1070,4 +1049,29 @@ function isIgnorableMigrationError(PDOException $e): bool
     return str_contains($msg, 'Duplicate column')
         || str_contains($msg, 'Duplicate key name')
         || str_contains($msg, 'already exists');
+}
+
+/** Usuário padrão local (Docker): admin / admin — só insere se ainda não existir. */
+function ensureAdminUser(PDO $pdo): void
+{
+    $username = 'admin';
+    echo "→ Usuário admin...\n";
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE username = ? LIMIT 1');
+    $stmt->execute([$username]);
+    if ($stmt->fetch()) {
+        echo "  já existe: $username\n";
+        return;
+    }
+
+    $pdo->prepare(
+        'INSERT INTO users (username, password_hash, name, gender) VALUES (?, ?, ?, ?)'
+    )->execute([
+        $username,
+        password_hash('admin', PASSWORD_DEFAULT),
+        'Administrador',
+        'male',
+    ]);
+
+    echo "  criado: $username (senha: admin)\n";
 }
