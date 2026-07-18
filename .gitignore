@@ -2,6 +2,7 @@
 .env
 api/.env
 api/.env.server
+api/env
 gastos-app/.env
 
 # Builds e cache

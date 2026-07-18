@@ -146,5 +146,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'home' },
+  { path: '**', redirectTo: '/home' },
 ];

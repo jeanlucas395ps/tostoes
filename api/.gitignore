@@ -1,4 +1,5 @@
 .env
+env
 database/dumps/*.sql
 *.xlsx
 *.xls

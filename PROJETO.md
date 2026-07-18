@@ -104,7 +104,7 @@ gastos/
 ├── README.md               ← início rápido (Docker + login)
 ├── docker-compose.yml      ← MySQL + API
 ├── api/
-│   ├── public/             ← index.php, router.php
+│   ├── public/             ← index.php, .htaccess (produção cPanel)
 │   ├── src/
 │   │   ├── Controllers/    ← endpoints HTTP
 │   │   ├── Services/       ← regras de negócio
