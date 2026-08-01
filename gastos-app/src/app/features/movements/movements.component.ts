@@ -22,6 +22,8 @@ import {
   PlanningItemCategory,
   Transaction,
   User,
+  CreditBill,
+  CreditBillItem,
 } from '../../core/models/api.models';
 import {
   CATEGORY_ICON_OPTIONS,
@@ -37,6 +39,11 @@ import {
   formatMoneyWithBrl,
   previewBrl,
 } from '../../core/utils/money.util';
+import {
+  clampInstallmentCount,
+  installmentEndMonth,
+  shouldAskInstallmentPrompt,
+} from '../../core/utils/installment.util';
 
 @Component({
   selector: 'app-movements',
@@ -72,6 +79,15 @@ export class MovementsComponent implements OnInit {
   editingTx = signal<Transaction | null>(null);
   confirmEntry = signal<MonthPlanEntry | null>(null);
   accounts = signal<FinancialAccount[]>([]);
+  installmentPrompt = signal<{
+    entry: MonthPlanEntry;
+    result: ConfirmAccountResult;
+    account: FinancialAccount;
+  } | null>(null);
+  installmentCount = signal(2);
+  payBillPrompt = signal<CreditBill | null>(null);
+  payBillBankId = signal<number | null>(null);
+  cancelBillPrompt = signal<CreditBillItem | null>(null);
   investmentTypes = signal<InvestmentType[]>([]);
   newCategoryMode = signal(false);
   categoryIconOptions = CATEGORY_ICON_OPTIONS;
@@ -107,8 +123,16 @@ export class MovementsComponent implements OnInit {
     return this.variableForm.kind === 'investment';
   }
 
+  variableIsTransfer(): boolean {
+    return this.variableForm.kind === 'transfer';
+  }
+
   bankAccounts = computed(() =>
     this.accounts().filter((a) => a.type === 'bank')
+  );
+
+  paymentAccounts = computed(() =>
+    this.accounts().filter((a) => a.type === 'bank' || a.type === 'credit')
   );
 
   investmentAccounts = computed(() =>
@@ -116,6 +140,12 @@ export class MovementsComponent implements OnInit {
   );
   formatMoney = formatMoney;
   formatMoneyWithBrl = formatMoneyWithBrl;
+
+  accountTypeLabel(type: FinancialAccount['type']): string {
+    if (type === 'investment') return 'Invest.';
+    if (type === 'credit') return 'Cartão';
+    return 'Banco';
+  }
 
   variableModalTitle = computed(() => {
     if (this.editingTx()) return 'Editar variável';
@@ -152,6 +182,8 @@ export class MovementsComponent implements OnInit {
     });
   });
 
+  creditBills = computed(() => this.ledger()?.creditBills ?? []);
+
   ngOnInit(): void {
     this.api.getSettings().subscribe((s) =>
       this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl)
@@ -176,7 +208,7 @@ export class MovementsComponent implements OnInit {
 
   loadLedger(): void {
     this.loading.set(true);
-    this.api.getLedger(this.year(), this.month() + 1, 'income,expense,investment').subscribe({
+    this.api.getLedger(this.year(), this.month() + 1, 'income,expense,investment,transfer').subscribe({
       next: (l) => {
         this.ledger.set(l);
         const edits: Record<number, number> = {};
@@ -409,7 +441,9 @@ export class MovementsComponent implements OnInit {
 
   saveVariable(): void {
     if (!this.variableForm.name.trim()) return;
-    if (
+    if (this.variableIsTransfer()) {
+      // categoria não é obrigatória
+    } else if (
       !this.variableIsInvestment() &&
       !this.newCategoryMode() &&
       !this.variableForm.itemCategoryId
@@ -421,14 +455,18 @@ export class MovementsComponent implements OnInit {
       return;
     }
 
-    const taxonomy = this.taxonomyPayload();
+    const taxonomy = this.variableIsTransfer()
+      ? { category: 'Transferência', region: 'geral' as const }
+      : this.taxonomyPayload();
     const tab = this.customTabs().find((t) => t.id === this.variableForm.customTabId);
     const region =
-      tab?.name.toLowerCase().includes('brasil')
-        ? 'BR'
-        : tab?.name.toLowerCase().includes('portugal')
-          ? 'PT'
-          : 'geral';
+      this.variableIsTransfer()
+        ? 'geral'
+        : tab?.name.toLowerCase().includes('brasil')
+          ? 'BR'
+          : tab?.name.toLowerCase().includes('portugal')
+            ? 'PT'
+            : 'geral';
 
     const tx = this.editingTx();
     if (tx) {
@@ -486,7 +524,12 @@ export class MovementsComponent implements OnInit {
       currency: this.variableForm.currency,
       responsibleUserId: this.variableForm.responsibleUserId,
       investmentTypeId: this.variableForm.investmentTypeId,
-      financialAccountId: this.variableForm.financialAccountId,
+      financialAccountId: this.variableIsTransfer()
+        ? this.variableForm.financialAccountId
+        : this.variableForm.financialAccountId,
+      sourceFinancialAccountId: this.variableIsTransfer()
+        ? this.variableForm.bankAccountId
+        : null,
       ...taxonomy,
       region,
     }).subscribe({
@@ -544,11 +587,99 @@ export class MovementsComponent implements OnInit {
     const e = this.confirmEntry();
     if (!e) return;
 
+    const account = this.accounts().find((a) => a.id === result.accountId);
+    const askInstallment = shouldAskInstallmentPrompt({
+      accountType: account?.type,
+      kind: result.kind,
+      isInstallment: e.isInstallment,
+      isGoal: e.isGoal,
+      recurringItemId: e.recurringItemId,
+    });
+
+    if (askInstallment && account) {
+      this.installmentCount.set(2);
+      this.installmentPrompt.set({ entry: e, result, account });
+      return;
+    }
+
+    this.runConfirm(result);
+  }
+
+  cancelInstallmentPrompt(): void {
+    this.installmentPrompt.set(null);
+  }
+
+  confirmWithoutInstallment(): void {
+    const prompt = this.installmentPrompt();
+    if (!prompt) return;
+    this.installmentPrompt.set(null);
+    this.runConfirm(prompt.result);
+  }
+
+  confirmWithInstallment(): void {
+    const prompt = this.installmentPrompt();
+    if (!prompt) return;
+    const n = clampInstallmentCount(this.installmentCount());
+    const e = prompt.entry;
+    const result = prompt.result;
+    const startMonth = `${this.year()}-${String(this.month() + 1).padStart(2, '0')}`;
+    const endMonth = installmentEndMonth(this.year(), this.month(), n);
+
+    this.api
+      .saveRecurringItem({
+        kind: 'expense',
+        name: e.name,
+        category: e.category,
+        region: e.region,
+        customTabId: e.customTabId ?? null,
+        itemCategoryId: e.itemCategoryId ?? null,
+        responsibleUserId: e.responsibleUserId ?? null,
+        currency: result.currency,
+        amount: result.amount,
+        dueDay: e.dueDay ?? prompt.account.dueDay ?? 10,
+        sourceFinancialAccountId: result.accountId,
+        isInstallment: true,
+        startDate: `${startMonth}-01`,
+        endDate: `${endMonth}-01`,
+      })
+      .subscribe({
+        next: () => {
+          this.installmentPrompt.set(null);
+          // Remove variável e confirma a parcela do mês via fluxo normal após reload
+          if (this.isVariablePending(e)) {
+            this.api.deleteMonthPlanEntry(e.id).subscribe({
+              next: () => {
+                this.confirmEntry.set(null);
+                this.load();
+              },
+              error: () => {
+                this.confirmEntry.set(null);
+                this.load();
+              },
+            });
+            return;
+          }
+          this.runConfirm(result);
+        },
+        error: () => {
+          alert('Não foi possível criar a compra parcelada.');
+        },
+      });
+  }
+
+  private runConfirm(result: ConfirmAccountResult): void {
+    const e = this.confirmEntry();
+    if (!e) return;
+
     const runConfirm = () => {
       this.busyId.set(e.id);
       this.api.confirmMonthPlanEntry(e.id, {
         amount: result.amount,
         currency: result.currency,
+        amountOut: result.amount,
+        currencyOut: result.currency,
+        amountIn: result.amountIn,
+        currencyIn: result.currencyIn,
         accountId: result.accountId,
         targetAccountId: result.targetAccountId,
       }).subscribe({
@@ -590,12 +721,121 @@ export class MovementsComponent implements OnInit {
     runConfirm();
   }
 
+  openPayBill(bill: CreditBill): void {
+    this.api.getAccounts().subscribe({
+      next: (r) => {
+        this.accounts.set(r.items);
+        const banks = r.items.filter((a) => a.type === 'bank');
+        this.payBillBankId.set(banks[0]?.id ?? null);
+        this.payBillPrompt.set(bill);
+      },
+    });
+  }
+
+  cancelPayBill(): void {
+    this.payBillPrompt.set(null);
+  }
+
+  submitPayBill(): void {
+    const bill = this.payBillPrompt();
+    const bankId = this.payBillBankId();
+    if (!bill || !bankId || bill.remainingBrl <= 0) return;
+
+    this.api
+      .addMonthPlanEntry({
+        year: this.year(),
+        month: this.month() + 1,
+        kind: 'transfer',
+        name: `Pagamento fatura , ${bill.name}`,
+        amount: bill.remainingBrl,
+        currency: 'BRL',
+        sourceFinancialAccountId: bankId,
+        financialAccountId: bill.accountId,
+        category: 'Transferência',
+        region: 'geral',
+      })
+      .subscribe({
+        next: (plan) => {
+          const pools = [
+            ...(plan.sections?.variable ?? []),
+            ...(plan.sections?.today ?? []),
+            ...(plan.sections?.upcoming ?? []),
+            ...(plan.sections?.overdue ?? []),
+            ...(plan.entries ?? []),
+          ];
+          const entry = pools.find(
+            (e) =>
+              e.kind === 'transfer' &&
+              e.status === 'pending' &&
+              (e.name.includes(bill.name) || e.sourceFinancialAccountId === bankId)
+          );
+          this.payBillPrompt.set(null);
+          if (!entry) {
+            this.load();
+            return;
+          }
+          this.api
+            .confirmMonthPlanEntry(entry.id, {
+              amount: bill.remainingBrl,
+              currency: 'BRL',
+              amountOut: bill.remainingBrl,
+              currencyOut: 'BRL',
+              amountIn: bill.remainingBrl,
+              currencyIn: 'BRL',
+              accountId: bankId,
+              targetAccountId: bill.accountId,
+            })
+            .subscribe({
+              next: () => this.load(),
+              error: () => this.load(),
+            });
+        },
+        error: () => alert('Não foi possível registrar o pagamento da fatura.'),
+      });
+  }
+
   skip(e: MonthPlanEntry): void {
     this.busyId.set(e.id);
     this.api.skipMonthPlanEntry(e.id).subscribe({
       next: () => { this.busyId.set(null); this.load(); },
       error: () => this.busyId.set(null),
     });
+  }
+
+  /** Abre pop de confirmação para cancelar cobrança da fatura. */
+  cancelBillItem(it: CreditBillItem): void {
+    if (it.canCancel === false) return;
+    this.cancelBillPrompt.set(it);
+  }
+
+  closeCancelBill(): void {
+    this.cancelBillPrompt.set(null);
+  }
+
+  confirmCancelBill(): void {
+    const it = this.cancelBillPrompt();
+    if (!it) return;
+
+    const pending = it.status === 'pending';
+    const entryId = it.monthPlanEntryId ?? (pending ? it.id : null);
+    this.busyId.set(entryId ?? it.id);
+    const done = () => {
+      this.busyId.set(null);
+      this.cancelBillPrompt.set(null);
+      this.load();
+    };
+    const fail = () => this.busyId.set(null);
+
+    if (pending) {
+      this.api.skipMonthPlanEntry(entryId ?? it.id).subscribe({ next: done, error: fail });
+      return;
+    }
+    if (entryId) {
+      this.api.unconfirmMonthPlanEntry(entryId).subscribe({ next: done, error: fail });
+      return;
+    }
+    this.busyId.set(null);
+    this.cancelBillPrompt.set(null);
   }
 
   /** Remove variável pendente do mês (coluna esquerda). */
@@ -632,6 +872,67 @@ export class MovementsComponent implements OnInit {
 
   isIncome(t: Transaction): boolean {
     return t.kind === 'income';
+  }
+
+  isTransfer(t: Transaction): boolean {
+    return t.kind === 'transfer';
+  }
+
+  isExpense(t: Transaction): boolean {
+    return t.kind === 'expense' || t.kind === 'leisure';
+  }
+
+  entryTagLabel(e: { kind: EntryKind; isGoal?: boolean; isInstallment?: boolean }): string {
+    if (e.isGoal) return '◇ Meta';
+    if (e.isInstallment) return '▦ Parcel.';
+    if (e.kind === 'transfer') return '⇄ Transf.';
+    if (e.kind === 'income') return '↑ Receb.';
+    if (e.kind === 'investment') return '◆ Invest.';
+    return '↓ Gasto';
+  }
+
+  entryTagClass(e: { kind: EntryKind; isGoal?: boolean; isInstallment?: boolean }): string {
+    if (e.isGoal) return 'goal';
+    if (e.isInstallment) return 'installment';
+    if (e.kind === 'transfer') return 'transfer';
+    if (e.kind === 'income') return 'income';
+    if (e.kind === 'investment') return 'investment';
+    return 'expense';
+  }
+
+  /** Conta origem → destino. */
+  transferMeta(t: Transaction): string | null {
+    const source =
+      t.transferSourceAccountName?.trim() || t.accountName?.trim() || null;
+    const target = t.transferTargetAccountName?.trim() || null;
+    if (source && target) return `${source} → ${target}`;
+    if (target) return `→ ${target}`;
+    if (source) return `Saída: ${source}`;
+    const notes = (t.notes ?? '').trim();
+    const out = notes.match(/^Transferência → (.+?)(?:\s*\(#\d+\))?$/);
+    if (out) {
+      const fromNotes = out[1].trim();
+      return source ? `${source} → ${fromNotes}` : `→ ${fromNotes}`;
+    }
+    return null;
+  }
+
+  transferOutLabel(t: Transaction): string {
+    const amount = t.transferOutAmount ?? t.amount;
+    const currency = t.transferOutCurrency ?? t.currency;
+    const brl = t.transferOutAmountBrl ?? t.amountBrl;
+    return formatMoneyWithBrl(amount, currency, brl);
+  }
+
+  transferInLabel(t: Transaction): string {
+    if (t.transferInAmount == null) {
+      return '—';
+    }
+    return formatMoneyWithBrl(
+      t.transferInAmount,
+      t.transferInCurrency ?? 'BRL',
+      t.transferInAmountBrl ?? t.transferInAmount
+    );
   }
 
   txLabel(t: Transaction): string {

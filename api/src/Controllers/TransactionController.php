@@ -45,7 +45,7 @@ final class TransactionController
             $sql .= ' AND MONTH(t.transaction_date) = ?';
             $params[] = $month;
         }
-        if ($kind !== null && in_array($kind, ['income', 'expense', 'investment', 'leisure'], true)) {
+        if ($kind !== null && in_array($kind, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
             $sql .= ' AND t.kind = ?';
             $params[] = $kind;
         }
@@ -234,7 +234,7 @@ final class TransactionController
     {
         $body = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
         $kind = $body['kind'] ?? '';
-        if (!in_array($kind, ['income', 'expense', 'investment', 'leisure'], true)) {
+        if (!in_array($kind, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
             Response::error('Tipo inválido.', 422);
         }
 
@@ -282,7 +282,10 @@ final class TransactionController
     public static function map(array $row): array
     {
         $hasPlanEntry = isset($row['mpe_id']) && $row['mpe_id'] !== null;
+        $isGoal = !empty($row['mpe_financial_goal_id']);
+        $isInstallment = !empty($row['mpe_is_installment']);
         $isVariablePlan = $hasPlanEntry
+            && !$isGoal
             && ($row['mpe_recurring_item_id'] === null || $row['mpe_recurring_item_id'] === '');
 
         $mapped = ResponsibleUser::enrichMap([
@@ -302,6 +305,11 @@ final class TransactionController
             'accountName' => $row['account_name'] ?? null,
             'accountType' => $row['account_type'] ?? null,
             'isVariablePlan' => $isVariablePlan,
+            'isGoal' => $isGoal,
+            'isInstallment' => $isInstallment,
+            'financialGoalId' => $isGoal ? (int) $row['mpe_financial_goal_id'] : null,
+            'financialGoalColor' => !empty($row['mpe_financial_goal_color'])
+                ? (string) $row['mpe_financial_goal_color'] : null,
             'monthPlanEntryId' => $hasPlanEntry ? (int) $row['mpe_id'] : null,
             'canUnconfirm' => $hasPlanEntry,
             'responsible' => $row['responsible'],

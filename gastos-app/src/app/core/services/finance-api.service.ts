@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AccountType,
   AccountsSummary,
   AppSettings,
   Currency,
@@ -55,7 +56,7 @@ export class FinanceApiService {
     return this.http.get<AccountsSummary>(`${this.base}/accounts/summary`);
   }
 
-  getAccounts(type?: 'bank' | 'investment'): Observable<{ items: FinancialAccount[] }> {
+  getAccounts(type?: AccountType): Observable<{ items: FinancialAccount[] }> {
     let params = new HttpParams();
     if (type) params = params.set('type', type);
     return this.http.get<{ items: FinancialAccount[] }>(`${this.base}/accounts`, { params });
@@ -236,6 +237,9 @@ export class FinanceApiService {
     responsibleUserId?: number | null;
     investmentTypeId?: number | null;
     financialAccountId?: number | null;
+    sourceFinancialAccountId?: number | null;
+    accountId?: number | null;
+    targetAccountId?: number | null;
   }): Observable<MonthPlan> {
     return this.http.post<MonthPlan>(`${this.base}/month-plan`, body);
   }
@@ -268,9 +272,14 @@ export class FinanceApiService {
       amount?: number;
       amountBrl?: number;
       currency?: Currency;
+      amountOut?: number;
+      currencyOut?: Currency;
+      amountIn?: number;
+      currencyIn?: Currency;
       transactionDate?: string;
       accountId?: number;
       targetAccountId?: number;
+      sourceAccountId?: number;
     }
   ): Observable<MonthPlan> {
     return this.http.post<MonthPlan>(`${this.base}/month-plan/${id}/confirm`, body ?? {});
@@ -348,9 +357,13 @@ export class FinanceApiService {
     return this.http.delete<{ ok: boolean }>(`${this.base}/planning-item-categories/${id}`);
   }
 
-  getRecurringItems(kind?: EntryKind): Observable<{ items: RecurringItem[] }> {
+  getRecurringItems(
+    kind?: EntryKind,
+    installments?: boolean
+  ): Observable<{ items: RecurringItem[] }> {
     let params = new HttpParams();
     if (kind) params = params.set('kind', kind);
+    if (installments) params = params.set('installments', '1');
     return this.http.get<{ items: RecurringItem[] }>(`${this.base}/recurring-items`, {
       params,
     });
@@ -376,6 +389,9 @@ export class FinanceApiService {
       investmentTypeId: body.investmentTypeId,
       financialAccountId: body.financialAccountId ?? null,
       sourceFinancialAccountId: body.sourceFinancialAccountId ?? null,
+      isInstallment: body.isInstallment ?? false,
+      startDate: body.startDate ?? null,
+      endDate: body.endDate ?? null,
     };
     if (id) {
       return this.http.put<{ item: RecurringItem }>(

@@ -1,7 +1,7 @@
-export type EntryKind = 'income' | 'expense' | 'investment' | 'leisure';
+export type EntryKind = 'income' | 'expense' | 'investment' | 'leisure' | 'transfer';
 export type Currency = 'BRL' | 'EUR';
 export type Region = 'BR' | 'PT' | 'geral';
-export type AccountType = 'bank' | 'investment';
+export type AccountType = 'bank' | 'investment' | 'credit';
 
 export type UserGender = 'male' | 'female';
 
@@ -90,10 +90,28 @@ export interface FinancialAccount {
   initialBalance: number;
   initialBalanceBrl?: number;
   initialBalanceDate: string;
+  creditLimit?: number | null;
+  creditLimitBrl?: number | null;
+  closingDay?: number | null;
+  dueDay?: number | null;
   color?: string | null;
   sortOrder: number;
   balance: number;
   balanceBrl: number;
+  /** Cartão: dívida atual + parcelas futuras ainda não lançadas. */
+  usedLimit?: number | null;
+  usedLimitBrl?: number | null;
+  /** Cartão: soma das parcelas futuras (mês corrente+) não confirmadas. */
+  futureInstallments?: number | null;
+  futureInstallmentsBrl?: number | null;
+  availableLimit?: number | null;
+  availableLimitBrl?: number | null;
+  limitUsagePercent?: number | null;
+  monthForecast?: {
+    pendingBrl: number;
+    confirmedBrl: number;
+    totalBrl: number;
+  };
   eurToBrl?: number;
   statement?: AccountStatementLine[];
 }
@@ -119,6 +137,9 @@ export interface AccountsSummary {
   totals: {
     bank: number;
     investment: number;
+    creditUsed?: number;
+    creditLimit?: number;
+    creditAvailable?: number;
     all: number;
   };
 }
@@ -148,8 +169,22 @@ export interface Transaction {
   registeredBy?: UserRef | null;
   /** Lançamento confirmado a partir de item variável do plano do mês */
   isVariablePlan?: boolean;
+  isGoal?: boolean;
+  isInstallment?: boolean;
+  financialGoalId?: number | null;
+  financialGoalColor?: string | null;
   monthPlanEntryId?: number | null;
   canUnconfirm?: boolean;
+  /** Transferência: conta/valores das duas pernas */
+  transferSourceAccountName?: string | null;
+  transferTargetAccountName?: string | null;
+  transferOutAmount?: number;
+  transferOutCurrency?: Currency;
+  transferOutAmountBrl?: number;
+  transferInAmount?: number;
+  transferInCurrency?: Currency;
+  transferInAmountBrl?: number;
+  transferInEurToBrl?: number | null;
 }
 
 export interface InvestmentType {
@@ -311,11 +346,42 @@ export interface LedgerSummary {
   };
 }
 
+export interface CreditBillItem {
+  id: number;
+  name: string;
+  amountBrl: number;
+  isInstallment: boolean;
+  status: 'pending' | 'confirmed';
+  dueDay?: number | null;
+  monthPlanEntryId?: number | null;
+  canCancel?: boolean;
+}
+
+export interface CreditBill {
+  accountId: number;
+  name: string;
+  color?: string | null;
+  dueDay?: number | null;
+  closingDay?: number | null;
+  creditLimit?: number | null;
+  usedLimit?: number | null;
+  availableLimit?: number | null;
+  forecast: {
+    pendingBrl: number;
+    confirmedBrl: number;
+    totalBrl: number;
+  };
+  paidBrl: number;
+  remainingBrl: number;
+  items: CreditBillItem[];
+}
+
 export interface LedgerView {
   year: number;
   month: number;
   pending: MonthPlanEntry[];
   confirmed: Transaction[];
+  creditBills?: CreditBill[];
   summary: LedgerSummary;
 }
 
@@ -345,6 +411,9 @@ export interface RecurringItem {
   amount?: number;
   defaultAmountBrl: number;
   isFixed: boolean;
+  isInstallment?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
   monthAmounts?: Record<number, number>;
 }
 
@@ -371,6 +440,7 @@ export interface MonthPlanEntry {
   financialGoalId?: number | null;
   financialGoalColor?: string | null;
   isGoal?: boolean;
+  isInstallment?: boolean;
   isVariable?: boolean;
   kind: EntryKind;
   name: string;
@@ -392,6 +462,7 @@ export interface MonthPlanEntry {
   financialAccountName?: string | null;
   sourceFinancialAccountId?: number | null;
   sourceFinancialAccountName?: string | null;
+  sourceFinancialAccountType?: AccountType | null;
   currency?: Currency;
   suggestedAmount?: number;
   suggestedAmountBrl: number;
@@ -469,7 +540,7 @@ export interface MonthSummary {
   projected: MonthFlowTotals;
   balanceReal: number;
   balanceProjected: number;
-  /** Mês anterior à criação do planejamento — sem dados. */
+  /** Mês anterior à criação do planejamento , sem dados. */
   beforePlanningStart?: boolean;
 }
 

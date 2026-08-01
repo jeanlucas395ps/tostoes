@@ -87,15 +87,19 @@ export class UserAvatarComponent implements OnDestroy {
     effect((onCleanup) => {
       const u = this.user();
       const path = u && 'avatarUrl' in u ? u.avatarUrl : null;
-      const prev = this.photoUrl();
-      if (prev) {
-        URL.revokeObjectURL(prev);
-        this.photoUrl.set(null);
+
+      // Não ler photoUrl() aqui , senão cada set re-dispara o effect em loop.
+      let objectUrl: string | null = null;
+      this.photoUrl.set(null);
+
+      if (!path) {
+        return;
       }
-      if (!path) return;
 
       const token = this.auth.getToken();
-      if (!token) return;
+      if (!token) {
+        return;
+      }
 
       const sub = this.http
         .get(`${environment.apiUrl}${path}`, {
@@ -103,16 +107,26 @@ export class UserAvatarComponent implements OnDestroy {
           headers: { Authorization: `Bearer ${token}` },
         })
         .subscribe({
-          next: (blob) => this.photoUrl.set(URL.createObjectURL(blob)),
+          next: (blob) => {
+            objectUrl = URL.createObjectURL(blob);
+            this.photoUrl.set(objectUrl);
+          },
           error: () => this.photoUrl.set(null),
         });
 
-      onCleanup(() => sub.unsubscribe());
+      onCleanup(() => {
+        sub.unsubscribe();
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      });
     });
   }
 
   ngOnDestroy(): void {
     const url = this.photoUrl();
-    if (url) URL.revokeObjectURL(url);
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
   }
 }

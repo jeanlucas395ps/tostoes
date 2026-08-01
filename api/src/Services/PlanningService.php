@@ -20,6 +20,61 @@ final class PlanningService
         }
     }
 
+    public static function assertOwner(PDO $pdo, int $planningId, int $userId): void
+    {
+        $stmt = $pdo->prepare(
+            'SELECT role FROM planning_members WHERE planning_id = ? AND user_id = ? LIMIT 1'
+        );
+        $stmt->execute([$planningId, $userId]);
+        $role = $stmt->fetchColumn();
+        if ($role === false) {
+            Response::error('Sem acesso a este planejamento.', 403);
+        }
+        if ($role !== 'owner') {
+            Response::error('Apenas o dono pode alterar ou apagar este planejamento.', 403);
+        }
+    }
+
+    /** @return array<string, mixed>|null */
+    public static function findForUser(PDO $pdo, int $userId, int $planningId): ?array
+    {
+        foreach (self::listForUser($pdo, $userId) as $item) {
+            if ($item['id'] === $planningId) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    public static function update(PDO $pdo, int $planningId, int $userId, string $name): void
+    {
+        self::assertOwner($pdo, $planningId, $userId);
+        $name = trim($name);
+        if ($name === '') {
+            Response::error('Informe um nome para o planejamento.', 422);
+        }
+        $stmt = $pdo->prepare('UPDATE plannings SET name = ? WHERE id = ?');
+        $stmt->execute([$name, $planningId]);
+        if ($stmt->rowCount() === 0) {
+            $exists = $pdo->prepare('SELECT 1 FROM plannings WHERE id = ?');
+            $exists->execute([$planningId]);
+            if (!$exists->fetch()) {
+                Response::error('Planejamento não encontrado.', 404);
+            }
+        }
+    }
+
+    public static function destroy(PDO $pdo, int $planningId, int $userId): void
+    {
+        self::assertOwner($pdo, $planningId, $userId);
+        $stmt = $pdo->prepare('DELETE FROM plannings WHERE id = ?');
+        $stmt->execute([$planningId]);
+        if ($stmt->rowCount() === 0) {
+            Response::error('Planejamento não encontrado.', 404);
+        }
+    }
+
     public static function ownerUserId(PDO $pdo, int $planningId): int
     {
         $stmt = $pdo->prepare('SELECT created_by_user_id FROM plannings WHERE id = ? LIMIT 1');

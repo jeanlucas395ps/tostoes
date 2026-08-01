@@ -83,11 +83,18 @@ export class ProfileComponent {
     });
   }
 
+  private static readonly MAX_AVATAR_BYTES = 500 * 1024 * 1024; // 500 MB
+
   onAvatarSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
     this.avatarError.set('');
+    if (file.size > ProfileComponent.MAX_AVATAR_BYTES) {
+      this.avatarError.set('A foto deve ter no máximo 500 MB.');
+      input.value = '';
+      return;
+    }
     this.uploadingAvatar.set(true);
     this.auth.uploadAvatar(file).subscribe({
       next: () => {

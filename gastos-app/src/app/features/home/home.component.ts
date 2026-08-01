@@ -153,7 +153,7 @@ export class HomeComponent implements OnInit {
     return formatMoney(a.balance, 'EUR');
   }
 
-  /** Investimentos + metas — só para a tabela «Detalhe mensal». */
+  /** Investimentos + metas , só para a tabela «Detalhe mensal». */
   investMetasReal(row: { real: { investment?: number; goals?: number } }): number {
     return (row.real.investment ?? 0) + (row.real.goals ?? 0);
   }

@@ -15,11 +15,12 @@ import {
   AccountFlowGraphMode,
   MONTH_LABELS,
 } from '../../core/models/api.models';
+import { nodeDisplayName, nodeTypeLabel } from '../../core/utils/account-labels.util';
 
 // Registra o layout dagre (hierárquico, como AWS)
 cytoscape.use(dagre);
 
-/** Modo estendido — 'current' é resolvido no frontend (confirmed + planned pendentes) */
+/** Modo estendido , 'current' é resolvido no frontend (confirmed + planned pendentes) */
 type ExtendedMode = AccountFlowGraphMode;
 
 // ── Paleta por tipo de nó ────────────────────────────────────────────────────
@@ -31,19 +32,27 @@ const INV_D = '#76B0F1';
 
 const LIGHT: Record<string, NodeStyle> = {
   bank:       { border: INV_L,     bg: 'rgba(32,101,209,0.08)',   text: '#103996' },
+  credit:     { border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',   text: '#b45309' },
+  bill:       { border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',   text: '#b45309' },
   investment: { border: INV_L,     bg: 'rgba(32,101,209,0.08)',   text: '#103996' },
   expense:    { border: '#FF5630', bg: 'rgba(255,86,48,0.08)',    text: '#B71D18' },
   income:     { border: '#22C55E', bg: 'rgba(34,197,94,0.08)',    text: '#16A34A' },
   goal:       { border: '#D97706', bg: 'rgba(217,119,6,0.08)',    text: '#92400E' },
+  transfer:   { border: '#0ea5e9', bg: 'rgba(14,165,233,0.10)',   text: '#0369a1' },
+  installment:{ border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',  text: '#b45309' },
   unassigned: { border: '#919EAB', bg: 'rgba(145,158,171,0.06)', text: '#637381' },
 };
 
 const DARK: Record<string, NodeStyle> = {
   bank:       { border: INV_D,     bg: 'rgba(118,176,241,0.14)',  text: '#B2D2F7' },
+  credit:     { border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
+  bill:       { border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
   investment: { border: INV_D,     bg: 'rgba(118,176,241,0.14)',  text: '#B2D2F7' },
   expense:    { border: '#FF5630', bg: 'rgba(255,86,48,0.14)',    text: '#FF8A6A' }, // vermelho mesmo no dark
   income:     { border: '#4ADE80', bg: 'rgba(74,222,128,0.14)',   text: '#86EFAC' },
   goal:       { border: '#FCD34D', bg: 'rgba(252,211,77,0.14)',   text: '#FDE68A' },
+  transfer:   { border: '#38bdf8', bg: 'rgba(56,189,248,0.14)',   text: '#7dd3fc' },
+  installment:{ border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
   unassigned: { border: '#637381', bg: 'rgba(99,115,129,0.10)',  text: '#919EAB' },
 };
 
@@ -105,15 +114,26 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Opções de filtro vindas do cadastro (todas as contas, categorias e abas do planejamento)
   availableTypes = computed((): { key: string; label: string }[] => {
-    const types = new Set(this.graph()?.nodes.map(n => n.type) ?? []);
     const map: Record<string, string> = {
       expense: 'Gastos',
+      installment: 'Gastos/Parcelas',
       income: 'Recebimentos',
       investment: 'Investimentos',
       goal: 'Metas',
+      transfer: 'Transferências',
       bank: 'Bancos',
+      credit: 'Cartões',
+      bill: 'Faturas',
     };
-    return [...types].filter(t => map[t]).map(t => ({ key: t, label: map[t] }));
+    const types = new Set<string>();
+    for (const n of this.graph()?.nodes ?? []) {
+      types.add(n.type);
+    }
+    for (const e of this.graph()?.edges ?? []) {
+      if (e.kind) types.add(e.kind);
+      if (e.subKind) types.add(e.subKind);
+    }
+    return [...types].filter((t) => map[t]).map((t) => ({ key: t, label: map[t] }));
   });
 
   availableAccounts = computed((): { id: string; label: string; color: string }[] => {
@@ -193,7 +213,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.cyRef?.nativeElement) return;
 
     const dark = isDark();
-    // Sem variável edgeLabelBg — fundo dos labels removido (veja stylesheet abaixo)
+    // Sem variável edgeLabelBg , fundo dos labels removido (veja stylesheet abaixo)
 
     this.cy = cytoscape({
       container: this.cyRef.nativeElement,
@@ -219,7 +239,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             'text-halign': 'center',
             'text-wrap': 'wrap',
             'text-max-width': '136px',
-            'line-height': 1.4,
+            'line-height': 1.3,
             'shadow-blur': 10,
             'shadow-color': dark ? 'rgba(0,0,0,0.45)' : 'rgba(145,158,171,0.22)',
             'shadow-offset-x': 0,
@@ -264,13 +284,13 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             'font-size': 9,
             'font-weight': '700',
             'color': 'data(color)',
-            'text-background-opacity': 0,   /* sem fundo — funciona em light e dark */
+            'text-background-opacity': 0,   /* sem fundo , funciona em light e dark */
             'text-border-opacity': 0,
             'text-outline-width': 0,
             'z-index': 5,
           } as any,
         },
-        // Nó de saldo (nível 4 — sintético)
+        // Nó de saldo (nível 4 , sintético)
         {
           selector: 'node.balance-node',
           style: {
@@ -352,7 +372,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       const n = ev.target;
       const d = n.data();
       if (d.isBalance) {
-        // Nó de saldo — mostra título e valor
+        // Nó de saldo , mostra título e valor
         this.tooltip.set({
           visible: true, ...this.cursorPos(ev, container),
           title: d.type === 'balance' ? 'Saldo' : 'Total',
@@ -361,14 +381,24 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       } else {
         const typeMap: Record<string, string> = {
-          bank: 'Conta bancária', investment: 'Investimento',
-          expense: 'Gasto', income: 'Recebimento', goal: 'Meta',
+          bank: 'Conta bancária',
+          credit: 'Cartão de crédito',
+          bill: 'Fatura',
+          investment: 'Conta de investimento',
+          expense: 'Gasto',
+          income: 'Recebimento',
+          goal: 'Meta',
+          transfer: 'Transferência',
+          installment: 'Parcela',
+          balance: 'Saldo',
         };
+        const labelLines = ((n.data('label') as string) ?? '').split('\n');
+        const titleName = labelLines.length > 1 ? labelLines[1] : (labelLines[0] ?? n.id());
         this.tooltip.set({
           visible: true, ...this.cursorPos(ev, container),
           title: typeMap[d.type] ?? d.type,
           color: d.borderColor,
-          rows: [{ label: n.data('label').split('\n')[1] ?? n.id(), value: '' }],
+          rows: [{ label: titleName, value: '' }],
         });
       }
     });
@@ -379,15 +409,21 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       if (e.hasClass('balance-link') || e.hasClass('balance-edge')) return;
 
       const kindMap: Record<string, string> = {
-        expense: 'Gasto', income: 'Recebimento',
-        investment: 'Investimento', goal: 'Meta', leisure: 'Lazer',
+        expense: 'Gasto',
+        income: 'Recebimento',
+        investment: 'Investimento',
+        goal: 'Meta',
+        leisure: 'Lazer',
+        transfer: 'Transferência',
+        installment: 'Parcela',
+        bill: 'Fatura',
       };
       const rows: { label: string; value: string; color?: string }[] = [
         { label: 'Valor', value: d.amountLabel, color: d.color },
       ];
 
-      const srcLabel = e.source().data('label')?.split('\n')[1] ?? e.source().id();
-      const tgtLabel = e.target().data('label')?.split('\n')[1] ?? e.target().id();
+      const srcLabel = nodeDisplayName(e.source().data('label') as string, e.source().id());
+      const tgtLabel = nodeDisplayName(e.target().data('label') as string, e.target().id());
       rows.push({ label: 'De', value: srcLabel });
       rows.push({ label: 'Para', value: tgtLabel });
 
@@ -398,7 +434,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
       this.tooltip.set({
         visible: true, ...this.cursorPos(ev, container),
-        title: kindMap[d.kind] ?? d.kind,
+        title: kindMap[d.subKind] ?? kindMap[d.kind] ?? d.kind,
         color: d.color,
         rows,
       });
@@ -442,11 +478,11 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     for (const n of g.nodes) {
       const key  = (n.unassigned ? 'unassigned' : n.type) as keyof typeof LIGHT;
       const c    = palette[key] ?? palette['bank'];
-      const typeLabel = this.typeLabel(n.type, n.unassigned);
-      const nameTrunc = this.trunc(n.label, 20);
+      const nameTrunc = this.trunc(n.label, 22);
+      const typeLbl = nodeTypeLabel(n.type, !!n.unassigned);
       // Regras de cor:
       // • investment → sempre azul canônico
-      // • bank       → cor individual da conta (definida em Contas)
+      // • bank/credit → cor individual da conta (definida em Contas)
       // • goal       → cor individual da meta (definida em Metas)
       // • demais     → paleta por tipo
       let bgColor: string;
@@ -455,7 +491,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         const invClr = dark ? INV_D : INV_L;
         bdColor = invClr;
         bgColor = hexRgba(invClr, alpha);
-      } else if (n.type === 'bank' && n.color) {
+      } else if ((n.type === 'bank' || n.type === 'credit') && n.color) {
         bdColor = n.color;
         bgColor = hexRgba(n.color, alpha);
       } else if (n.type === 'goal' && n.color) {
@@ -469,7 +505,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       elements.push({
         data: {
           id: n.id,
-          label: `${typeLabel}\n${nameTrunc}`,
+          label: `${typeLbl}\n${nameTrunc}`,
           bgColor,
           borderColor: bdColor,
           textColor: textClr,
@@ -480,7 +516,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // Arestas — metadados para filtragem
+    // Arestas , metadados para filtragem
     // Modo 'planned': itens variáveis já foram excluídos pelo backend
     // (WHERE recurring_item_id IS NOT NULL OR financial_goal_id IS NOT NULL)
     // Nenhum filtro adicional necessário no frontend.
@@ -531,13 +567,13 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       if (srcType === 'bank' && bankBal.has(e.from)) {
         const b = bankBal.get(e.from)!;
         b.outflow += e.amountBrl;
-        if (tgtType && ['expense','investment','goal'].includes(tgtType)) {
+        if (tgtType && ['expense','investment','goal','installment'].includes(tgtType)) {
           b.destIds.add(e.to);
         }
       }
     }
 
-    // Nível 4 — um nó de saldo por banco
+    // Nível 4 , um nó de saldo por banco
     let totalBalance = 0;
     const balSaldoClr = (v: number) => v >= 0 ? '#22C55E' : '#FF5630';
     const balTextClr  = (v: number, d: boolean) =>
@@ -551,7 +587,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       elements.push({
         data: {
           id: `__saldo_${bankId}`,
-          label: `SALDO\n${this.trunc(b.label, 14)}\n${bal >= 0 ? '+' : ''}${this.fmtAmt(bal)}`,
+          label: `${this.trunc(b.label, 16)}\n${bal >= 0 ? '+' : ''}${this.fmtAmt(bal)}`,
           bgColor:     hexRgba(clr, alpha),
           borderColor: clr,
           textColor:   balTextClr(bal, dark),
@@ -568,6 +604,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
           const destType = destNode?.type ?? 'expense';
           const edgeClr = destType === 'investment' ? (dark ? INV_D : INV_L)
                         : destType === 'goal'       ? (destNode?.color || '#D97706')
+                        : destType === 'installment'? '#f59e0b'
                         : '#FF5630'; // expense default
 
           elements.push({
@@ -595,7 +632,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       b.destIds.forEach(id => coveredByBank.add(id));
     }
 
-    const destTypes = new Set(['expense', 'investment', 'goal']);
+    const destTypes = new Set(['expense', 'investment', 'goal', 'installment']);
     const orphanNodes = g.nodes.filter(n =>
       destTypes.has(n.type) && !coveredByBank.has(n.id)
     );
@@ -606,12 +643,12 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     const apiOutflow = g.totals?.outflowBrl ?? 0;
     const apiTotal   = apiInflow - apiOutflow;
 
-    // Nível 5 — saldo total (usa valor API, inclui órfãos)
+    // Nível 5 , saldo total (usa valor API, inclui órfãos)
     const totalClr = balSaldoClr(apiTotal);
     elements.push({
       data: {
         id: '__saldo_total__',
-        label: `SALDO TOTAL\n${apiTotal >= 0 ? '+' : ''}${this.fmtAmt(apiTotal)}`,
+        label: `Total\n${apiTotal >= 0 ? '+' : ''}${this.fmtAmt(apiTotal)}`,
         bgColor:     hexRgba(totalClr, Math.min(alpha * 1.6, 0.22)),
         borderColor: totalClr,
         textColor:   balTextClr(apiTotal, dark),
@@ -658,7 +695,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cy.elements().remove();
     this.cy.add(elements);
 
-    // Layout dagre — TB: receitas (topo) → bancos (meio) → gastos/invest/metas (baixo)
+    // Layout dagre , TB: receitas (topo) → bancos (meio) → gastos/invest/metas (baixo)
     const layout = this.cy.layout({
       name:              'dagre',
       rankDir:           'TB',   // Top → Bottom
@@ -746,7 +783,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Filtra edges (ignora balance-links — sempre invisíveis)
+    // Filtra edges (ignora balance-links , sempre invisíveis)
     cy.edges().forEach((e: any) => {
       if (e.hasClass('balance-link')) return;
       const d = e.data();
@@ -773,15 +810,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-
-  private typeLabel(type: string, unassigned?: boolean): string {
-    if (unassigned) return 'A DEFINIR';
-    const map: Record<string, string> = {
-      bank: 'BANCO', investment: 'INVESTIMENTO',
-      expense: 'GASTO', income: 'RECEBIMENTO', goal: 'META',
-    };
-    return map[type] ?? type.toUpperCase().slice(0, 12);
-  }
 
   private trunc(s: string, max: number): string {
     return s.length > max ? s.slice(0, max - 1) + '…' : s;

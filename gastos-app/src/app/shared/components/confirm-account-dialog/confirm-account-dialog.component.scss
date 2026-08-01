@@ -112,6 +112,14 @@
   border-left: 3px solid #a371f7;
 }
 
+.hint {
+  display: block;
+  margin: -0.75rem 0 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
 .preset {
   display: block;
   font-size: 0.75rem;

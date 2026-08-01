@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DecimalPipe, SlicePipe } from '@angular/common';
+import { DecimalPipe, LowerCasePipe, SlicePipe } from '@angular/common';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../shared/components/month-nav/month-nav.component';
@@ -19,14 +19,21 @@ import {
 @Component({
   selector: 'app-accounts',
   standalone: true,
-  imports: [FormsModule, CurrencyBrlPipe, MonthNavComponent, SlicePipe, DecimalPipe],
+  imports: [FormsModule, CurrencyBrlPipe, MonthNavComponent, SlicePipe, DecimalPipe, LowerCasePipe],
   templateUrl: './accounts.component.html',
   styleUrl: './accounts.component.scss',
 })
 export class AccountsComponent implements OnInit {
   private api = inject(FinanceApiService);
 
-  summary = signal<{ bank: number; investment: number; all: number } | null>(null);
+  summary = signal<{
+    bank: number;
+    investment: number;
+    creditUsed?: number;
+    creditLimit?: number;
+    creditAvailable?: number;
+    all: number;
+  } | null>(null);
   accounts = signal<FinancialAccount[]>([]);
   selectedId = signal<number | null>(null);
   statement = signal<FinancialAccount | null>(null);
@@ -51,6 +58,9 @@ export class AccountsComponent implements OnInit {
     type: 'bank' as AccountType,
     currency: 'BRL' as Currency,
     initialBalance: 0,
+    creditLimit: 0 as number | null,
+    closingDay: 1 as number | null,
+    dueDay: 10 as number | null,
     initialBalanceDate: new Date().toISOString().slice(0, 10),
     color: '#3b82f6',
   };
@@ -59,6 +69,7 @@ export class AccountsComponent implements OnInit {
   investmentAccounts = computed(() =>
     this.accounts().filter((a) => a.type === 'investment')
   );
+  creditAccounts = computed(() => this.accounts().filter((a) => a.type === 'credit'));
 
   ngOnInit(): void {
     this.api.getSettings().subscribe((s) =>
@@ -68,12 +79,35 @@ export class AccountsComponent implements OnInit {
   }
 
   accountBalanceLabel(a: FinancialAccount): string {
+    if (a.type === 'credit') {
+      const used = a.usedLimit ?? a.balance;
+      const usedBrl = a.usedLimitBrl ?? a.balanceBrl;
+      return formatMoneyWithBrl(used, a.currency, usedBrl);
+    }
     return formatMoneyWithBrl(a.balance, a.currency, a.balanceBrl);
   }
 
   accountInitialLabel(a: FinancialAccount): string {
     const brl = a.initialBalanceBrl ?? previewBrl(a.initialBalance, a.currency, this.eurToBrl());
     return formatMoneyWithBrl(a.initialBalance, a.currency, brl);
+  }
+
+  availableLabel(a: FinancialAccount): string {
+    if (a.availableLimit == null) return '—';
+    return formatMoneyWithBrl(
+      a.availableLimit,
+      a.currency,
+      a.availableLimitBrl ?? a.availableLimit
+    );
+  }
+
+  limitLabel(a: FinancialAccount): string {
+    if (a.creditLimit == null) return '—';
+    return formatMoneyWithBrl(
+      a.creditLimit,
+      a.currency,
+      a.creditLimitBrl ?? a.creditLimit
+    );
   }
 
   lineAmountLabel(line: { amount: number; amountBrl?: number; currency: Currency }, account: FinancialAccount): string {
@@ -171,8 +205,11 @@ export class AccountsComponent implements OnInit {
       type,
       currency: 'BRL',
       initialBalance: 0,
+      creditLimit: type === 'credit' ? 5000 : null,
+      closingDay: type === 'credit' ? 1 : null,
+      dueDay: type === 'credit' ? 10 : null,
       initialBalanceDate: new Date().toISOString().slice(0, 10),
-      color: type === 'investment' ? '#a371f7' : '#3b82f6',
+      color: type === 'investment' ? '#a371f7' : type === 'credit' ? '#f59e0b' : '#3b82f6',
     };
     this.showForm.set(true);
   }
@@ -184,6 +221,9 @@ export class AccountsComponent implements OnInit {
       type: a.type,
       currency: a.currency,
       initialBalance: a.initialBalance,
+      creditLimit: a.creditLimit ?? null,
+      closingDay: a.closingDay ?? null,
+      dueDay: a.dueDay ?? null,
       initialBalanceDate: a.initialBalanceDate,
       color: a.color ?? '#3b82f6',
     };
@@ -198,13 +238,17 @@ export class AccountsComponent implements OnInit {
   save(): void {
     const name = this.form.name.trim();
     if (!name) return;
-    const payload = {
+    const isCredit = this.form.type === 'credit';
+    const payload: Partial<FinancialAccount> = {
       name,
       type: this.form.type,
       currency: this.form.currency,
       initialBalance: this.form.initialBalance,
       initialBalanceDate: this.form.initialBalanceDate,
       color: this.form.color,
+      creditLimit: isCredit ? this.form.creditLimit : null,
+      closingDay: isCredit ? this.form.closingDay : null,
+      dueDay: isCredit ? this.form.dueDay : null,
     };
     const id = this.editing()?.id;
     this.api.saveAccount(payload, id).subscribe({
@@ -217,7 +261,8 @@ export class AccountsComponent implements OnInit {
   }
 
   remove(a: FinancialAccount): void {
-    if (!confirm(`Remover conta "${a.name}"?`)) return;
+    const label = a.type === 'credit' ? 'cartão' : 'conta';
+    if (!confirm(`Remover ${label} "${a.name}"?`)) return;
     this.api.deleteAccount(a.id).subscribe(() => {
       if (this.selectedId() === a.id) {
         this.selectedId.set(null);
@@ -228,13 +273,16 @@ export class AccountsComponent implements OnInit {
   }
 
   typeLabel(type: AccountType): string {
-    return type === 'investment' ? 'Investimento' : 'Banco';
+    if (type === 'investment') return 'Investimento';
+    if (type === 'credit') return 'Cartão de crédito';
+    return 'Banco';
   }
 
-  lineKindLabel(kind: string): string {
-    if (kind === 'opening') return 'Saldo inicial';
-    if (kind === 'income') return 'Entrada';
+  lineKindLabel(kind: string, isCredit = false): string {
+    if (kind === 'opening') return isCredit ? 'Dívida inicial' : 'Saldo inicial';
+    if (kind === 'income') return isCredit ? 'Pagamento / crédito' : 'Entrada';
     if (kind === 'investment') return 'Aporte';
-    return 'Saída';
+    if (kind === 'transfer') return 'Transferência';
+    return isCredit ? 'Compra' : 'Saída';
   }
 }

@@ -30,15 +30,34 @@ final class PlanningController
 
         $pdo = Database::connection();
         $id = PlanningService::create($pdo, $userId, $name);
-        $items = PlanningService::listForUser($pdo, $userId);
-        $planning = null;
-        foreach ($items as $item) {
-            if ($item['id'] === $id) {
-                $planning = $item;
-                break;
-            }
-        }
+        $planning = PlanningService::findForUser($pdo, $userId, $id);
         Response::json(['item' => $planning], 201);
+    }
+
+    public static function update(int $planningId): void
+    {
+        $userId = Auth::requireUser();
+        $body = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
+        $name = trim((string) ($body['name'] ?? ''));
+
+        $pdo = Database::connection();
+        PlanningService::update($pdo, $planningId, $userId, $name);
+        $planning = PlanningService::findForUser($pdo, $userId, $planningId);
+        if ($planning === null) {
+            Response::error('Planejamento não encontrado.', 404);
+        }
+        Response::json(['item' => $planning]);
+    }
+
+    public static function destroy(int $planningId): void
+    {
+        $userId = Auth::requireUser();
+        $pdo = Database::connection();
+        PlanningService::destroy($pdo, $planningId, $userId);
+        Response::json([
+            'ok' => true,
+            'items' => PlanningService::listForUser($pdo, $userId),
+        ]);
     }
 
     public static function members(int $planningId): void
@@ -80,13 +99,18 @@ final class PlanningController
         $planningName = PlanningInviteService::planningName($pdo, $planningId);
 
         $payload = [
-            'message' => 'Convite enviado para ' . $result['email']
-                . ' no planejamento "' . $planningName . '".',
+            'message' => !empty($result['mailSent'])
+                ? 'Convite enviado para ' . $result['email']
+                    . ' no planejamento "' . $planningName . '".'
+                : (!empty($result['mailLogged'])
+                    ? 'Convite criado (e-mail em modo log). Link disponível na resposta.'
+                    : 'Convite criado, mas o e-mail pode não ter sido enviado. Use o link da resposta.'),
             'email' => $result['email'],
             'planningId' => $planningId,
             'planningName' => $planningName,
+            'mailSent' => !empty($result['mailSent']),
         ];
-        if (MailService::isLogDriver()) {
+        if (empty($result['mailSent'])) {
             $payload['inviteUrl'] = $result['inviteUrl'];
         }
 

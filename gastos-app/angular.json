@@ -93,6 +93,10 @@
             ],
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
+            "codeCoverageExclude": [
+              "src/environments/**",
+              "src/main.ts"
+            ],
             "assets": [
               {
                 "glob": "**/*",

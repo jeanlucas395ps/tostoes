@@ -75,7 +75,7 @@ export const routes: Routes = [
           import('./features/accounts/accounts.component').then(
             (m) => m.AccountsComponent
           ),
-        data: { title: 'Contas' },
+        data: { title: 'Conta e Cartão de Crédito' },
       },
       {
         path: 'grafo-contas',
@@ -98,6 +98,23 @@ export const routes: Routes = [
           accent: '#f85149',
           categoryDefault: 'Brasil',
           userOverviewTabs: true,
+        },
+      },
+      {
+        path: 'compras-parceladas',
+        loadComponent: () =>
+          import('./features/fixed-items/fixed-items.component').then(
+            (m) => m.FixedItemsComponent
+          ),
+        data: {
+          kind: 'expense',
+          title: 'Compras parceladas',
+          subtitle:
+            'Parcelas de cartão ou compras a prazo , entram em Movimentos até o mês da última parcela',
+          accent: '#f59e0b',
+          categoryDefault: 'Geral',
+          userOverviewTabs: true,
+          installmentMode: true,
         },
       },
       {

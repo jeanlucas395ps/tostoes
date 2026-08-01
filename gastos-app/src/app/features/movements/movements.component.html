@@ -8,6 +8,7 @@
         Investimentos exigem conta de origem (banco) e destino (investimento).
         <a routerLink="/investimentos-fixos">Investimentos fixos</a> ·
         <a routerLink="/gastos-fixos">Gastos fixos</a> ·
+        <a routerLink="/compras-parceladas">Compras parceladas</a> ·
         <a routerLink="/recebimentos-fixos">Receb. fixos</a>
       </p>
     </div>
@@ -74,6 +75,71 @@
         </div>
       }
 
+      <!-- ── Faturas de cartão ── -->
+      @if (creditBills().length) {
+        <section class="credit-bills-panel">
+          <div class="col-header">
+            <h2>Faturas de cartão <span class="col-hint">vencimento + compras do mês</span></h2>
+            <span class="col-badge credit">{{ creditBills().length }}</span>
+          </div>
+          <div class="credit-bills-grid">
+            @for (bill of creditBills(); track bill.accountId) {
+              <article class="credit-bill-card" [style.--bill-color]="bill.color || '#f59e0b'">
+                <header class="credit-bill-head">
+                  <div>
+                    <h3>{{ bill.name }}</h3>
+                    <p>
+                      @if (bill.dueDay) { Vence dia {{ bill.dueDay }} }
+                      @else { Sem dia de vencimento }
+                      · Fatura {{ bill.forecast.totalBrl | currencyBrl }}
+                    </p>
+                  </div>
+                  @if (bill.remainingBrl > 0) {
+                    <button type="button" class="btn-pay-bill" (click)="openPayBill(bill)">
+                      Pagar fatura
+                    </button>
+                  } @else {
+                    <span class="bill-paid">Paga</span>
+                  }
+                </header>
+                <div class="credit-bill-stats">
+                  <span>Pendente {{ bill.forecast.pendingBrl | currencyBrl }}</span>
+                  <span>Confirmado {{ bill.forecast.confirmedBrl | currencyBrl }}</span>
+                  <span>Restante {{ bill.remainingBrl | currencyBrl }}</span>
+                </div>
+                @if (bill.items.length) {
+                  <ul class="credit-bill-items">
+                    @for (it of bill.items; track it.status + '-' + it.id) {
+                      <li>
+                        <span class="bill-item-tag" [class.parcel]="it.isInstallment">
+                          {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+                        </span>
+                        <span class="bill-item-name">{{ it.name }}</span>
+                        <strong>{{ it.amountBrl | currencyBrl }}</strong>
+                        <small>{{ it.status === 'pending' ? 'a confirmar' : 'ok' }}</small>
+                        @if (it.canCancel) {
+                          <button
+                            type="button"
+                            class="btn-cancel-bill-item"
+                            [disabled]="busyId() === it.id || busyId() === it.monthPlanEntryId"
+                            [title]="it.status === 'pending' ? 'Cancelar cobrança deste mês' : 'Desfazer cobrança confirmada'"
+                            (click)="cancelBillItem(it)"
+                          >
+                            Cancelar
+                          </button>
+                        }
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="muted bill-empty">Nenhuma compra vinculada neste mês.</p>
+                }
+              </article>
+            }
+          </div>
+        </section>
+      }
+
       <!-- ── Layout 2 colunas ── -->
       <div class="content-cols">
 
@@ -97,32 +163,33 @@
               @for (e of sortedPending(); track e.id) {
                 <li
                   class="item-card"
-                  [class.income]="e.kind === 'income'"
-                  [class.expense]="e.kind === 'expense'"
+                  [class.income]="e.kind === 'income' && !e.isGoal"
+                  [class.expense]="(e.kind === 'expense' || e.kind === 'leisure') && !e.isInstallment && !e.isGoal"
                   [class.investment]="e.kind === 'investment' && !e.isGoal"
-                  [class.goal]="e.isGoal"
+                  [class.transfer]="e.kind === 'transfer'"
+                  [class.installment]="!!e.isInstallment"
+                  [class.goal]="!!e.isGoal"
                   [style.--goal-color]="e.isGoal ? goalColor(e) : null"
                 >
                   <div class="item-top">
-                    <div
-                      class="item-kind-badge"
-                      [class.income]="e.kind === 'income'"
-                      [class.expense]="e.kind === 'expense'"
-                      [class.investment]="e.kind === 'investment' && !e.isGoal"
-                      [class.goal]="e.isGoal"
-                    >
-                      @if (e.isGoal) {
-                        <span class="goal-badge-label">◇ Meta</span>
-                      } @else if (e.kind === 'income') { ↑ Receb. }
-                      @else if (e.kind === 'investment') { ◆ Invest. }
-                      @else { ↓ Gasto }
-                      @if (!e.isGoal) {
-                        · {{ e.currency ?? 'BRL' }}
-                        @if (e.recurringItemId) { · Fixo }
+                    <div class="item-kind-row">
+                      <span
+                        class="hist-kind-tag"
+                        [class.income]="entryTagClass(e) === 'income'"
+                        [class.expense]="entryTagClass(e) === 'expense'"
+                        [class.investment]="entryTagClass(e) === 'investment'"
+                        [class.transfer]="entryTagClass(e) === 'transfer'"
+                        [class.installment]="entryTagClass(e) === 'installment'"
+                        [class.goal]="entryTagClass(e) === 'goal'"
+                        [style.--goal-color]="e.isGoal ? goalColor(e) : null"
+                      >{{ entryTagLabel(e) }}</span>
+                      <span class="item-kind-extra">
+                        {{ e.currency ?? 'BRL' }}
+                        @if (e.isGoal) { · Meta }
+                        @else if (e.isInstallment) { · Parcela }
+                        @else if (e.recurringItemId) { · Fixo }
                         @else { · Variável }
-                      } @else {
-                        · {{ e.currency ?? 'BRL' }}
-                      }
+                      </span>
                     </div>
                     @if (!e.recurringItemId && !e.isGoal) {
                       <button type="button" class="btn-icon-sm" (click)="openEditPending(e)">Editar</button>
@@ -137,6 +204,9 @@
                   <p class="item-meta">Dia {{ e.dueDay ?? '?' }} · {{ entryCategoryLabel(e) }}
                     @if (e.isGoal) { · Aporte recalculado conforme falta na meta }
                     @if (e.customTabName) { · {{ e.customTabName }} }
+                    @if (e.sourceFinancialAccountName) {
+                      · {{ e.sourceFinancialAccountType === 'credit' ? 'Cartão' : 'Conta' }}: {{ e.sourceFinancialAccountName }}
+                    }
                     @if (responsibleLabel(e)) { · {{ responsibleLabel(e) }} }
                   </p>
                   <div class="item-bottom">
@@ -202,22 +272,68 @@
           } @else {
             <ul class="history-list">
               @for (t of sortedConfirmed(); track t.id) {
-                <li class="history-item">
+                <li
+                  class="history-item"
+                  [class.income]="isIncome(t) && !t.isGoal"
+                  [class.expense]="isExpense(t) && !t.isInstallment && !t.isGoal"
+                  [class.investment]="t.kind === 'investment' && !t.isGoal"
+                  [class.transfer]="isTransfer(t)"
+                  [class.installment]="!!t.isInstallment"
+                  [class.goal]="!!t.isGoal"
+                  [style.--goal-color]="t.isGoal ? (t.financialGoalColor || '#00ab55') : null"
+                >
                   <div class="hist-date">
                     {{ t.transactionDate | slice:8:10 }}
                     <span>{{ t.transactionDate | slice:5:7 }}</span>
                   </div>
                   <div class="hist-body">
-                    <p class="hist-name">{{ t.description }}</p>
-                    <p class="hist-meta">{{ t.category }}
-                      @if (t.accountName) { · {{ t.accountName }} }
+                    <p class="hist-name">
+                      <span
+                        class="hist-kind-tag"
+                        [class.income]="entryTagClass(t) === 'income'"
+                        [class.expense]="entryTagClass(t) === 'expense'"
+                        [class.investment]="entryTagClass(t) === 'investment'"
+                        [class.transfer]="entryTagClass(t) === 'transfer'"
+                        [class.installment]="entryTagClass(t) === 'installment'"
+                        [class.goal]="entryTagClass(t) === 'goal'"
+                        [style.--goal-color]="t.isGoal ? (t.financialGoalColor || '#00ab55') : null"
+                      >{{ entryTagLabel(t) }}</span>
+                      {{ t.description }}
+                    </p>
+                    <p class="hist-meta">
+                      @if (isTransfer(t) && transferMeta(t); as tm) {
+                        {{ tm }}
+                      } @else {
+                        {{ t.category }}
+                        @if (t.accountName) { · {{ t.accountName }} }
+                      }
                       @if (responsibleLabel(t)) { · {{ responsibleLabel(t) }} }
                     </p>
                   </div>
                   <div class="hist-right">
-                    <span class="hist-amount" [class.income]="isIncome(t)" [class.expense]="!isIncome(t)">
-                      {{ isIncome(t) ? '+' : '−' }}{{ txLabel(t) }}
-                    </span>
+                    @if (isTransfer(t)) {
+                      <div class="hist-transfer-amounts">
+                        <span class="hist-amount transfer out" title="Valor que saiu">
+                          − {{ transferOutLabel(t) }}
+                        </span>
+                        <span class="hist-amount transfer in" title="Valor que entrou">
+                          + {{ transferInLabel(t) }}
+                        </span>
+                      </div>
+                    } @else {
+                      <span
+                        class="hist-amount"
+                        [class.income]="isIncome(t) && !t.isGoal"
+                        [class.expense]="isExpense(t) && !t.isInstallment && !t.isGoal"
+                        [class.investment]="t.kind === 'investment' && !t.isGoal"
+                        [class.installment]="!!t.isInstallment"
+                        [class.goal]="!!t.isGoal"
+                        [style.--goal-color]="t.isGoal ? (t.financialGoalColor || '#00ab55') : null"
+                      >
+                        @if (isIncome(t)) { + } @else { − }
+                        {{ txLabel(t) }}
+                      </span>
+                    }
                     <div class="hist-actions">
                       @if (t.canUnconfirm || t.monthPlanEntryId) {
                         <button
@@ -258,11 +374,112 @@
   />
 }
 
+@if (installmentPrompt(); as ip) {
+  <div class="modal-backdrop" (click)="cancelInstallmentPrompt()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Compra no cartão</h3>
+      <p class="modal-hint">
+        Você escolheu <strong>{{ ip.account.name }}</strong> para
+        «{{ ip.entry.name }}». Deseja criar uma <strong>compra parcelada</strong>?
+      </p>
+      <label class="modal-field">
+        <span>Quantidade de parcelas</span>
+        <input
+          type="number"
+          [ngModel]="installmentCount()"
+          (ngModelChange)="installmentCount.set(+$event || 2)"
+          min="2"
+          max="48"
+        />
+      </label>
+      <p class="modal-hint">
+        Cada parcela: {{ ip.result.amount | number:'1.2-2':'pt-BR' }}
+        {{ ip.result.currency === 'EUR' ? '€' : 'R$' }}
+        · {{ installmentCount() }}x no cartão
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="cancelInstallmentPrompt()">Cancelar</button>
+        <button type="button" class="btn-outline" (click)="confirmWithoutInstallment()">Só esta cobrança</button>
+        <button type="button" class="btn-primary" (click)="confirmWithInstallment()">Parcelar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (payBillPrompt(); as bill) {
+  <div class="modal-backdrop" (click)="cancelPayBill()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Pagar fatura , {{ bill.name }}</h3>
+      <p class="modal-hint">
+        Transfere do banco para o cartão e reduz a dívida / libera limite.
+        Valor: <strong>{{ bill.remainingBrl | currencyBrl }}</strong>
+        @if (bill.dueDay) { (vence dia {{ bill.dueDay }}) }
+      </p>
+      <label class="modal-field">
+        <span>Conta bancária de saída</span>
+        <select [ngModel]="payBillBankId()" (ngModelChange)="payBillBankId.set($event)">
+          <option [ngValue]="null">, Selecione —</option>
+          @for (a of bankAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="cancelPayBill()">Cancelar</button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!payBillBankId()"
+          (click)="submitPayBill()"
+        >
+          Confirmar pagamento
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (cancelBillPrompt(); as it) {
+  <div class="modal-backdrop" (click)="closeCancelBill()">
+    <div class="modal modal-cancel-bill" (click)="$event.stopPropagation()">
+      <h3>{{ it.status === 'pending' ? 'Cancelar cobrança' : 'Desfazer cobrança' }}</h3>
+      <p class="modal-hint">
+        @if (it.status === 'pending') {
+          Ignorar <strong>«{{ it.name }}»</strong> nesta fatura?
+          A cobrança deixa de contar neste mês
+          @if (it.isInstallment) { (as próximas parcelas continuam) }.
+        } @else {
+          Desfazer <strong>«{{ it.name }}»</strong> da fatura?
+          O valor <strong>{{ it.amountBrl | currencyBrl }}</strong> sai da dívida do cartão.
+        }
+      </p>
+      <div class="cancel-bill-summary">
+        <span class="bill-item-tag" [class.parcel]="it.isInstallment">
+          {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+        </span>
+        <strong>{{ it.amountBrl | currencyBrl }}</strong>
+        <small>{{ it.status === 'pending' ? 'a confirmar' : 'confirmada' }}</small>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeCancelBill()">Voltar</button>
+        <button
+          type="button"
+          class="btn-danger"
+          [disabled]="busyId() === it.id || busyId() === it.monthPlanEntryId"
+          (click)="confirmCancelBill()"
+        >
+          {{ it.status === 'pending' ? 'Sim, cancelar' : 'Sim, desfazer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
 @if (showVariableModal()) {
   <div class="modal-backdrop" (click)="closeVariableModal()">
     <div class="modal" (click)="$event.stopPropagation()">
       <h3>{{ variableModalTitle() }}</h3>
-      <p>Registre gastos, recebimentos ou investimentos variáveis do mês.</p>
+      <p>Registre gastos, recebimentos, investimentos ou transferências do mês.</p>
 
       <label class="modal-field">
         <span>Tipo</span>
@@ -270,14 +487,43 @@
           <option value="expense">Gasto</option>
           <option value="income">Recebimento</option>
           <option value="investment">Investimento</option>
+          <option value="transfer">Transferência</option>
         </select>
       </label>
+
+      @if (variableIsTransfer()) {
+        <p class="modal-hint">
+          Na confirmação você define conta/valor/moeda de saída e de entrada.
+        </p>
+        <label class="modal-field">
+          <span>Conta de saída (opcional)</span>
+          <select [(ngModel)]="variableForm.bankAccountId">
+            <option [ngValue]="null">Definir na confirmação</option>
+            @for (a of accounts(); track a.id) {
+              <option [ngValue]="a.id">
+                {{ accountTypeLabel(a.type) }} · {{ a.name }}
+              </option>
+            }
+          </select>
+        </label>
+        <label class="modal-field">
+          <span>Conta de entrada (opcional)</span>
+          <select [(ngModel)]="variableForm.financialAccountId">
+            <option [ngValue]="null">Definir na confirmação</option>
+            @for (a of accounts(); track a.id) {
+              <option [ngValue]="a.id">
+                {{ accountTypeLabel(a.type) }} · {{ a.name }}
+              </option>
+            }
+          </select>
+        </label>
+      }
 
       @if (variableIsInvestment()) {
         <label class="modal-field">
           <span>Tipo de investimento</span>
           <select [(ngModel)]="variableForm.investmentTypeId">
-            <option [ngValue]="null">— Selecione ,</option>
+            <option [ngValue]="null">, Selecione ,</option>
             @for (t of investmentTypes(); track t.id) {
               <option [ngValue]="t.id">{{ t.name }}</option>
             }
@@ -299,7 +545,7 @@
         <label class="modal-field">
           <span>Aba personalizada</span>
           <select [(ngModel)]="variableForm.customTabId">
-            <option [ngValue]="null">— Sem aba ,</option>
+            <option [ngValue]="null">, Sem aba ,</option>
             @for (tab of customTabs(); track tab.id) {
               <option [ngValue]="tab.id">{{ tab.name }}</option>
             }
@@ -307,6 +553,7 @@
         </label>
       }
 
+      @if (!variableIsTransfer()) {
       <label class="modal-field">
         <span>Categoria</span>
         @if (!newCategoryMode()) {
@@ -314,7 +561,7 @@
             [ngModel]="variableForm.itemCategoryId"
             (ngModelChange)="onCategorySelect($event)"
           >
-            <option [ngValue]="null">— Selecione ,</option>
+            <option [ngValue]="null">, Selecione —</option>
             @for (cat of itemCategories(); track cat.id) {
               <option [ngValue]="cat.id">{{ categoryIconFor(cat.name, cat.icon) }} {{ cat.name }}</option>
             }
@@ -341,6 +588,7 @@
           <button type="button" class="btn-link" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
         }
       </label>
+      }
 
       <label class="modal-field">
         <span>Descrição</span>
@@ -389,10 +637,10 @@
         <label class="modal-field">
           <span>Conta do lançamento</span>
           <select [(ngModel)]="variableForm.accountId" required>
-            <option [ngValue]="null">— Selecione ,</option>
+            <option [ngValue]="null">, Selecione —</option>
             @for (a of accounts(); track a.id) {
               <option [ngValue]="a.id">
-                {{ a.type === 'investment' ? 'Investimento' : 'Banco' }} · {{ a.name }}
+                {{ accountTypeLabel(a.type) }} · {{ a.name }}
               </option>
             }
           </select>

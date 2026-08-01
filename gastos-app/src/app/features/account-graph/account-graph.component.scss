@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Grafo de Contas — powered by Cytoscape.js
+   Grafo de Contas , powered by Cytoscape.js
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .account-graph-page {
@@ -289,6 +289,7 @@
   vertical-align: middle;
 
   &.leg-bank    { background: #2065D1; }
+  &.leg-credit  { background: #f59e0b; }
   &.leg-invest  { background: #2065D1; } /* mesmo azul dos investimentos */
   &.leg-expense { background: #FF5630; }
   &.leg-income  { background: #22C55E; }

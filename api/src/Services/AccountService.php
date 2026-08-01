@@ -27,8 +27,37 @@ final class AccountService
             Response::error('Conta não encontrada.', 422);
         }
         if ($type !== null && ($row['type'] ?? '') !== $type) {
-            $label = $type === 'bank' ? 'bancária' : 'de investimento';
+            $labels = [
+                'bank' => 'bancária',
+                'investment' => 'de investimento',
+                'credit' => 'de cartão de crédito',
+            ];
+            $label = $labels[$type] ?? $type;
             Response::error("Selecione uma conta {$label}.", 422);
+        }
+
+        return $accountId;
+    }
+
+    /** Conta de pagamento de gasto: banco ou cartão. */
+    public static function validatePaymentSourceAccountId(
+        PDO $pdo,
+        int $planningId,
+        int $accountId
+    ): int {
+        if ($accountId <= 0) {
+            Response::error('Selecione a conta do lançamento.', 422);
+        }
+        $stmt = $pdo->prepare(
+            'SELECT id, type FROM financial_accounts WHERE id = ? AND planning_id = ? AND active = 1'
+        );
+        $stmt->execute([$accountId, $planningId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            Response::error('Conta não encontrada.', 422);
+        }
+        if (!in_array($row['type'] ?? '', ['bank', 'credit'], true)) {
+            Response::error('Selecione uma conta bancária ou cartão de crédito.', 422);
         }
 
         return $accountId;
@@ -53,6 +82,69 @@ final class AccountService
         ];
     }
 
+    /** @return array{sourceAccountId: int, targetAccountId: int} */
+    public static function validateAccountTransfer(
+        PDO $pdo,
+        int $planningId,
+        int $sourceAccountId,
+        int $targetAccountId
+    ): array {
+        $source = self::validateAccountId($pdo, $planningId, $sourceAccountId);
+        $target = self::validateAccountId($pdo, $planningId, $targetAccountId);
+        if ($source === $target) {
+            Response::error('Conta de saída e entrada devem ser diferentes.', 422);
+        }
+
+        return [
+            'sourceAccountId' => $source,
+            'targetAccountId' => $target,
+        ];
+    }
+
+    /** Transferência: entrada se notes tem "←", senão saída. */
+    public static function isTransferInflow(array $row): bool
+    {
+        return ($row['kind'] ?? '') === 'transfer'
+            && str_contains((string) ($row['notes'] ?? ''), 'Transferência ←');
+    }
+
+    /**
+     * Aplica lançamento ao saldo (conta bancária/investimento ou dívida do cartão).
+     *
+     * @param array<string, mixed> $row
+     */
+    public static function applyTxToBalance(
+        float $balance,
+        array $row,
+        float $amt,
+        bool $isCredit = false
+    ): float {
+        $kind = $row['kind'] ?? '';
+        $isIn = $kind === 'income' || self::isTransferInflow($row);
+        $isOut = in_array($kind, ['expense', 'leisure', 'investment', 'transfer'], true) && !$isIn;
+
+        if ($isCredit) {
+            // Saldo do cartão = dívida (uso do limite): compra sobe, pagamento desce
+            if ($isOut) {
+                return $balance + $amt;
+            }
+            if ($isIn) {
+                return $balance - $amt;
+            }
+
+            return $balance;
+        }
+
+        if ($isIn) {
+            return $balance + $amt;
+        }
+        if ($isOut) {
+            return $balance - $amt;
+        }
+
+        return $balance;
+    }
+
     /** @param array<string, mixed> $account */
     public static function computeBalance(PDO $pdo, array $account, ?float $eurToBrl = null): float
     {
@@ -62,21 +154,17 @@ final class AccountService
         $since = (string) $account['initial_balance_date'];
         $currency = (string) ($account['currency'] ?? 'BRL');
         $balance = (float) $account['initial_balance'];
+        $isCredit = ($account['type'] ?? '') === 'credit';
 
         $stmt = $pdo->prepare(
-            'SELECT kind, amount, currency, amount_brl, eur_to_brl FROM transactions
+            'SELECT kind, amount, currency, amount_brl, eur_to_brl, notes FROM transactions
              WHERE account_id = ? AND planning_id = ? AND transaction_date >= ?
              ORDER BY transaction_date, id'
         );
         $stmt->execute([$accountId, $planningId, $since]);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $amt = self::txAmountInAccountCurrency($row, $currency, $eurToBrl);
-            $kind = $row['kind'];
-            if ($kind === 'income') {
-                $balance += $amt;
-            } elseif (in_array($kind, ['expense', 'leisure', 'investment'], true)) {
-                $balance -= $amt;
-            }
+            $balance = self::applyTxToBalance($balance, $row, $amt, $isCredit);
         }
 
         return round($balance, 2);
@@ -109,7 +197,7 @@ final class AccountService
     {
         $sql = 'SELECT * FROM financial_accounts WHERE planning_id = ? AND active = 1';
         $params = [$planningId];
-        if ($type !== null && in_array($type, ['bank', 'investment'], true)) {
+        if ($type !== null && in_array($type, ['bank', 'investment', 'credit'], true)) {
             $sql .= ' AND type = ?';
             $params[] = $type;
         }
@@ -135,6 +223,22 @@ final class AccountService
         $currency = (string) ($row['currency'] ?? 'BRL');
         $balance = self::computeBalance($pdo, $row, $eurToBrl);
         $initialBalance = (float) $row['initial_balance'];
+        $isCredit = ($row['type'] ?? '') === 'credit';
+        $creditLimit = isset($row['credit_limit']) && $row['credit_limit'] !== null
+            ? (float) $row['credit_limit'] : null;
+        $futureInstallments = $isCredit
+            ? self::futureInstallmentsCommitted(
+                $pdo,
+                $planningId,
+                (int) $row['id'],
+                $currency,
+                $eurToBrl
+            )
+            : 0.0;
+        // Limite usado = dívida atual + parcelas futuras ainda não lançadas no cartão
+        $used = $isCredit ? max(0.0, round($balance + $futureInstallments, 2)) : null;
+        $available = ($isCredit && $creditLimit !== null)
+            ? round($creditLimit - $used, 2) : null;
 
         $mapped = [
             'id' => (int) $row['id'],
@@ -144,12 +248,44 @@ final class AccountService
             'initialBalance' => $initialBalance,
             'initialBalanceBrl' => self::balanceToBrl($initialBalance, $currency, $eurToBrl),
             'initialBalanceDate' => $row['initial_balance_date'],
+            'creditLimit' => $creditLimit,
+            'creditLimitBrl' => $creditLimit !== null
+                ? self::balanceToBrl($creditLimit, $currency, $eurToBrl) : null,
+            'closingDay' => isset($row['closing_day']) && $row['closing_day'] !== null
+                ? (int) $row['closing_day'] : null,
+            'dueDay' => isset($row['due_day']) && $row['due_day'] !== null
+                ? (int) $row['due_day'] : null,
             'color' => $row['color'],
             'sortOrder' => (int) $row['sort_order'],
             'balance' => $balance,
             'balanceBrl' => self::balanceToBrl($balance, $currency, $eurToBrl),
+            'usedLimit' => $used,
+            'usedLimitBrl' => $used !== null
+                ? self::balanceToBrl($used, $currency, $eurToBrl) : null,
+            'futureInstallments' => $isCredit ? $futureInstallments : null,
+            'futureInstallmentsBrl' => $isCredit
+                ? self::balanceToBrl($futureInstallments, $currency, $eurToBrl) : null,
+            'availableLimit' => $available,
+            'availableLimitBrl' => $available !== null
+                ? self::balanceToBrl($available, $currency, $eurToBrl) : null,
+            'limitUsagePercent' => ($isCredit && $creditLimit !== null && $creditLimit > 0)
+                ? round(min(100, max(0, ($used / $creditLimit) * 100)), 1) : null,
             'eurToBrl' => $eurToBrl,
         ];
+
+        if ($isCredit) {
+            $nowY = (int) date('Y');
+            $nowM = (int) date('n');
+            $mapped['monthForecast'] = self::creditMonthForecast(
+                $pdo,
+                $planningId,
+                (int) $row['id'],
+                $nowY,
+                $nowM,
+                $eurToBrl
+            );
+        }
+
         if ($withStatement) {
             $mapped['statement'] = self::statement(
                 $pdo,
@@ -161,9 +297,178 @@ final class AccountService
                 $statementKind,
                 $statementSearch
             );
+            if ($isCredit && $year !== null && $month !== null) {
+                $mapped['monthForecast'] = self::creditMonthForecast(
+                    $pdo,
+                    $planningId,
+                    (int) $row['id'],
+                    $year,
+                    $month,
+                    $eurToBrl
+                );
+            }
         }
 
         return $mapped;
+    }
+
+    /**
+     * Soma das parcelas futuras (mês corrente → fim) ainda não confirmadas neste cartão.
+     * Parcelas já confirmadas entram na dívida via transactions e não são somadas de novo.
+     */
+    public static function futureInstallmentsCommitted(
+        PDO $pdo,
+        int $planningId,
+        int $accountId,
+        string $accountCurrency,
+        float $eurToBrl
+    ): float {
+        $stmt = $pdo->prepare(
+            "SELECT id, currency, amount_original, default_amount_brl, start_date, end_date
+             FROM recurring_items
+             WHERE planning_id = ?
+               AND active = 1
+               AND is_installment = 1
+               AND source_financial_account_id = ?
+               AND kind IN ('expense', 'leisure')"
+        );
+        $stmt->execute([$planningId, $accountId]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($items === []) {
+            return 0.0;
+        }
+
+        $nowY = (int) date('Y');
+        $nowM = (int) date('n');
+        $confirmedStmt = $pdo->prepare(
+            "SELECT 1 FROM month_plan_entries
+             WHERE planning_id = ? AND recurring_item_id = ? AND year = ? AND month = ?
+               AND status = 'confirmed'
+             LIMIT 1"
+        );
+        $amountStmt = $pdo->prepare(
+            'SELECT amount_brl FROM recurring_item_amounts
+             WHERE recurring_item_id = ? AND month = ?'
+        );
+
+        $total = 0.0;
+        foreach ($items as $item) {
+            $itemId = (int) $item['id'];
+            $start = (string) ($item['start_date'] ?? '');
+            $end = (string) ($item['end_date'] ?? '');
+            if ($start === '' || $end === '') {
+                continue;
+            }
+
+            $startYm = substr($start, 0, 7);
+            $endYm = substr($end, 0, 7);
+            $fromYm = sprintf('%04d-%02d', $nowY, $nowM);
+            if ($fromYm < $startYm) {
+                $fromYm = $startYm;
+            }
+            if ($fromYm > $endYm) {
+                continue;
+            }
+
+            $y = (int) substr($fromYm, 0, 4);
+            $m = (int) substr($fromYm, 5, 2);
+            $endY = (int) substr($endYm, 0, 4);
+            $endM = (int) substr($endYm, 5, 2);
+
+            while ($y < $endY || ($y === $endY && $m <= $endM)) {
+                $confirmedStmt->execute([$planningId, $itemId, $y, $m]);
+                if ($confirmedStmt->fetchColumn() !== false) {
+                    $m++;
+                    if ($m > 12) {
+                        $m = 1;
+                        $y++;
+                    }
+                    continue;
+                }
+
+                $amountStmt->execute([$itemId, $m]);
+                $override = $amountStmt->fetchColumn();
+                if ($override !== false && $override !== null) {
+                    $brl = (float) $override;
+                } else {
+                    $brl = (float) ($item['default_amount_brl'] ?? 0);
+                }
+
+                if ($accountCurrency === 'EUR') {
+                    if (($item['currency'] ?? '') === 'EUR' && $item['amount_original'] !== null) {
+                        $total += (float) $item['amount_original'];
+                    } else {
+                        $total += $eurToBrl > 0 ? round($brl / $eurToBrl, 2) : 0.0;
+                    }
+                } else {
+                    $total += $brl;
+                }
+
+                $m++;
+                if ($m > 12) {
+                    $m = 1;
+                    $y++;
+                }
+            }
+        }
+
+        return round($total, 2);
+    }
+
+    /**
+     * Previsão do mês no cartão: pendentes + confirmados debitados na conta.
+     *
+     * @return array{pendingBrl: float, confirmedBrl: float, totalBrl: float}
+     */
+    public static function creditMonthForecast(
+        PDO $pdo,
+        int $planningId,
+        int $accountId,
+        int $year,
+        int $month,
+        ?float $eurToBrl = null
+    ): array {
+        $eurToBrl ??= MoneyHelper::getEurToBrlFallback($pdo, $planningId);
+
+        if (!ProjectionService::isBeforeCurrentMonth($year, $month)) {
+            MonthPlanService::syncAllFixedForMonth($pdo, $planningId, $year, $month);
+        }
+
+        $pending = 0.0;
+        $stmt = $pdo->prepare(
+            "SELECT e.currency, e.suggested_amount, e.suggested_amount_brl
+             FROM month_plan_entries e
+             WHERE e.planning_id = ? AND e.year = ? AND e.month = ?
+               AND e.status = 'pending'
+               AND e.kind IN ('expense', 'leisure')
+               AND e.source_financial_account_id = ?"
+        );
+        $stmt->execute([$planningId, $year, $month, $accountId]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $pending += ProjectionService::entrySuggestedBrl($pdo, $planningId, $year, $month, [
+                'currency' => $row['currency'] ?? 'BRL',
+                'suggested_amount' => $row['suggested_amount'] ?? $row['suggested_amount_brl'],
+                'suggested_amount_brl' => $row['suggested_amount_brl'],
+            ]);
+        }
+
+        $confirmed = 0.0;
+        $cStmt = $pdo->prepare(
+            "SELECT amount_brl FROM transactions
+             WHERE planning_id = ? AND account_id = ?
+               AND YEAR(transaction_date) = ? AND MONTH(transaction_date) = ?
+               AND kind IN ('expense', 'leisure')"
+        );
+        $cStmt->execute([$planningId, $accountId, $year, $month]);
+        while ($amt = $cStmt->fetchColumn()) {
+            $confirmed += (float) $amt;
+        }
+
+        return [
+            'pendingBrl' => round($pending, 2),
+            'confirmedBrl' => round($confirmed, 2),
+            'totalBrl' => round($pending + $confirmed, 2),
+        ];
     }
 
     /** @return list<array<string, mixed>> */
@@ -190,6 +495,7 @@ final class AccountService
         $currency = (string) $account['currency'];
         $since = (string) $account['initial_balance_date'];
         $running = (float) $account['initial_balance'];
+        $isCredit = ($account['type'] ?? '') === 'credit';
 
         $periodStart = $since;
         if ($year !== null && $month !== null) {
@@ -201,7 +507,7 @@ final class AccountService
         $runningBrl = self::balanceToBrl($running, $currency, $eurToBrl);
 
         $sql = 'SELECT t.id, t.transaction_date, t.kind, t.description, t.amount, t.currency, t.amount_brl,
-                       t.eur_to_brl, t.category, ic.name AS item_category_name
+                       t.eur_to_brl, t.category, t.notes, ic.name AS item_category_name
                 FROM transactions t
                 LEFT JOIN month_plan_entries mpe ON mpe.transaction_id = t.id
                 LEFT JOIN planning_item_categories ic ON ic.id = mpe.item_category_id
@@ -212,7 +518,7 @@ final class AccountService
             $params[] = $year;
             $params[] = $month;
         }
-        if ($kindFilter !== null && in_array($kindFilter, ['income', 'expense', 'investment', 'leisure'], true)) {
+        if ($kindFilter !== null && in_array($kindFilter, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
             $sql .= ' AND t.kind = ?';
             $params[] = $kindFilter;
         }
@@ -230,8 +536,8 @@ final class AccountService
         $txStmt->execute($params);
 
         $openingLabel = ($year !== null && $month !== null && $periodStart > $since)
-            ? 'Saldo anterior'
-            : 'Saldo inicial';
+            ? ($isCredit ? 'Fatura / uso anterior' : 'Saldo anterior')
+            : ($isCredit ? 'Dívida inicial' : 'Saldo inicial');
         $openingDate = ($year !== null && $month !== null) ? $periodStart : $since;
 
         $lines = [[
@@ -250,14 +556,28 @@ final class AccountService
         while ($row = $txStmt->fetch(PDO::FETCH_ASSOC)) {
             $amt = self::txAmountInAccountCurrency($row, $currency, $eurToBrl);
             $amtBrl = (float) $row['amount_brl'];
-            $signed = $row['kind'] === 'income' ? $amt : -$amt;
-            $signedBrl = $row['kind'] === 'income' ? $amtBrl : -$amtBrl;
-            if ($row['kind'] === 'income') {
-                $running += $amt;
-                $runningBrl += $amtBrl;
+            $isIn = ($row['kind'] === 'income') || self::isTransferInflow($row);
+            // No cartão: compra (+dívida), pagamento (−dívida)
+            if ($isCredit) {
+                $signed = $isIn ? -$amt : $amt;
+                $signedBrl = $isIn ? -$amtBrl : $amtBrl;
+                if ($isIn) {
+                    $running -= $amt;
+                    $runningBrl -= $amtBrl;
+                } else {
+                    $running += $amt;
+                    $runningBrl += $amtBrl;
+                }
             } else {
-                $running -= $amt;
-                $runningBrl -= $amtBrl;
+                $signed = $isIn ? $amt : -$amt;
+                $signedBrl = $isIn ? $amtBrl : -$amtBrl;
+                if ($isIn) {
+                    $running += $amt;
+                    $runningBrl += $amtBrl;
+                } else {
+                    $running -= $amt;
+                    $runningBrl -= $amtBrl;
+                }
             }
             $line = [
                 'id' => (int) $row['id'],
@@ -299,24 +619,21 @@ final class AccountService
         $since = (string) $account['initial_balance_date'];
         $currency = (string) ($account['currency'] ?? 'BRL');
         $balance = (float) $account['initial_balance'];
+        $isCredit = ($account['type'] ?? '') === 'credit';
 
         if ($date <= $since) {
             return round($balance, 2);
         }
 
         $stmt = $pdo->prepare(
-            'SELECT kind, amount, currency, amount_brl, eur_to_brl FROM transactions
+            'SELECT kind, amount, currency, amount_brl, eur_to_brl, notes FROM transactions
              WHERE account_id = ? AND planning_id = ? AND transaction_date >= ? AND transaction_date < ?
              ORDER BY transaction_date, id'
         );
         $stmt->execute([$accountId, $planningId, $since, $date]);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $amt = self::txAmountInAccountCurrency($row, $currency, $eurToBrl);
-            if ($row['kind'] === 'income') {
-                $balance += $amt;
-            } elseif (in_array($row['kind'], ['expense', 'leisure', 'investment'], true)) {
-                $balance -= $amt;
-            }
+            $balance = self::applyTxToBalance($balance, $row, $amt, $isCredit);
         }
 
         return round($balance, 2);

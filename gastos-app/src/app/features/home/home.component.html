@@ -41,24 +41,35 @@
                   <span class="chip inv">
                     Invest. <strong>{{ acc.totals.investment | currencyBrl }}</strong>
                   </span>
+                  @if ((acc.totals.creditLimit ?? 0) > 0) {
+                    <span class="chip credit">
+                      Cartões <strong>{{ (acc.totals.creditUsed ?? 0) | currencyBrl }}</strong>
+                      <small> / {{ (acc.totals.creditLimit ?? 0) | currencyBrl }}</small>
+                    </span>
+                  }
                 </div>
                 <div class="patrimony-accounts">
                   @for (a of acc.accounts; track a.id) {
                     <a
                       class="account-mini-card"
                       routerLink="/contas"
-                      [style.--acc-color]="a.color || (a.type === 'investment' ? '#a371f7' : '#3b82f6')"
+                      [style.--acc-color]="a.color || (a.type === 'investment' ? '#a371f7' : a.type === 'credit' ? '#f59e0b' : '#3b82f6')"
                       [title]="a.name"
                     >
                       <span class="account-mini-icon" aria-hidden="true">
                         @if (a.type === 'investment') {
-                          <!-- Trending up — investimento -->
+                          <!-- Trending up , investimento -->
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
                             <polyline points="16 7 22 7 22 13"/>
                           </svg>
+                        } @else if (a.type === 'credit') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/>
+                            <line x1="2" y1="10" x2="22" y2="10"/>
+                          </svg>
                         } @else {
-                          <!-- Bank building — conta bancária -->
+                          <!-- Bank building , conta bancária -->
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="22" x2="21" y2="22"/>
                             <line x1="6" y1="18" x2="6" y2="11"/>
@@ -70,8 +81,13 @@
                         }
                       </span>
                       <span class="account-mini-name">{{ a.name }}</span>
-                      <strong class="account-mini-balance">
-                        {{ a.currency === 'EUR' ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
+                      <strong class="account-mini-balance" [class.credit-usage]="a.type === 'credit'">
+                        @if (a.type === 'credit') {
+                          {{ (a.usedLimitBrl ?? a.balanceBrl) | currencyBrl }}
+                          <span class="limit-ratio">/ {{ (a.creditLimitBrl ?? a.creditLimit ?? 0) | currencyBrl }}</span>
+                        } @else {
+                          {{ a.currency === 'EUR' ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
+                        }
                       </strong>
                       @if (a.currency === 'EUR') {
                         <small class="account-mini-fx">{{ accountEurBalance(a) }}</small>

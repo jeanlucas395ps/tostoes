@@ -89,6 +89,11 @@ final class ProfileController
             Response::error($msg, 422);
         }
 
+        $maxBytes = 500 * 1024 * 1024; // 500 MB
+        if (($file['size'] ?? 0) > $maxBytes) {
+            Response::error('A foto deve ter no máximo 500 MB.', 422);
+        }
+
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']) ?: '';
         $extMap = [

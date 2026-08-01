@@ -1,8 +1,9 @@
 <div class="accounts-page">
   <header class="page-top page-top--toolbar">
-    <p class="page-lead">Extrato completo de cada conta , com filtros por tipo, texto e mês</p>
+    <p class="page-lead">Bancos, investimentos e cartões , extrato, limite e previsão do mês</p>
     <div class="header-actions">
       <button type="button" class="btn-outline" (click)="openNew('bank')">+ Banco</button>
+      <button type="button" class="btn-credit" (click)="openNew('credit')">+ Cartão</button>
       <button type="button" class="btn-fab" (click)="openNew('investment')">+ Investimento</button>
     </div>
   </header>
@@ -20,8 +21,20 @@
           <span>Investimentos</span>
           <strong>{{ s.investment | currencyBrl }}</strong>
         </div>
+        @if ((s.creditLimit ?? 0) > 0 || creditAccounts().length) {
+          <div class="total-card credit">
+            <span>Cartões</span>
+            <div class="credit-totals">
+              <strong>
+                {{ (s.creditUsed ?? 0) | currencyBrl }}
+                <span class="of-limit">/ {{ (s.creditLimit ?? 0) | currencyBrl }}</span>
+              </strong>
+              <small class="total-sub">disp. {{ (s.creditAvailable ?? 0) | currencyBrl }}</small>
+            </div>
+          </div>
+        }
         <div class="total-card all">
-          <span>Total</span>
+          <span>Patrimônio (bancos + inv.)</span>
           <strong>{{ s.all | currencyBrl }}</strong>
         </div>
       </div>
@@ -31,8 +44,8 @@
       <section class="accounts-list">
         @if (!accounts().length) {
           <div class="empty">
-            <p>Nenhuma conta cadastrada</p>
-            <small>Cadastre o saldo que você tem hoje em cada banco ou corretora</small>
+            <p>Nenhuma conta ou cartão cadastrado</p>
+            <small>Cadastre bancos, cartões de crédito e corretoras</small>
           </div>
         }
 
@@ -46,7 +59,6 @@
                 (click)="selectAccount(a)"
               >
                 <div class="acc-top">
-                  <!-- Ícone bancário -->
                   <span class="acc-icon" [style.background]="a.color || '#3b82f6'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="3" y1="22" x2="21" y2="22"/>
@@ -67,6 +79,62 @@
           </ul>
         }
 
+        @if (creditAccounts().length) {
+          <h2>Cartões de crédito</h2>
+          <ul>
+            @for (a of creditAccounts(); track a.id) {
+              <li
+                class="account-card credit"
+                [class.selected]="selectedId() === a.id"
+                [class.limit-high]="(a.limitUsagePercent ?? 0) >= 80"
+                (click)="selectAccount(a)"
+              >
+                <div class="acc-top">
+                  <span class="acc-icon" [style.background]="a.color || '#f59e0b'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2"/>
+                      <line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                  </span>
+                  <strong>{{ a.name }}</strong>
+                  <button type="button" class="btn-icon" (click)="openEdit(a); $event.stopPropagation()">Editar</button>
+                </div>
+                <p class="balance">Usado: {{ accountBalanceLabel(a) }}</p>
+                @if ((a.futureInstallmentsBrl ?? a.futureInstallments ?? 0) > 0) {
+                  <small class="future-hint">inclui parcelas futuras</small>
+                }
+                <div class="limit-bar" [attr.aria-label]="'Uso do limite ' + (a.limitUsagePercent ?? 0) + '%'">
+                  <div
+                    class="limit-bar-fill"
+                    [style.width.%]="a.limitUsagePercent ?? 0"
+                    [class.warn]="(a.limitUsagePercent ?? 0) >= 70"
+                    [class.danger]="(a.limitUsagePercent ?? 0) >= 90"
+                  ></div>
+                </div>
+                <div class="credit-meta">
+                  <small>Limite {{ limitLabel(a) }}</small>
+                  <small>Disponível {{ availableLabel(a) }}</small>
+                </div>
+                @if (a.closingDay || a.dueDay) {
+                  <small class="credit-days">
+                    @if (a.closingDay) { Fecha dia {{ a.closingDay }} }
+                    @if (a.closingDay && a.dueDay) { · }
+                    @if (a.dueDay) { Vence dia {{ a.dueDay }} }
+                  </small>
+                }
+                @if (a.monthForecast; as fc) {
+                  <p class="month-forecast" [class.has-pending]="fc.pendingBrl > 0">
+                    Neste mês no cartão: <strong>{{ fc.totalBrl | currencyBrl }}</strong>
+                    @if (fc.pendingBrl > 0) {
+                      <span class="pending-hint">({{ fc.pendingBrl | currencyBrl }} ainda pendente)</span>
+                    }
+                  </p>
+                }
+              </li>
+            }
+          </ul>
+        }
+
         @if (investmentAccounts().length) {
           <h2>Contas de investimento</h2>
           <ul>
@@ -77,7 +145,6 @@
                 (click)="selectAccount(a)"
               >
                 <div class="acc-top">
-                  <!-- Ícone de investimento -->
                   <span class="acc-icon" [style.background]="a.color || '#a371f7'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
@@ -98,13 +165,26 @@
       <section class="statement-panel">
         @if (!selectedId()) {
           <div class="empty-state">
-            <p>Selecione uma conta para ver o extrato</p>
+            <p>Selecione uma conta ou cartão para ver o extrato</p>
           </div>
         } @else {
           @if (statement(); as st) {
             <div class="stmt-header">
               <h2>{{ st.name }}</h2>
-              <p class="stmt-balance">Saldo atual: <strong>{{ accountBalanceLabel(st) }}</strong></p>
+              @if (st.type === 'credit') {
+                <p class="stmt-balance">
+                  Dívida atual: <strong>{{ accountBalanceLabel(st) }}</strong>
+                  · Disponível: <strong>{{ availableLabel(st) }}</strong>
+                </p>
+                @if (st.monthForecast; as fc) {
+                  <p class="stmt-forecast">
+                    Previsão deste mês: <strong>{{ fc.totalBrl | currencyBrl }}</strong>
+                    <span class="muted"> ({{ fc.confirmedBrl | currencyBrl }} confirmado + {{ fc.pendingBrl | currencyBrl }} pendente)</span>
+                  </p>
+                }
+              } @else {
+                <p class="stmt-balance">Saldo atual: <strong>{{ accountBalanceLabel(st) }}</strong></p>
+              }
               <app-month-nav
                 [year]="year()"
                 [month]="month()"
@@ -119,10 +199,11 @@
                     (ngModelChange)="stmtKindFilter.set($event); applyStatementFilters()"
                   >
                     <option value="">Todos</option>
-                    <option value="income">Entradas</option>
-                    <option value="expense">Saídas</option>
+                    <option value="income">{{ st.type === 'credit' ? 'Pagamentos' : 'Entradas' }}</option>
+                    <option value="expense">{{ st.type === 'credit' ? 'Compras' : 'Saídas' }}</option>
                     <option value="investment">Aportes</option>
                     <option value="leisure">Lazer</option>
+                    <option value="transfer">Transferências</option>
                   </select>
                 </label>
                 <label class="search-field">
@@ -154,7 +235,7 @@
                     <th>Data</th>
                     <th>Descrição</th>
                     <th class="num">Valor</th>
-                    <th class="num">Saldo ({{ st.currency === 'EUR' ? '€ / R$' : 'R$' }})</th>
+                    <th class="num">{{ st.type === 'credit' ? 'Dívida' : 'Saldo' }} ({{ st.currency === 'EUR' ? '€ / R$' : 'R$' }})</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,7 +243,7 @@
                     <tr [class.opening]="line.kind === 'opening'">
                       <td>{{ line.date | slice:8:10 }}/{{ line.date | slice:5:7 }}</td>
                       <td>
-                        <span class="kind-tag">{{ lineKindLabel(line.kind) }}</span>
+                        <span class="kind-tag">{{ lineKindLabel(line.kind, st.type === 'credit') }}</span>
                         {{ line.description }}
                         @if (line.category) { <small>{{ line.category }}</small> }
                         @if (line.eurToBrl) {
@@ -188,17 +269,24 @@
 @if (showForm()) {
   <div class="modal-backdrop" (click)="cancelForm()">
     <div class="modal" (click)="$event.stopPropagation()">
-      <h3>{{ editing() ? 'Editar conta' : 'Nova conta' }}</h3>
+      <h3>
+        @if (editing()) {
+          Editar {{ typeLabel(form.type) | lowercase }}
+        } @else {
+          Novo {{ typeLabel(form.type) | lowercase }}
+        }
+      </h3>
 
       <label>
         <span>Nome</span>
-        <input [(ngModel)]="form.name" placeholder="Ex.: Nubank, XP, Caixa…" />
+        <input [(ngModel)]="form.name" [placeholder]="form.type === 'credit' ? 'Ex.: Nubank Visa, Inter Mastercard…' : 'Ex.: Nubank, XP, Caixa…'" />
       </label>
 
       <label>
         <span>Tipo</span>
-        <select [(ngModel)]="form.type">
+        <select [(ngModel)]="form.type" [disabled]="!!editing()">
           <option value="bank">Conta bancária</option>
+          <option value="credit">Cartão de crédito</option>
           <option value="investment">Conta de investimento</option>
         </select>
       </label>
@@ -211,16 +299,38 @@
         </select>
       </label>
 
-      <label>
-        <span>Saldo inicial (hoje) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
-        <input type="number" [(ngModel)]="form.initialBalance" step="0.01" />
-        @if (form.currency === 'EUR') {
-          <small class="hint">≈ {{ formInitialBrlPreview() | currencyBrl }} em reais (fallback {{ eurToBrl() }})</small>
-        }
-      </label>
+      @if (form.type === 'credit') {
+        <label>
+          <span>Limite do cartão {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <input type="number" [(ngModel)]="form.creditLimit" step="0.01" min="0" />
+        </label>
+        <div class="form-row">
+          <label>
+            <span>Dia de fechamento</span>
+            <input type="number" [(ngModel)]="form.closingDay" min="1" max="31" />
+          </label>
+          <label>
+            <span>Dia de vencimento</span>
+            <input type="number" [(ngModel)]="form.dueDay" min="1" max="31" />
+          </label>
+        </div>
+        <label>
+          <span>Dívida atual (fatura aberta) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <input type="number" [(ngModel)]="form.initialBalance" step="0.01" min="0" />
+          <small class="hint">Quanto você já deve neste cartão hoje. Compras aumentam; pagamentos diminuem.</small>
+        </label>
+      } @else {
+        <label>
+          <span>Saldo inicial (hoje) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <input type="number" [(ngModel)]="form.initialBalance" step="0.01" />
+          @if (form.currency === 'EUR') {
+            <small class="hint">≈ {{ formInitialBrlPreview() | currencyBrl }} em reais (fallback {{ eurToBrl() }})</small>
+          }
+        </label>
+      }
 
       <label>
-        <span>Data do saldo inicial</span>
+        <span>{{ form.type === 'credit' ? 'Data da dívida inicial' : 'Data do saldo inicial' }}</span>
         <input type="date" [(ngModel)]="form.initialBalanceDate" />
       </label>
 

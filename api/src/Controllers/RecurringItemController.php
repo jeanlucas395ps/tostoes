@@ -44,6 +44,14 @@ final class RecurringItemController
             $params[] = $kind;
         }
 
+        $installments = $_GET['installments'] ?? null;
+        if ($installments === '1' || $installments === 'true') {
+            $sql .= ' AND r.is_installment = 1';
+        } elseif ($kind === 'expense') {
+            // Gastos fixos clássicos: exclui compras parceladas
+            $sql .= ' AND r.is_installment = 0';
+        }
+
         $sql .= ' ORDER BY r.kind, r.due_day, r.sort_order, r.name';
 
         $pdo = Database::connection();
@@ -71,8 +79,9 @@ final class RecurringItemController
             'INSERT INTO recurring_items
              (user_id, planning_id, kind, name, category, region, custom_tab_id, item_category_id,
               responsible, responsible_user_id, due_day, investment_type_id, financial_account_id,
-              source_financial_account_id, default_amount_brl, currency, amount_original, is_fixed, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)'
+              source_financial_account_id, default_amount_brl, currency, amount_original, is_fixed,
+              is_installment, start_date, end_date, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId,
@@ -92,6 +101,9 @@ final class RecurringItemController
             $money['amountBrl'],
             $money['currency'],
             $money['amount'],
+            $body['isInstallment'] ? 1 : 0,
+            $body['startDate'],
+            $body['endDate'],
             $body['sortOrder'],
         ]);
         $id = (int) $pdo->lastInsertId();
@@ -118,7 +130,8 @@ final class RecurringItemController
                responsible = ?, responsible_user_id = ?,
                due_day = ?, investment_type_id = ?, financial_account_id = ?,
                source_financial_account_id = ?,
-               default_amount_brl = ?, currency = ?, amount_original = ?
+               default_amount_brl = ?, currency = ?, amount_original = ?,
+               is_installment = ?, start_date = ?, end_date = ?
              WHERE id = ? AND planning_id = ? AND active = 1'
         );
         $stmt->execute([
@@ -137,6 +150,9 @@ final class RecurringItemController
             $money['amountBrl'],
             $money['currency'],
             $money['amount'],
+            $body['isInstallment'] ? 1 : 0,
+            $body['startDate'],
+            $body['endDate'],
             $id,
             $planningId,
         ]);
@@ -278,6 +294,24 @@ final class RecurringItemController
             }
         }
 
+        $isInstallment = !empty($body['isInstallment']);
+        $startDate = self::parseDateOrNull($body['startDate'] ?? null);
+        $endDate = self::parseDateOrNull($body['endDate'] ?? null);
+        if ($isInstallment) {
+            if ($kind !== 'expense') {
+                Response::error('Compras parceladas devem ser do tipo gasto.', 422);
+            }
+            if ($startDate === null || $endDate === null) {
+                Response::error('Informe início e fim das parcelas.', 422);
+            }
+            if ($startDate > $endDate) {
+                Response::error('A data de início deve ser anterior ou igual à data de fim.', 422);
+            }
+        } else {
+            $startDate = null;
+            $endDate = null;
+        }
+
         return [
             'kind' => $kind,
             'name' => $name,
@@ -300,7 +334,27 @@ final class RecurringItemController
             'financialAccountId' => isset($body['financialAccountId']) ? (int) $body['financialAccountId'] : null,
             'sourceFinancialAccountId' => isset($body['sourceFinancialAccountId'])
                 ? (int) $body['sourceFinancialAccountId'] : null,
+            'isInstallment' => $isInstallment,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ];
+    }
+
+    private static function parseDateOrNull(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $raw = trim((string) $value);
+        // Aceita YYYY-MM → primeiro dia do mês
+        if (preg_match('/^\d{4}-\d{2}$/', $raw)) {
+            $raw .= '-01';
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            Response::error('Data inválida.', 422);
+        }
+
+        return $raw;
     }
 
     /** @param array<string, mixed> $body */
@@ -312,7 +366,7 @@ final class RecurringItemController
             return null;
         }
 
-        return AccountService::validateAccountId($pdo, $planningId, $id, 'bank');
+        return AccountService::validatePaymentSourceAccountId($pdo, $planningId, $id);
     }
 
     /** @param array<string, mixed> $body */
@@ -358,6 +412,9 @@ final class RecurringItemController
             'sourceFinancialAccountName' => $row['source_financial_account_name'] ?? null,
             'defaultAmountBrl' => (float) ($row['default_amount_brl'] ?? 0),
             'isFixed' => (bool) ($row['is_fixed'] ?? true),
+            'isInstallment' => (bool) ($row['is_installment'] ?? false),
+            'startDate' => $row['start_date'] ?? null,
+            'endDate' => $row['end_date'] ?? null,
         ], $row), $row);
     }
 }

@@ -64,15 +64,17 @@ final class AccountFlowGraphService
             'SELECT e.*, fg.name AS goal_name, fg.color AS goal_color,
                     it.color AS investment_type_color,
                     ic.id AS item_category_id, ic.name AS item_category_name,
-                    ct.id AS custom_tab_id, ct.name AS custom_tab_name
+                    ct.id AS custom_tab_id, ct.name AS custom_tab_name,
+                    ri.is_installment AS is_installment
              FROM month_plan_entries e
              LEFT JOIN financial_goals fg ON fg.id = e.financial_goal_id
              LEFT JOIN investment_types it ON it.id = e.investment_type_id
              LEFT JOIN planning_item_categories ic ON ic.id = e.item_category_id
              LEFT JOIN planning_custom_tabs ct ON ct.id = e.custom_tab_id
+             LEFT JOIN recurring_items ri ON ri.id = e.recurring_item_id
              WHERE e.planning_id = ? AND e.year = ? AND e.month = ?
                AND e.status = "pending"
-               AND e.kind IN ("income", "expense", "investment")
+               AND e.kind IN ("income", "expense", "investment", "transfer")
                AND ' . $scopeSql . '
              ORDER BY e.due_day, e.name'
         );
@@ -92,6 +94,82 @@ final class AccountFlowGraphService
             $isGoal = !empty($row['financial_goal_id']);
             $label = (string) $row['name'];
             $entryId = (int) $row['id'];
+
+            if ($kind === 'transfer') {
+                $sourceId = !empty($row['source_financial_account_id'])
+                    ? (int) $row['source_financial_account_id'] : null;
+                $targetId = !empty($row['financial_account_id'])
+                    ? (int) $row['financial_account_id'] : null;
+                $color = '#0ea5e9';
+
+                $fromNode = $sourceId
+                    ? self::ensureAccountNode($pdo, $planningId, $nodes, $sourceId)
+                    : null;
+                $toNode = $targetId
+                    ? self::ensureAccountNode($pdo, $planningId, $nodes, $targetId)
+                    : null;
+
+                if ($fromNode && $toNode) {
+                    $edges[] = self::edge(
+                        $fromNode,
+                        $toNode,
+                        $amount,
+                        'transfer',
+                        $label,
+                        'transfer',
+                        $color,
+                        $entryId,
+                        $row
+                    );
+                } elseif ($toNode && !$fromNode) {
+                    $unassigned[] = [
+                        'entryId' => $entryId,
+                        'label' => $label,
+                        'amountBrl' => $amount,
+                        'kind' => 'transfer',
+                        'subKind' => 'transfer',
+                        'color' => $color,
+                        'targetId' => $toNode,
+                    ];
+                    $edges[] = self::edge(
+                        'unassigned:' . $entryId,
+                        $toNode,
+                        $amount,
+                        'transfer',
+                        $label . ' (origem a definir)',
+                        'transfer',
+                        $color,
+                        $entryId,
+                        $row,
+                        true
+                    );
+                } elseif ($fromNode && !$toNode) {
+                    $destId = 'xfer:' . $entryId;
+                    $nodes[$destId] = self::flowNode($destId, 'transfer', $label, $color);
+                    $edges[] = self::edge(
+                        $fromNode,
+                        $destId,
+                        $amount,
+                        'transfer',
+                        $label . ' (destino a definir)',
+                        'transfer',
+                        $color,
+                        $entryId,
+                        $row,
+                        true
+                    );
+                    $unassigned[] = [
+                        'entryId' => $entryId,
+                        'label' => $label,
+                        'amountBrl' => $amount,
+                        'kind' => 'transfer',
+                        'subKind' => 'transfer',
+                        'color' => $color,
+                        'targetId' => $destId,
+                    ];
+                }
+                continue;
+            }
 
             if ($kind === 'investment' || $isGoal) {
                 $bankId = !empty($row['source_financial_account_id'])
@@ -163,21 +241,28 @@ final class AccountFlowGraphService
             }
 
             if ($kind === 'expense') {
-                $bankId = !empty($row['source_financial_account_id'])
+                $sourceId = !empty($row['source_financial_account_id'])
                     ? (int) $row['source_financial_account_id'] : null;
                 $destId = 'exp:' . $entryId;
-                $nodes[$destId] = self::flowNode($destId, 'expense', $label, '#EF4444');
+                $isInstallment = !empty($row['is_installment']);
+                $nodeType = $isInstallment ? 'installment' : 'expense';
+                $subKind = $isInstallment ? 'installment' : 'expense';
+                $color = $isInstallment ? '#f59e0b' : '#EF4444';
+                $nodes[$destId] = self::flowNode($destId, $nodeType, $label, $color);
 
-                if ($bankId) {
-                    self::ensureBankNode($pdo, $planningId, $nodes, $bankId);
+                $fromNode = $sourceId
+                    ? self::ensureAccountNode($pdo, $planningId, $nodes, $sourceId)
+                    : null;
+
+                if ($fromNode) {
                     $edges[] = self::edge(
-                        'bank:' . $bankId,
+                        $fromNode,
                         $destId,
                         $amount,
                         'expense',
                         $label,
-                        'expense',
-                        '#EF4444',
+                        $subKind,
+                        $color,
                         $entryId,
                         $row
                     );
@@ -187,8 +272,8 @@ final class AccountFlowGraphService
                         'label' => $label,
                         'amountBrl' => $amount,
                         'kind' => 'expense',
-                        'subKind' => 'expense',
-                        'color' => '#EF4444',
+                        'subKind' => $subKind,
+                        'color' => $color,
                         'targetId' => $destId,
                     ];
                     $edges[] = self::edge(
@@ -197,8 +282,8 @@ final class AccountFlowGraphService
                         $amount,
                         'expense',
                         $label . ' (conta a definir)',
-                        'expense',
-                        '#EF4444',
+                        $subKind,
+                        $color,
                         $entryId,
                         $row,
                         true
@@ -218,18 +303,20 @@ final class AccountFlowGraphService
                 $nodes[$srcId] = self::flowNode($srcId, 'income', $label, '#10B981');
 
                 if ($bankId) {
-                    self::ensureBankNode($pdo, $planningId, $nodes, $bankId);
-                    $edges[] = self::edge(
-                        $srcId,
-                        'bank:' . $bankId,
-                        $amount,
-                        'income',
-                        $label,
-                        'income',
-                        '#10B981',
-                        $entryId,
-                        $row
-                    );
+                    $bankNode = self::ensureAccountNode($pdo, $planningId, $nodes, $bankId);
+                    if ($bankNode) {
+                        $edges[] = self::edge(
+                            $srcId,
+                            $bankNode,
+                            $amount,
+                            'income',
+                            $label,
+                            'income',
+                            '#10B981',
+                            $entryId,
+                            $row
+                        );
+                    }
                 } else {
                     $unassigned[] = [
                         'entryId' => $entryId,
@@ -256,7 +343,14 @@ final class AccountFlowGraphService
             }
         }
 
-        return self::pack($pdo, $planningId, $year, $month, $packMode, array_values($nodes), $edges, $unassigned);
+        return self::pack(
+            $pdo,
+            $planningId,
+            $year,
+            $month,
+            $packMode,
+            ...self::withCreditCardsAndBills($pdo, $planningId, $year, $month, $nodes, $edges, $unassigned)
+        );
     }
 
     /** @return array<string, mixed> */
@@ -267,15 +361,17 @@ final class AccountFlowGraphService
                     mpe.id AS mpe_id, mpe.financial_goal_id, mpe.source_financial_account_id AS mpe_source_id,
                     mpe.financial_account_id AS mpe_target_id, mpe.item_category_id, mpe.custom_tab_id,
                     mpe.category AS mpe_category, fg.color AS goal_color,
-                    ic.name AS item_category_name, ct.name AS custom_tab_name
+                    ic.name AS item_category_name, ct.name AS custom_tab_name,
+                    ri.is_installment AS is_installment
              FROM transactions t
              LEFT JOIN financial_accounts fa ON fa.id = t.account_id
              LEFT JOIN month_plan_entries mpe ON mpe.transaction_id = t.id AND mpe.planning_id = t.planning_id
              LEFT JOIN financial_goals fg ON fg.id = mpe.financial_goal_id
              LEFT JOIN planning_item_categories ic ON ic.id = mpe.item_category_id
              LEFT JOIN planning_custom_tabs ct ON ct.id = mpe.custom_tab_id
+             LEFT JOIN recurring_items ri ON ri.id = mpe.recurring_item_id
              WHERE t.planning_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ?
-               AND t.kind IN ("income", "expense", "investment")
+               AND t.kind IN ("income", "expense", "investment", "transfer")
              ORDER BY t.transaction_date, t.id'
         );
         $stmt->execute([$planningId, $year, $month]);
@@ -283,6 +379,7 @@ final class AccountFlowGraphService
         $nodes = [];
         $edges = [];
         $seenPairs = [];
+        $pendingTransfers = [];
 
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $amount = (float) $row['amount_brl'];
@@ -296,6 +393,53 @@ final class AccountFlowGraphService
             $txId = (int) $row['id'];
             $isGoal = !empty($row['financial_goal_id']);
             $accountType = (string) ($row['fa_type'] ?? 'bank');
+
+            if ($kind === 'transfer') {
+                if (AccountService::isTransferInflow($row)) {
+                    continue;
+                }
+                $fromNode = self::ensureAccountNode($pdo, $planningId, $nodes, $accountId, $row);
+                if (!$fromNode) {
+                    continue;
+                }
+                $targetId = !empty($row['mpe_target_id']) ? (int) $row['mpe_target_id'] : null;
+                if (!$targetId && preg_match('/\(#(\d+)\)/', (string) ($row['notes'] ?? ''), $m)) {
+                    $linkedId = (int) $m[1];
+                    $linkStmt = $pdo->prepare(
+                        'SELECT account_id FROM transactions WHERE id = ? AND planning_id = ? LIMIT 1'
+                    );
+                    $linkStmt->execute([$linkedId, $planningId]);
+                    $linkedAccount = $linkStmt->fetchColumn();
+                    if ($linkedAccount !== false) {
+                        $targetId = (int) $linkedAccount;
+                    }
+                }
+                if ($targetId) {
+                    $toNode = self::ensureAccountNode($pdo, $planningId, $nodes, $targetId);
+                    if ($toNode) {
+                        $edges[] = self::edge(
+                            $fromNode,
+                            $toNode,
+                            $amount,
+                            'transfer',
+                            $label,
+                            'transfer',
+                            '#0ea5e9',
+                            $txId,
+                            $row
+                        );
+                    }
+                } else {
+                    $pendingTransfers[] = [
+                        'fromNode' => $fromNode,
+                        'amount' => $amount,
+                        'label' => $label,
+                        'txId' => $txId,
+                        'row' => $row,
+                    ];
+                }
+                continue;
+            }
 
             if ($kind === 'investment' && $accountType === 'bank') {
                 self::ensureBankNode($pdo, $planningId, $nodes, $accountId, $row);
@@ -329,6 +473,13 @@ final class AccountFlowGraphService
                 if ($destType === 'investment') {
                     self::ensureInvNode($pdo, $planningId, $nodes, $destAccountId, $destAcc ?: $row);
                     $targetNode = 'inv:' . $destAccountId;
+                } elseif ($destType === 'credit') {
+                    self::ensureCreditNode($pdo, $planningId, $nodes, $destAccountId, $destAcc ?: [
+                        'fa_name' => $destAcc['name'] ?? $row['fa_name'] ?? 'Cartão',
+                        'fa_color' => $destAcc['color'] ?? '#f59e0b',
+                        'fa_type' => 'credit',
+                    ]);
+                    $targetNode = 'credit:' . $destAccountId;
                 } else {
                     self::ensureBankNode($pdo, $planningId, $nodes, $destAccountId, $destAcc ?: $row);
                     $targetNode = 'bank:' . $destAccountId;
@@ -349,16 +500,27 @@ final class AccountFlowGraphService
             }
 
             if ($kind === 'expense' || ($kind === 'investment' && $accountType === 'bank')) {
-                self::ensureBankNode($pdo, $planningId, $nodes, $accountId, $row);
+                $fromNode = self::ensureAccountNode($pdo, $planningId, $nodes, $accountId, $row);
+                if (!$fromNode) {
+                    continue;
+                }
                 $destId = 'tx:' . $txId;
-                $color = $isGoal ? (string) ($row['goal_color'] ?? '#00AB55') : '#EF4444';
-                $sub = $kind === 'investment' ? ($isGoal ? 'goal' : 'investment') : 'expense';
+                $isInstallment = $kind === 'expense' && !empty($row['is_installment']);
                 if ($kind === 'investment') {
-                    $color = '#8b5cf6';
+                    $sub = $isGoal ? 'goal' : 'investment';
+                    $color = $isGoal
+                        ? (string) ($row['goal_color'] ?? '#00AB55')
+                        : '#8b5cf6';
+                } elseif ($isInstallment) {
+                    $sub = 'installment';
+                    $color = '#f59e0b';
+                } else {
+                    $sub = 'expense';
+                    $color = '#EF4444';
                 }
                 $nodes[$destId] = self::flowNode($destId, $sub, $label, $color);
                 $edges[] = self::edge(
-                    'bank:' . $accountId,
+                    $fromNode,
                     $destId,
                     $amount,
                     $kind,
@@ -430,6 +592,23 @@ final class AccountFlowGraphService
             }
         }
 
+        foreach ($pendingTransfers as $xfer) {
+            $destId = 'tx-xfer:' . $xfer['txId'];
+            $nodes[$destId] = self::flowNode($destId, 'transfer', $xfer['label'], '#0ea5e9');
+            $edges[] = self::edge(
+                $xfer['fromNode'],
+                $destId,
+                $xfer['amount'],
+                'transfer',
+                $xfer['label'],
+                'transfer',
+                '#0ea5e9',
+                $xfer['txId'],
+                $xfer['row'],
+                true
+            );
+        }
+
         $invIncome = $pdo->prepare(
             'SELECT t.*, fa.id AS fa_id, fa.name AS fa_name, fa.type AS fa_type, fa.color AS fa_color,
                     mpe.financial_goal_id, fg.color AS goal_color
@@ -451,7 +630,180 @@ final class AccountFlowGraphService
             self::ensureInvNode($pdo, $planningId, $nodes, $invId, $row);
         }
 
-        return self::pack($pdo, $planningId, $year, $month, 'confirmed', array_values($nodes), $edges, []);
+        return self::pack(
+            $pdo,
+            $planningId,
+            $year,
+            $month,
+            'confirmed',
+            ...self::withCreditCardsAndBills($pdo, $planningId, $year, $month, $nodes, $edges, [])
+        );
+    }
+
+    /**
+     * Sempre inclui cartões ativos e, se houver cobranças no mês, a fatura a pagar (banco → cartão).
+     *
+     * @param array<string, array<string, mixed>> $nodes
+     * @param list<array<string, mixed>> $edges
+     * @param list<array<string, mixed>> $unassigned
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>, 2: list<array<string, mixed>>}
+     */
+    private static function withCreditCardsAndBills(
+        PDO $pdo,
+        int $planningId,
+        int $year,
+        int $month,
+        array $nodes,
+        array $edges,
+        array $unassigned
+    ): array {
+        $stmt = $pdo->prepare(
+            "SELECT id, name, type, color, due_day, closing_day
+             FROM financial_accounts
+             WHERE planning_id = ? AND active = 1 AND type = 'credit'
+             ORDER BY name"
+        );
+        $stmt->execute([$planningId]);
+        $cards = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($cards as $acc) {
+            $accountId = (int) $acc['id'];
+            self::ensureCreditNode($pdo, $planningId, $nodes, $accountId, [
+                'fa_name' => $acc['name'],
+                'fa_color' => $acc['color'] ?? '#f59e0b',
+                'fa_type' => 'credit',
+            ]);
+
+            $forecast = AccountService::creditMonthForecast(
+                $pdo,
+                $planningId,
+                $accountId,
+                $year,
+                $month
+            );
+            $total = (float) ($forecast['totalBrl'] ?? 0);
+            if ($total <= 0) {
+                continue;
+            }
+
+            // Já existe aresta de pagamento banco→cartão neste grafo? (confirmado)
+            $creditNode = 'credit:' . $accountId;
+            $alreadyPaidEdge = false;
+            foreach ($edges as $e) {
+                if (
+                    ($e['to'] ?? '') === $creditNode
+                    && ($e['kind'] ?? '') === 'transfer'
+                ) {
+                    $alreadyPaidEdge = true;
+                    break;
+                }
+            }
+
+            $dueDay = isset($acc['due_day']) && $acc['due_day'] !== null
+                ? (int) $acc['due_day'] : null;
+            $payLabel = $dueDay
+                ? 'Pagar fatura (vence dia ' . $dueDay . ')'
+                : 'Pagar fatura , ' . $acc['name'];
+
+            // Compras do cartão já ligam credit → expense; a fatura é o que o banco precisa pagar.
+            if (!$alreadyPaidEdge) {
+                $synthId = -900000 - $accountId;
+                $unassigned[] = [
+                    'entryId' => $synthId,
+                    'label' => $payLabel,
+                    'amountBrl' => $total,
+                    'kind' => 'transfer',
+                    'subKind' => 'bill',
+                    'color' => '#f59e0b',
+                    'targetId' => $creditNode,
+                ];
+                $edges[] = self::edge(
+                    'unassigned:' . $synthId,
+                    $creditNode,
+                    $total,
+                    'transfer',
+                    $payLabel,
+                    'bill',
+                    '#f59e0b',
+                    $synthId,
+                    [],
+                    true
+                );
+            }
+        }
+
+        return [array_values($nodes), $edges, $unassigned];
+    }
+
+    /** Garante nó bank:, inv: ou credit: conforme o tipo da conta. @return string|null node id */
+    private static function ensureAccountNode(
+        PDO $pdo,
+        int $planningId,
+        array &$nodes,
+        int $accountId,
+        ?array $row = null
+    ): ?string {
+        $type = (string) ($row['fa_type'] ?? ($row['type'] ?? ''));
+        if ($type === '' || ($row && empty($row['fa_name']) && empty($row['name']))) {
+            $acc = self::fetchAccount($pdo, $planningId, $accountId);
+            if (!$acc) {
+                return null;
+            }
+            $type = (string) ($acc['type'] ?? 'bank');
+            $row = array_merge($row ?? [], [
+                'fa_name' => $acc['name'],
+                'fa_color' => $acc['color'] ?? null,
+                'fa_type' => $type,
+            ]);
+        }
+        if ($type === 'investment') {
+            self::ensureInvNode($pdo, $planningId, $nodes, $accountId, $row);
+
+            return 'inv:' . $accountId;
+        }
+        if ($type === 'credit') {
+            self::ensureCreditNode($pdo, $planningId, $nodes, $accountId, $row);
+
+            return 'credit:' . $accountId;
+        }
+        self::ensureBankNode($pdo, $planningId, $nodes, $accountId, $row);
+
+        return 'bank:' . $accountId;
+    }
+
+    /** @param array<string, array<string, mixed>> $nodes */
+    private static function ensureCreditNode(
+        PDO $pdo,
+        int $planningId,
+        array &$nodes,
+        int $accountId,
+        ?array $row = null
+    ): void {
+        $key = 'credit:' . $accountId;
+        if (isset($nodes[$key])) {
+            return;
+        }
+        if ($row && !empty($row['fa_name'])) {
+            $nodes[$key] = [
+                'id' => $key,
+                'type' => 'credit',
+                'label' => $row['fa_name'],
+                'color' => $row['fa_color'] ?? '#f59e0b',
+                'accountId' => $accountId,
+            ];
+
+            return;
+        }
+        $acc = self::fetchAccount($pdo, $planningId, $accountId);
+        if ($acc) {
+            $nodes[$key] = [
+                'id' => $key,
+                'type' => 'credit',
+                'label' => $acc['name'],
+                'color' => $acc['color'] ?? '#f59e0b',
+                'accountId' => $accountId,
+            ];
+        }
     }
 
     /** Leg espelho banco → investimento ao confirmar aporte (não é recebimento operacional). */
@@ -544,7 +896,7 @@ final class AccountFlowGraphService
     private static function fetchAccount(PDO $pdo, int $planningId, int $id): ?array
     {
         $stmt = $pdo->prepare(
-            'SELECT id, name, type, color FROM financial_accounts
+            'SELECT id, name, type, color, due_day FROM financial_accounts
              WHERE id = ? AND planning_id = ? AND active = 1'
         );
         $stmt->execute([$id, $planningId]);
@@ -645,7 +997,11 @@ final class AccountFlowGraphService
                 'name' => $row['name'],
                 'type' => $type,
                 'color' => $row['color'] ?? ($type === 'investment' ? '#2065D1' : '#3b82f6'),
-                'nodeId' => ($type === 'investment' ? 'inv:' : 'bank:') . (int) $row['id'],
+                'nodeId' => match ($type) {
+                    'investment' => 'inv:' . (int) $row['id'],
+                    'credit' => 'credit:' . (int) $row['id'],
+                    default => 'bank:' . (int) $row['id'],
+                },
             ];
         }
 
@@ -701,11 +1057,14 @@ final class AccountFlowGraphService
         array $edges,
         array $unassigned
     ): array {
-        $banks = array_values(array_filter($nodes, static fn (array $n) => $n['type'] === 'bank'));
+        $banks = array_values(array_filter(
+            $nodes,
+            static fn (array $n) => in_array($n['type'], ['bank', 'credit'], true)
+        ));
         $investments = array_values(array_filter($nodes, static fn (array $n) => $n['type'] === 'investment'));
         $flows = array_values(array_filter(
             $nodes,
-            static fn (array $n) => !in_array($n['type'], ['bank', 'investment'], true)
+            static fn (array $n) => !in_array($n['type'], ['bank', 'investment', 'credit'], true)
         ));
 
         $layout = self::layoutNodes($banks, $investments, $flows, $unassigned);

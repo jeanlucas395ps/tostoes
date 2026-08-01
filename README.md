@@ -1,6 +1,6 @@
 # Tostoes
 
-**Planejamento financeiro compartilhado** para casais e famílias — previsto vs real, metas, contas e convites por e-mail.
+**Planejamento financeiro compartilhado** para casais e famílias , previsto vs real, metas, contas e convites por e-mail.
 
 [![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net/)
@@ -10,9 +10,9 @@
 
 ---
 
-## Começar em 1 comando (API + banco)
+## Começar em 1 comando (API)
 
-**Pré-requisitos:** [Docker](https://docs.docker.com/get-docker/), [Node.js](https://nodejs.org/) 20+
+**Pré-requisitos:** [Docker](https://docs.docker.com/get-docker/), [Node.js](https://nodejs.org/) 20+, MySQL local
 
 ```bash
 git clone https://github.com/jeanlucas395ps/tostoes.git
@@ -30,15 +30,18 @@ cd gastos-app && npm install && npm start
 |-------|------|
 | App | http://localhost:4200 |
 | API | http://localhost:8090/api |
-| Login | **admin** / **admin** |
+| MySQL | `tostoes` em `localhost:3306` (máquina local) |
 
-O `setup.sh` copia `.env.example` → `.env` e sobe MySQL + API. A migração roda automaticamente no container.
+O `setup.sh` sobe só a **API** no Docker e conecta no MySQL da sua máquina (`host.docker.internal`).
 
 ---
 
 ## Setup manual
 
 ```bash
+# MySQL local
+mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS tostoes CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
 cp api/.env.example api/.env
 cp gastos-app/.env.example gastos-app/.env
 docker compose up -d --build

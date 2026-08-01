@@ -122,7 +122,7 @@ final class MonthPlanController
         if ($year < 2000 || $month < 1 || $month > 12) {
             Response::error('Ano/mês inválidos.', 422);
         }
-        if (!in_array($kind, ['income', 'expense', 'investment', 'leisure'], true)) {
+        if (!in_array($kind, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
             Response::error('Tipo inválido.', 422);
         }
 
@@ -134,14 +134,34 @@ final class MonthPlanController
         $pdo = Database::connection();
         $responsible = ResponsibleUser::parseFromBody($pdo, $body, $planningId);
         $money = MoneyHelper::parseInput($pdo, $planningId, $body);
-        $taxonomy = PlanningTaxonomyController::resolveEntryTaxonomy($pdo, $planningId, $body, 'Geral');
+        $taxonomy = $kind === 'transfer'
+            ? ['category' => 'Transferência', 'region' => 'geral', 'customTabId' => null, 'itemCategoryId' => null]
+            : PlanningTaxonomyController::resolveEntryTaxonomy($pdo, $planningId, $body, 'Geral');
         $ownerId = PlanningService::ownerUserId($pdo, $planningId);
+        $sourceAccountId = !empty($body['sourceFinancialAccountId'] ?? $body['accountId'] ?? null)
+            ? AccountService::validateAccountId(
+                $pdo,
+                $planningId,
+                (int) ($body['sourceFinancialAccountId'] ?? $body['accountId'])
+            )
+            : null;
+        $targetAccountId = !empty($body['financialAccountId'] ?? $body['targetAccountId'] ?? null)
+            ? AccountService::validateAccountId(
+                $pdo,
+                $planningId,
+                (int) ($body['financialAccountId'] ?? $body['targetAccountId'])
+            )
+            : null;
+        if ($kind === 'transfer' && $sourceAccountId && $targetAccountId && $sourceAccountId === $targetAccountId) {
+            Response::error('Conta de saída e entrada devem ser diferentes.', 422);
+        }
         $stmt = $pdo->prepare(
             'INSERT INTO month_plan_entries
              (user_id, planning_id, year, month, kind, name, category, region, custom_tab_id, item_category_id,
               responsible, responsible_user_id, due_day, investment_type_id, financial_account_id,
+              source_financial_account_id,
               suggested_amount_brl, currency, suggested_amount, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId,
@@ -155,20 +175,18 @@ final class MonthPlanController
             $taxonomy['customTabId'],
             $taxonomy['itemCategoryId'],
             $responsible['responsible'],
-            $responsible['responsibleUserId'],
+            $responsible['responsibleUserId'] ?? null,
             isset($body['dueDay']) ? (int) $body['dueDay'] : (int) date('j'),
-            $body['investmentTypeId'] ?? null,
-            $body['financialAccountId'] ?? null,
+            $kind === 'investment' ? ($body['investmentTypeId'] ?? null) : null,
+            $kind === 'transfer' ? $targetAccountId : ($body['financialAccountId'] ?? null),
+            $kind === 'transfer' ? $sourceAccountId : null,
             $money['amountBrl'],
             $money['currency'],
             $money['amount'],
             'pending',
         ]);
 
-        Response::json(
-            MonthPlanService::getPlan($pdo, $planningId, $year, $month),
-            201
-        );
+        Response::json(MonthPlanService::getPlan($pdo, $planningId, $year, $month), 201);
     }
 
     public static function update(int $id): void
@@ -193,7 +211,7 @@ final class MonthPlanController
         $isVariable = $entry['recurring_item_id'] === null;
         if ($isVariable) {
             $kind = $body['kind'] ?? $entry['kind'];
-            if (!in_array($kind, ['income', 'expense', 'investment', 'leisure'], true)) {
+            if (!in_array($kind, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
                 Response::error('Tipo inválido.', 422);
             }
             $name = trim((string) ($body['name'] ?? $entry['name']));
@@ -363,6 +381,83 @@ final class MonthPlanController
                         $planningId,
                     ]);
                 $accountsToRefresh[] = $transfer['investmentAccountId'];
+            } elseif ($entry['kind'] === 'transfer') {
+                $sourceId = (int) ($body['accountId'] ?? $body['sourceAccountId'] ?? $entry['source_financial_account_id'] ?? 0);
+                $targetId = (int) ($body['targetAccountId'] ?? $entry['financial_account_id'] ?? 0);
+                $accounts = AccountService::validateAccountTransfer(
+                    $pdo,
+                    $planningId,
+                    $sourceId,
+                    $targetId
+                );
+                $sourceName = self::fetchAccountName($pdo, $planningId, $accounts['sourceAccountId']);
+                $targetName = self::fetchAccountName($pdo, $planningId, $accounts['targetAccountId']);
+
+                $moneyOut = MoneyHelper::parseInput($pdo, $planningId, [
+                    'amount' => $body['amountOut'] ?? $body['amount'] ?? $money['amount'],
+                    'currency' => $body['currencyOut'] ?? $body['currency'] ?? $money['currency'],
+                    'transactionDate' => $date,
+                ]);
+                $moneyIn = MoneyHelper::parseInput($pdo, $planningId, [
+                    'amount' => $body['amountIn'] ?? $body['amountOut'] ?? $body['amount'] ?? $money['amount'],
+                    'currency' => $body['currencyIn'] ?? $body['currencyOut'] ?? $body['currency'] ?? $money['currency'],
+                    'transactionDate' => $date,
+                ]);
+                if ($moneyOut['amount'] <= 0 || $moneyIn['amount'] <= 0) {
+                    Response::error('Informe valores de saída e entrada maiores que zero.', 422);
+                }
+
+                $txId = self::insertTransaction($pdo, [
+                    'userId' => $ownerId,
+                    'planningId' => $planningId,
+                    'accountId' => $accounts['sourceAccountId'],
+                    'registeredBy' => $registeredBy,
+                    'date' => $date,
+                    'kind' => 'transfer',
+                    'description' => $entry['name'],
+                    'amount' => $moneyOut['amount'],
+                    'currency' => $moneyOut['currency'],
+                    'amountBrl' => $moneyOut['amountBrl'],
+                    'eurToBrl' => $moneyOut['eurToBrl'],
+                    'category' => $entry['category'] ?: 'Transferência',
+                    'region' => $entry['region'],
+                    'responsible' => $entry['responsible'],
+                    'responsibleUserId' => $entry['responsible_user_id'] ?? null,
+                    'investmentTypeId' => null,
+                    'notes' => "Transferência → {$targetName}",
+                ]);
+
+                $inTxId = self::insertTransaction($pdo, [
+                    'userId' => $ownerId,
+                    'planningId' => $planningId,
+                    'accountId' => $accounts['targetAccountId'],
+                    'registeredBy' => $registeredBy,
+                    'date' => $date,
+                    'kind' => 'transfer',
+                    'description' => $entry['name'],
+                    'amount' => $moneyIn['amount'],
+                    'currency' => $moneyIn['currency'],
+                    'amountBrl' => $moneyIn['amountBrl'],
+                    'eurToBrl' => $moneyIn['eurToBrl'],
+                    'category' => $entry['category'] ?: 'Transferência',
+                    'region' => $entry['region'],
+                    'responsible' => $entry['responsible'],
+                    'responsibleUserId' => $entry['responsible_user_id'] ?? null,
+                    'investmentTypeId' => null,
+                    'notes' => "Transferência ← {$sourceName} (#{$txId})",
+                ]);
+
+                $pdo->prepare('UPDATE transactions SET notes = ? WHERE id = ? AND planning_id = ?')
+                    ->execute([
+                        "Transferência → {$targetName} (#{$inTxId})",
+                        $txId,
+                        $planningId,
+                    ]);
+
+                // confirmed_amount guarda a saída
+                $money = $moneyOut;
+                $accountsToRefresh[] = $accounts['sourceAccountId'];
+                $accountsToRefresh[] = $accounts['targetAccountId'];
             } else {
                 $accountId = AccountService::validateAccountId(
                     $pdo,

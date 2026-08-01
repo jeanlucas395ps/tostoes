@@ -1,6 +1,6 @@
 # Funcionalidades do sistema Gastos
 
-Documentação das funcionalidades do aplicativo **Tostoes** — controle financeiro compartilhado (planejamentos, casal ou família). O sistema separa **valores reais lançados** de **metas planejadas**, com foco em clareza mensal no estilo de apps como Mobills.
+Documentação das funcionalidades do aplicativo **Tostoes** , controle financeiro compartilhado (planejamentos, casal ou família). O sistema separa **valores reais lançados** de **metas planejadas**, com foco em clareza mensal no estilo de apps como Mobills.
 
 ---
 

@@ -40,6 +40,8 @@ export interface FixedPageMeta {
   accent: string;
   categoryDefault: string;
   userOverviewTabs?: boolean;
+  /** Compras parceladas (gasto com início/fim). */
+  installmentMode?: boolean;
 }
 
 export interface UserOverviewTab {
@@ -101,12 +103,17 @@ export class FixedItemsComponent implements OnInit {
     amount?: number;
     newCategoryName?: string;
     newCategoryIcon?: string;
+    /** YYYY-MM no formulário de parcelas */
+    startMonth?: string;
+    endMonth?: string;
+    installmentCount?: number;
   } = {};
 
   isInvestment = computed(() => this.meta().kind === 'investment');
+  isInstallmentMode = computed(() => this.meta().installmentMode === true);
   usesCustomTabs = computed(() => {
     const k = this.meta().kind;
-    return k === 'expense' || k === 'income';
+    return (k === 'expense' || k === 'income') && !this.isInstallmentMode();
   });
 
   useUserOverviewTabs = computed(() => this.meta().userOverviewTabs === true);
@@ -335,6 +342,7 @@ export class FixedItemsComponent implements OnInit {
         accent: data['accent'] ?? '#58a6ff',
         categoryDefault: data['categoryDefault'] ?? 'Geral',
         userOverviewTabs: data['userOverviewTabs'] === true,
+        installmentMode: data['installmentMode'] === true,
       });
     }
     this.activeTab.set('all');
@@ -346,7 +354,16 @@ export class FixedItemsComponent implements OnInit {
     this.loadTaxonomy();
     this.load();
     this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
-    this.api.getAccounts('bank').subscribe((r) => this.bankFinancialAccounts.set(r.items));
+    this.api.getAccounts().subscribe((r) => {
+      const kind = this.meta().kind;
+      const paymentTypes =
+        kind === 'expense' || kind === 'leisure' || this.isInstallmentMode()
+          ? (['bank', 'credit'] as const)
+          : (['bank'] as const);
+      this.bankFinancialAccounts.set(
+        r.items.filter((a) => (paymentTypes as readonly string[]).includes(a.type))
+      );
+    });
     if (this.isInvestment()) {
       this.api.getInvestmentTypes().subscribe((r) => this.investmentTypes.set(r.items));
       this.api.getAccounts('investment').subscribe((r) => {
@@ -380,7 +397,8 @@ export class FixedItemsComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     const kind = this.meta().kind;
-    this.api.getRecurringItems(kind).subscribe({
+    const installments = this.isInstallmentMode();
+    this.api.getRecurringItems(kind, installments).subscribe({
       next: (r) => {
         this.items.set(r.items);
         this.loading.set(false);
@@ -451,6 +469,8 @@ export class FixedItemsComponent implements OnInit {
   openNew(): void {
     this.editing.set(null);
     this.newCategoryMode.set(false);
+    const now = new Date();
+    const startMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     this.form = {
       kind: this.meta().kind,
       category: this.meta().categoryDefault,
@@ -463,6 +483,12 @@ export class FixedItemsComponent implements OnInit {
       responsibleUserId: null,
       financialAccountId: null,
       sourceFinancialAccountId: null,
+      isInstallment: this.isInstallmentMode(),
+      startMonth: this.isInstallmentMode() ? startMonth : undefined,
+      installmentCount: this.isInstallmentMode() ? 12 : undefined,
+      endMonth: this.isInstallmentMode()
+        ? this.endMonthFromStart(startMonth, 12)
+        : undefined,
     };
     this.showForm.set(true);
   }
@@ -474,6 +500,8 @@ export class FixedItemsComponent implements OnInit {
     }
     this.editing.set(item);
     this.newCategoryMode.set(false);
+    const startMonth = item.startDate ? item.startDate.slice(0, 7) : undefined;
+    const endMonth = item.endDate ? item.endDate.slice(0, 7) : undefined;
     this.form = {
       ...item,
       currency: item.currency ?? 'BRL',
@@ -482,8 +510,36 @@ export class FixedItemsComponent implements OnInit {
       customTabId: item.customTabId ?? this.defaultTabId(),
       financialAccountId: item.financialAccountId ?? null,
       sourceFinancialAccountId: item.sourceFinancialAccountId ?? null,
+      isInstallment: item.isInstallment ?? this.isInstallmentMode(),
+      startMonth,
+      endMonth,
+      installmentCount:
+        startMonth && endMonth
+          ? this.monthsBetween(startMonth, endMonth)
+          : undefined,
     };
     this.showForm.set(true);
+  }
+
+  /** Número de parcelas inclusivo entre YYYY-MM e YYYY-MM. */
+  monthsBetween(startYm: string, endYm: string): number {
+    const [sy, sm] = startYm.split('-').map(Number);
+    const [ey, em] = endYm.split('-').map(Number);
+    return (ey - sy) * 12 + (em - sm) + 1;
+  }
+
+  endMonthFromStart(startYm: string, count: number): string {
+    const [y, m] = startYm.split('-').map(Number);
+    const d = new Date(y, m - 1 + Math.max(1, count) - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  onInstallmentStartOrCountChange(): void {
+    const start = this.form.startMonth;
+    const count = this.form.installmentCount ?? 1;
+    if (start) {
+      this.form.endMonth = this.endMonthFromStart(start, count);
+    }
   }
 
   cancelForm(): void {
@@ -516,6 +572,24 @@ export class FixedItemsComponent implements OnInit {
     } else {
       this.form.sourceFinancialAccountId = this.form.sourceFinancialAccountId || null;
       this.form.financialAccountId = null;
+    }
+    if (this.isInstallmentMode()) {
+      if (!this.form.startMonth || !this.form.endMonth) {
+        alert('Informe o mês de início e o mês da última parcela.');
+        return;
+      }
+      if (this.form.startMonth > this.form.endMonth) {
+        alert('O mês de início deve ser anterior ou igual ao da última parcela.');
+        return;
+      }
+      this.form.isInstallment = true;
+      this.form.startDate = `${this.form.startMonth}-01`;
+      // Último dia do mês final não é necessário: sync usa YYYY-MM
+      this.form.endDate = `${this.form.endMonth}-01`;
+    } else {
+      this.form.isInstallment = false;
+      this.form.startDate = null;
+      this.form.endDate = null;
     }
     const id = this.editing()?.id;
     const payload = {
@@ -559,11 +633,21 @@ export class FixedItemsComponent implements OnInit {
     }
     const bank = item.sourceFinancialAccountName?.trim();
     if (!bank) return null;
-    return kind === 'income' ? `Banco (destino): ${bank}` : `Banco (saída): ${bank}`;
+    const isCard = item.sourceFinancialAccountId
+      ? this.bankFinancialAccounts().find((a) => a.id === item.sourceFinancialAccountId)?.type === 'credit'
+      : false;
+    const prefix = isCard ? 'Cartão' : 'Banco';
+    return kind === 'income' ? `${prefix} (destino): ${bank}` : `${prefix}: ${bank}`;
   }
 
   itemSubtitle(item: RecurringItem): string {
     const parts = [`Dia ${item.dueDay ?? '?'}`];
+    if (item.isInstallment && item.startDate && item.endDate) {
+      const start = item.startDate.slice(0, 7);
+      const end = item.endDate.slice(0, 7);
+      const n = this.monthsBetween(start, end);
+      parts.push(`${this.formatYm(start)} → ${this.formatYm(end)} (${n}x)`);
+    }
     if (item.itemCategoryName || item.category) {
       parts.push(item.itemCategoryName ?? item.category);
     }
@@ -571,6 +655,16 @@ export class FixedItemsComponent implements OnInit {
       parts.push(item.customTabName);
     }
     return parts.join(' · ');
+  }
+
+  private formatYm(ym: string): string {
+    const [y, m] = ym.split('-');
+    const names = [
+      'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
+      'jul', 'ago', 'set', 'out', 'nov', 'dez',
+    ];
+    const mi = Number(m) - 1;
+    return `${names[mi] ?? m}/${y}`;
   }
 
   itemLabel(item: RecurringItem): string {

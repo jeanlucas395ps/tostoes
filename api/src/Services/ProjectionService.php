@@ -276,7 +276,8 @@ final class ProjectionService
         $totals = self::emptyTotals();
 
         $stmt = $pdo->prepare(
-            'SELECT id, kind, currency, amount_original, default_amount_brl
+            'SELECT id, kind, currency, amount_original, default_amount_brl,
+                    is_installment, start_date, end_date
              FROM recurring_items
              WHERE planning_id = ? AND active = 1 AND is_fixed = 1'
         );
@@ -288,6 +289,9 @@ final class ProjectionService
         );
 
         foreach ($items as $item) {
+            if (!MonthPlanService::recurringAppliesToMonth($item, $year, $month)) {
+                continue;
+            }
             $kind = $item['kind'];
             if (!isset($totals[$kind])) {
                 continue;
@@ -341,7 +345,8 @@ final class ProjectionService
         }
 
         $stmt = $pdo->prepare(
-            'SELECT id, kind, currency, amount_original, default_amount_brl
+            'SELECT id, kind, currency, amount_original, default_amount_brl,
+                    is_installment, start_date, end_date
              FROM recurring_items
              WHERE planning_id = ? AND active = 1 AND is_fixed = 1'
         );
@@ -358,6 +363,9 @@ final class ProjectionService
                 ? (float) $item['amount_original']
                 : (float) $item['default_amount_brl'];
             $kind = $item['kind'];
+            if (!isset($byMonth[1][$kind])) {
+                continue;
+            }
 
             $amtStmt->execute([(int) $item['id']]);
             $amounts = [];
@@ -367,6 +375,9 @@ final class ProjectionService
 
             for ($m = 1; $m <= 12; $m++) {
                 if (self::isBeforeCurrentMonth($year, $m)) {
+                    continue;
+                }
+                if (!MonthPlanService::recurringAppliesToMonth($item, $year, $m)) {
                     continue;
                 }
                 if (isset($amounts[$m])) {

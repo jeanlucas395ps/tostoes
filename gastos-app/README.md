@@ -1,4 +1,4 @@
-# Tostoes — Frontend
+# Tostoes , Frontend
 
 App Angular. Documentação e setup completo na **[raiz do repositório](../README.md)**.
 

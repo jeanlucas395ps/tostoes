@@ -49,12 +49,14 @@ final class PlanningInviteService
         $inviterName = self::userName($pdo, $inviterId);
         $inviteUrl = rtrim(Config::get('APP_URL', 'http://localhost:4200'), '/') . '/convite/' . $token;
 
-        self::sendInviteEmail($email, $planningName, $inviterName, $inviteUrl);
+        $mailOk = self::sendInviteEmail($email, $planningName, $inviterName, $inviteUrl);
 
         return [
             'token' => $token,
             'inviteUrl' => $inviteUrl,
             'email' => $email,
+            'mailSent' => $mailOk && !MailService::isLogDriver(),
+            'mailLogged' => MailService::isLogDriver(),
         ];
     }
 
@@ -227,20 +229,23 @@ final class PlanningInviteService
         string $planningName,
         string $inviterName,
         string $inviteUrl
-    ): void {
+    ): bool {
         $subject = "{$inviterName} convidou você para \"{$planningName}\"";
+        $safeName = htmlspecialchars($planningName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $safeInviter = htmlspecialchars($inviterName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $safeUrl = htmlspecialchars($inviteUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $html = <<<HTML
 <!DOCTYPE html>
 <html lang="pt-BR">
 <body style="font-family: Arial, sans-serif; line-height: 1.5; color: #1a1d2e;">
   <h2 style="margin-bottom: 0.5rem;">Convite para planejamento</h2>
-  <p><strong>{$inviterName}</strong> convidou você para participar do planejamento <strong>{$planningName}</strong> no Tostoes.</p>
+  <p><strong>{$safeInviter}</strong> convidou você para participar do planejamento <strong>{$safeName}</strong> no Tostoes.</p>
   <p>
-    <a href="{$inviteUrl}" style="display:inline-block;padding:12px 20px;background:#5e5ce6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
+    <a href="{$safeUrl}" style="display:inline-block;padding:12px 20px;background:#5e5ce6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">
       Aceitar convite
     </a>
   </p>
-  <p style="font-size: 13px; color: #666;">Se o botão não funcionar, copie e cole este link no navegador:<br>{$inviteUrl}</p>
+  <p style="font-size: 13px; color: #666;">Se o botão não funcionar, copie e cole este link no navegador:<br>{$safeUrl}</p>
   <p style="font-size: 12px; color: #999;">Este convite expira em 7 dias.</p>
 </body>
 </html>
@@ -248,6 +253,6 @@ HTML;
 
         $text = "{$inviterName} convidou você para o planejamento \"{$planningName}\".\n\nAceite em: {$inviteUrl}\n\nExpira em 7 dias.";
 
-        MailService::send($email, $subject, $html, $text);
+        return MailService::send($email, $subject, $html, $text);
     }
 }

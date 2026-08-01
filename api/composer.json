@@ -1,0 +1,25 @@
+{
+  "name": "gastos/api",
+  "description": "API Tostoes / Gastos",
+  "type": "project",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Gastos\\Api\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Gastos\\Api\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:coverage": "phpunit --coverage-text --coverage-html=coverage"
+  }
+}

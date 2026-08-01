@@ -11,6 +11,24 @@ use PDO;
 
 final class MonthPlanService
 {
+    /** Fixo infinito ou parcela cujo mês está entre start_date e end_date (inclusive). */
+    public static function recurringAppliesToMonth(array $row, int $year, int $month): bool
+    {
+        if (empty($row['is_installment'])) {
+            return true;
+        }
+        $start = $row['start_date'] ?? null;
+        $end = $row['end_date'] ?? null;
+        if (!$start || !$end) {
+            return false;
+        }
+        $ym = sprintf('%04d-%02d', $year, $month);
+        $startYm = substr((string) $start, 0, 7);
+        $endYm = substr((string) $end, 0, 7);
+
+        return $ym >= $startYm && $ym <= $endYm;
+    }
+
     /** Gera sugestões de todos os fixos do mês (mesmo antes do vencimento). */
     public static function syncAllFixedForMonth(
         PDO $pdo,
@@ -44,6 +62,9 @@ final class MonthPlanService
         );
 
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!self::recurringAppliesToMonth($row, $year, $month)) {
+                continue;
+            }
             $check = $pdo->prepare(
                 'SELECT id FROM month_plan_entries
                  WHERE planning_id = ? AND year = ? AND month = ? AND recurring_item_id = ?'
@@ -113,6 +134,9 @@ final class MonthPlanService
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $dueDay = $row['due_day'] !== null ? (int) $row['due_day'] : 1;
             if ($dueDay > $todayDay) {
+                continue;
+            }
+            if (!self::recurringAppliesToMonth($row, $year, $month)) {
                 continue;
             }
 
@@ -203,6 +227,40 @@ final class MonthPlanService
              WHERE mpe.planning_id = ? AND mpe.recurring_item_id = ? AND mpe.status = 'pending'
                AND {$when}"
         )->execute([$planningId, $recurringItemId]);
+        self::scrubPendingOutsideInstallmentWindow($pdo, $planningId, $recurringItemId);
+    }
+
+    /**
+     * Remove pendentes fora da janela start/end de uma compra parcelada
+     * (e recria meses faltantes dentro da janela via sync sob demanda).
+     */
+    public static function scrubPendingOutsideInstallmentWindow(
+        PDO $pdo,
+        int $planningId,
+        int $recurringItemId
+    ): void {
+        $stmt = $pdo->prepare(
+            'SELECT is_installment, start_date, end_date FROM recurring_items
+             WHERE id = ? AND planning_id = ?'
+        );
+        $stmt->execute([$recurringItemId, $planningId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || empty($row['is_installment']) || empty($row['start_date']) || empty($row['end_date'])) {
+            return;
+        }
+
+        $when = ProjectionService::sqlCurrentOrFutureMonthClause('year', 'month');
+        $startYm = substr((string) $row['start_date'], 0, 7);
+        $endYm = substr((string) $row['end_date'], 0, 7);
+        $pdo->prepare(
+            "DELETE FROM month_plan_entries
+             WHERE planning_id = ? AND recurring_item_id = ? AND status = 'pending'
+               AND {$when}
+               AND (
+                 DATE_FORMAT(STR_TO_DATE(CONCAT(year,'-',month,'-01'), '%Y-%c-%d'), '%Y-%m') < ?
+                 OR DATE_FORMAT(STR_TO_DATE(CONCAT(year,'-',month,'-01'), '%Y-%c-%d'), '%Y-%m') > ?
+               )"
+        )->execute([$planningId, $recurringItemId, $startYm, $endYm]);
     }
 
     /** Remove sugestões pendentes futuras ao desativar um fixo (passado permanece intacto). */
@@ -248,6 +306,7 @@ final class MonthPlanService
                     fa.name AS financial_account_name,
                     sfa.name AS source_financial_account_name,
                     ct.name AS custom_tab_name, ic.name AS item_category_name, ic.icon AS item_category_icon,
+                    ri.is_installment AS is_installment,
                     ' . ResponsibleUser::selectColumns() . '
              FROM month_plan_entries e
              LEFT JOIN investment_types it ON it.id = e.investment_type_id
@@ -256,6 +315,7 @@ final class MonthPlanService
              LEFT JOIN financial_accounts sfa ON sfa.id = e.source_financial_account_id
              LEFT JOIN planning_custom_tabs ct ON ct.id = e.custom_tab_id
              LEFT JOIN planning_item_categories ic ON ic.id = e.item_category_id
+             LEFT JOIN recurring_items ri ON ri.id = e.recurring_item_id
              ' . ResponsibleUser::joinClause('e') . '
              WHERE e.planning_id = ? AND e.year = ? AND e.month = ?
              ORDER BY e.due_day, e.name'
@@ -332,6 +392,7 @@ final class MonthPlanService
         $stmt = $pdo->prepare(
             'SELECT r.id, r.kind, r.name, r.category, r.due_day, r.currency,
                     r.amount_original, r.default_amount_brl,
+                    r.is_installment, r.start_date, r.end_date,
                     COALESCE(a.amount_brl, r.default_amount_brl, 0) AS amount_brl
              FROM recurring_items r
              LEFT JOIN recurring_item_amounts a ON a.recurring_item_id = r.id AND a.month = ?
@@ -352,6 +413,9 @@ final class MonthPlanService
 
         $forecast = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!self::recurringAppliesToMonth($row, $year, $month)) {
+                continue;
+            }
             $due = $row['due_day'] !== null ? (int) $row['due_day'] : 1;
             if ($todayDay > 0 && $due <= $todayDay) {
                 continue;
@@ -402,11 +466,18 @@ final class MonthPlanService
         $confirmed = array_fill_keys($kinds, 0.0);
 
         $addToProjected = function (string $kind, float $amount) use (&$projected): void {
+            if (!array_key_exists($kind, $projected)) {
+                return;
+            }
             $projected[$kind] += $amount;
         };
 
         foreach ($entries as $e) {
             if ($e['status'] === 'skipped') {
+                continue;
+            }
+            // Transferências não entram no resumo de receita/despesa
+            if (($e['kind'] ?? '') === 'transfer') {
                 continue;
             }
             $amt = ProjectionService::entrySuggestedBrl($pdo, $planningId, $year, $month, [
@@ -416,7 +487,9 @@ final class MonthPlanService
             ]);
             $addToProjected($e['kind'], $amt);
             if ($e['status'] === 'confirmed') {
-                $confirmed[$e['kind']] += (float) ($e['confirmedAmountBrl'] ?? $amt);
+                if (array_key_exists($e['kind'], $confirmed)) {
+                    $confirmed[$e['kind']] += (float) ($e['confirmedAmountBrl'] ?? $amt);
+                }
             }
         }
         foreach ($forecast as $f) {
@@ -622,6 +695,7 @@ final class MonthPlanService
             'financialGoalColor' => !empty($row['financial_goal_color'])
                 ? (string) $row['financial_goal_color'] : null,
             'isGoal' => !empty($row['financial_goal_id']),
+            'isInstallment' => !empty($row['is_installment']),
             'isVariable' => $row['recurring_item_id'] === null && empty($row['financial_goal_id']),
             'kind' => $row['kind'],
             'name' => $row['name'],
@@ -648,6 +722,7 @@ final class MonthPlanService
                 && $row['source_financial_account_id']
                 ? (int) $row['source_financial_account_id'] : null,
             'sourceFinancialAccountName' => $row['source_financial_account_name'] ?? null,
+            'sourceFinancialAccountType' => $row['source_financial_account_type'] ?? null,
             'suggestedAmountBrl' => (float) $row['suggested_amount_brl'],
             'confirmedAmountBrl' => $row['confirmed_amount_brl'] !== null
                 ? (float) $row['confirmed_amount_brl'] : null,

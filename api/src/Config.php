@@ -23,7 +23,15 @@ final class Config
             'APP_URL' => 'http://localhost:4200',
             'APP_TIMEZONE' => 'America/Sao_Paulo',
             'MAIL_DRIVER' => 'log',
-            'MAIL_FROM' => 'Tostoes <noreply@tostoes.app>',
+            'MAIL_HOST' => '',
+            'MAIL_PORT' => '465',
+            'MAIL_USERNAME' => '',
+            'MAIL_PASSWORD' => '',
+            'MAIL_ENCRYPTION' => 'ssl',
+            'MAIL_FROM' => '',
+            'MAIL_FROM_ADDRESS' => 'noreply@tostoes.app',
+            'MAIL_FROM_NAME' => 'Tostoes',
+            'APP_NAME' => 'Tostoes',
         ];
 
         self::$env = $defaults;
@@ -57,6 +65,7 @@ final class Config
         }
 
         self::normalizeDatabaseKeys();
+        self::normalizeMailKeys();
 
         date_default_timezone_set(self::$env['APP_TIMEZONE']);
     }
@@ -78,6 +87,23 @@ final class Config
         }
         if (empty(self::$env['DB_USER']) && !empty(self::$env['DB_USERNAME'])) {
             self::$env['DB_USER'] = self::$env['DB_USERNAME'];
+        }
+    }
+
+    /** Aceita MAIL_MAILER (Laravel) como alias de MAIL_DRIVER. */
+    private static function normalizeMailKeys(): void
+    {
+        if (!empty(self::$env['MAIL_MAILER'])) {
+            self::$env['MAIL_DRIVER'] = self::$env['MAIL_MAILER'];
+        }
+        $name = self::$env['MAIL_FROM_NAME'] ?? 'Tostoes';
+        if (str_contains($name, '${APP_NAME}')) {
+            $appName = self::$env['APP_NAME'] ?? 'Tostoes';
+            $name = str_replace('${APP_NAME}', $appName, $name);
+            self::$env['MAIL_FROM_NAME'] = $name;
+        }
+        if (empty(self::$env['MAIL_FROM']) && !empty(self::$env['MAIL_FROM_ADDRESS'])) {
+            self::$env['MAIL_FROM'] = sprintf('%s <%s>', $name !== '' ? $name : 'Tostoes', self::$env['MAIL_FROM_ADDRESS']);
         }
     }
 

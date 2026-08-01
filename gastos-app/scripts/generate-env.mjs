@@ -45,7 +45,7 @@ const prodApiUrl =
   defaults.PROD_API_URL;
 
 function writeEnvironment(path, production, url) {
-  const file = `// Gerado por scripts/generate-env.mjs — não edite manualmente
+  const file = `// Gerado por scripts/generate-env.mjs , não edite manualmente
 export const environment = {
   production: ${production},
   apiUrl: ${JSON.stringify(url)},

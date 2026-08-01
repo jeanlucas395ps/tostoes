@@ -56,6 +56,29 @@ export class PlanningService {
     );
   }
 
+  update(id: number, name: string): Observable<Planning> {
+    return this.http.put<{ item: Planning }>(`${this.base}/plannings/${id}`, { name }).pipe(
+      tap((res) => {
+        this.items.update((list) =>
+          list.map((p) => (p.id === id ? res.item : p))
+        );
+      }),
+      map((res) => res.item)
+    );
+  }
+
+  delete(id: number): Observable<Planning[]> {
+    return this.http
+      .delete<{ ok: boolean; items: Planning[] }>(`${this.base}/plannings/${id}`)
+      .pipe(
+        tap((res) => {
+          this.items.set(res.items);
+          this.ensureSelection(res.items);
+        }),
+        map((res) => res.items)
+      );
+  }
+
   sendInvite(
     planningId: number,
     email: string

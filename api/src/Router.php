@@ -64,6 +64,15 @@ final class Router
         if ($method === 'POST' && $path === '/plannings') {
             PlanningController::store();
         }
+        if (preg_match('#^/plannings/(\d+)$#', $path, $m)) {
+            $planningId = (int) $m[1];
+            if ($method === 'PUT') {
+                PlanningController::update($planningId);
+            }
+            if ($method === 'DELETE') {
+                PlanningController::destroy($planningId);
+            }
+        }
         if (preg_match('#^/plannings/(\d+)/members$#', $path, $m)) {
             $planningId = (int) $m[1];
             if ($method === 'GET') {

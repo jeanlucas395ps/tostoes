@@ -19,7 +19,7 @@ final class AccountController
         $planningId = Auth::requirePlanningId();
         $pdo = Database::connection();
         $type = $_GET['type'] ?? null;
-        if ($type !== null && !in_array($type, ['bank', 'investment'], true)) {
+        if ($type !== null && !in_array($type, ['bank', 'investment', 'credit'], true)) {
             Response::error('Tipo de conta inválido.', 422);
         }
 
@@ -39,10 +39,21 @@ final class AccountController
 
         $bankTotal = 0.0;
         $investmentTotal = 0.0;
+        $creditUsedTotal = 0.0;
+        $creditLimitTotal = 0.0;
+        $creditAvailableTotal = 0.0;
         foreach ($items as $item) {
             $brl = (float) $item['balanceBrl'];
             if ($item['type'] === 'investment') {
                 $investmentTotal += $brl;
+            } elseif ($item['type'] === 'credit') {
+                $creditUsedTotal += (float) ($item['usedLimitBrl'] ?? max(0, $brl));
+                if (isset($item['creditLimitBrl']) && $item['creditLimitBrl'] !== null) {
+                    $creditLimitTotal += (float) $item['creditLimitBrl'];
+                }
+                if (isset($item['availableLimitBrl']) && $item['availableLimitBrl'] !== null) {
+                    $creditAvailableTotal += (float) $item['availableLimitBrl'];
+                }
             } else {
                 $bankTotal += $brl;
             }
@@ -53,6 +64,9 @@ final class AccountController
             'totals' => [
                 'bank' => round($bankTotal, 2),
                 'investment' => round($investmentTotal, 2),
+                'creditUsed' => round($creditUsedTotal, 2),
+                'creditLimit' => round($creditLimitTotal, 2),
+                'creditAvailable' => round($creditAvailableTotal, 2),
                 'all' => round($bankTotal + $investmentTotal, 2),
             ],
         ]);
@@ -117,8 +131,9 @@ final class AccountController
 
         $stmt = $pdo->prepare(
             'INSERT INTO financial_accounts
-             (planning_id, name, type, currency, initial_balance, initial_balance_date, color, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+             (planning_id, name, type, currency, initial_balance, credit_limit, closing_day, due_day,
+              initial_balance_date, color, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         try {
             $stmt->execute([
@@ -127,6 +142,9 @@ final class AccountController
                 $body['type'],
                 $body['currency'],
                 $body['initialBalance'],
+                $body['creditLimit'],
+                $body['closingDay'],
+                $body['dueDay'],
                 $body['initialBalanceDate'],
                 $body['color'],
                 $body['sortOrder'],
@@ -152,7 +170,8 @@ final class AccountController
 
         $pdo->prepare(
             'UPDATE financial_accounts SET
-               name = ?, type = ?, currency = ?, initial_balance = ?, initial_balance_date = ?,
+               name = ?, type = ?, currency = ?, initial_balance = ?, credit_limit = ?,
+               closing_day = ?, due_day = ?, initial_balance_date = ?,
                color = ?, sort_order = ?
              WHERE id = ? AND planning_id = ?'
         )->execute([
@@ -160,6 +179,9 @@ final class AccountController
             $body['type'],
             $body['currency'],
             $body['initialBalance'],
+            $body['creditLimit'],
+            $body['closingDay'],
+            $body['dueDay'],
             $body['initialBalanceDate'],
             $body['color'],
             $body['sortOrder'],
@@ -203,7 +225,7 @@ final class AccountController
         }
 
         $type = $body['type'] ?? 'bank';
-        if (!in_array($type, ['bank', 'investment'], true)) {
+        if (!in_array($type, ['bank', 'investment', 'credit'], true)) {
             Response::error('Tipo de conta inválido.', 422);
         }
 
@@ -217,11 +239,32 @@ final class AccountController
             Response::error('Data do saldo inicial inválida.', 422);
         }
 
+        $creditLimit = null;
+        $closingDay = null;
+        $dueDay = null;
+        if ($type === 'credit') {
+            $creditLimit = isset($body['creditLimit']) ? round((float) $body['creditLimit'], 2) : null;
+            if ($creditLimit !== null && $creditLimit < 0) {
+                Response::error('Limite do cartão não pode ser negativo.', 422);
+            }
+            $closingDay = isset($body['closingDay']) ? (int) $body['closingDay'] : null;
+            $dueDay = isset($body['dueDay']) ? (int) $body['dueDay'] : null;
+            if ($closingDay !== null && ($closingDay < 1 || $closingDay > 28)) {
+                Response::error('Dia de fechamento deve ser entre 1 e 28.', 422);
+            }
+            if ($dueDay !== null && ($dueDay < 1 || $dueDay > 28)) {
+                Response::error('Dia de vencimento deve ser entre 1 e 28.', 422);
+            }
+        }
+
         return [
             'name' => $name !== '' ? $name : 'Conta',
             'type' => $type,
             'currency' => $currency,
             'initialBalance' => round((float) ($body['initialBalance'] ?? 0), 2),
+            'creditLimit' => $creditLimit,
+            'closingDay' => $closingDay,
+            'dueDay' => $dueDay,
             'initialBalanceDate' => $date,
             'color' => ($body['color'] ?? null) ?: null,
             'sortOrder' => (int) ($body['sortOrder'] ?? 0),

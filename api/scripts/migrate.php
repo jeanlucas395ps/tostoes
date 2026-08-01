@@ -104,6 +104,9 @@ applyMigration018($pdo);
 applyMigration019($pdo);
 applyMigration020($pdo);
 applyMigration021($pdo);
+applyMigration022($pdo);
+applyMigration023($pdo);
+applyMigration024($pdo);
 
 $pdo->exec(
     'UPDATE transactions SET registered_by_user_id = user_id
@@ -987,6 +990,90 @@ function applyMigration021(PDO $pdo): void
     echo "→ Início de uso (created_at jun/2026) em planejamentos e investimentos OK\n";
 }
 
+function applyMigration022(PDO $pdo): void
+{
+    $tables = ['transactions', 'month_plan_entries', 'recurring_items'];
+    foreach ($tables as $table) {
+        if (!tableExists($pdo, $table) || !columnExists($pdo, $table, 'kind')) {
+            continue;
+        }
+        $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE 'kind'");
+        $col = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+        $type = (string) (($col['Type'] ?? $col['type'] ?? ''));
+        if (str_contains(strtolower($type), 'transfer')) {
+            continue;
+        }
+        $pdo->exec(
+            "ALTER TABLE `{$table}`
+             MODIFY COLUMN `kind` ENUM('income','expense','investment','leisure','transfer') NOT NULL"
+        );
+    }
+    echo "→ Kind transfer (transferência entre contas) OK\n";
+}
+
+function applyMigration023(PDO $pdo): void
+{
+    if (!tableExists($pdo, 'recurring_items')) {
+        return;
+    }
+    if (!columnExists($pdo, 'recurring_items', 'is_installment')) {
+        $pdo->exec(
+            'ALTER TABLE recurring_items
+             ADD COLUMN is_installment TINYINT(1) NOT NULL DEFAULT 0 AFTER is_fixed,
+             ADD COLUMN start_date DATE NULL AFTER is_installment,
+             ADD COLUMN end_date DATE NULL AFTER start_date'
+        );
+    } else {
+        if (!columnExists($pdo, 'recurring_items', 'start_date')) {
+            $pdo->exec('ALTER TABLE recurring_items ADD COLUMN start_date DATE NULL AFTER is_installment');
+        }
+        if (!columnExists($pdo, 'recurring_items', 'end_date')) {
+            $pdo->exec('ALTER TABLE recurring_items ADD COLUMN end_date DATE NULL AFTER start_date');
+        }
+    }
+    if (!indexExists($pdo, 'recurring_items', 'idx_recurring_installment')) {
+        $pdo->exec(
+            'CREATE INDEX idx_recurring_installment ON recurring_items (planning_id, is_installment, active)'
+        );
+    }
+    echo "→ Compras parceladas (is_installment + start/end) OK\n";
+}
+
+function applyMigration024(PDO $pdo): void
+{
+    if (!tableExists($pdo, 'financial_accounts')) {
+        return;
+    }
+    $stmt = $pdo->query("SHOW COLUMNS FROM financial_accounts LIKE 'type'");
+    $col = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+    $type = (string) (($col['Type'] ?? $col['type'] ?? ''));
+    if (!str_contains(strtolower($type), 'credit')) {
+        $pdo->exec(
+            "ALTER TABLE financial_accounts
+             MODIFY COLUMN type ENUM('bank','investment','credit') NOT NULL DEFAULT 'bank'"
+        );
+    }
+    if (!columnExists($pdo, 'financial_accounts', 'credit_limit')) {
+        $pdo->exec(
+            'ALTER TABLE financial_accounts
+             ADD COLUMN credit_limit DECIMAL(14,2) NULL AFTER initial_balance'
+        );
+    }
+    if (!columnExists($pdo, 'financial_accounts', 'closing_day')) {
+        $pdo->exec(
+            'ALTER TABLE financial_accounts
+             ADD COLUMN closing_day TINYINT UNSIGNED NULL AFTER credit_limit'
+        );
+    }
+    if (!columnExists($pdo, 'financial_accounts', 'due_day')) {
+        $pdo->exec(
+            'ALTER TABLE financial_accounts
+             ADD COLUMN due_day TINYINT UNSIGNED NULL AFTER closing_day'
+        );
+    }
+    echo "→ Cartões de crédito (type=credit + limite/fechamento/vencimento) OK\n";
+}
+
 function applyMigration009(PDO $pdo): void
 {
     if (!columnExists($pdo, 'users', 'email')) {
@@ -1051,7 +1138,7 @@ function isIgnorableMigrationError(PDOException $e): bool
         || str_contains($msg, 'already exists');
 }
 
-/** Usuário padrão local (Docker): admin / admin — só insere se ainda não existir. */
+/** Usuário padrão local (Docker): admin / admin , só insere se ainda não existir. */
 function ensureAdminUser(PDO $pdo): void
 {
     $username = 'admin';

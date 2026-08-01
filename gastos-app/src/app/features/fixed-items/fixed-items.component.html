@@ -156,10 +156,41 @@
       <small class="hint">≈ {{ formPreviewBrl() | number:'1.2-2':'pt-BR' }} em reais (estimativa; na confirmação usa cotação do dia)</small>
     }
 
+    @if (isInstallmentMode()) {
+      <p class="hint">
+        Como no cartão: a parcela aparece em Movimentos em cada mês, do início até o mês da última parcela.
+      </p>
+      <label><span>Mês da 1ª parcela</span>
+        <input
+          type="month"
+          [(ngModel)]="form.startMonth"
+          (ngModelChange)="onInstallmentStartOrCountChange()"
+        />
+      </label>
+      <label><span>Nº de parcelas</span>
+        <input
+          type="number"
+          [(ngModel)]="form.installmentCount"
+          (ngModelChange)="onInstallmentStartOrCountChange()"
+          min="1"
+          max="120"
+        />
+      </label>
+      <label><span>Mês da última parcela</span>
+        <input
+          type="month"
+          [ngModel]="form.endMonth"
+          readonly
+          tabindex="-1"
+          class="readonly-field"
+        />
+      </label>
+    }
+
     @if (usesCustomTabs()) {
       <label><span>Aba personalizada</span>
         <select [(ngModel)]="form.customTabId">
-          <option [ngValue]="null">— Sem aba</option>
+          <option [ngValue]="null">, Sem aba</option>
           @for (tab of customTabs(); track tab.id) {
             <option [ngValue]="tab.id">{{ tab.name }}</option>
           }
@@ -173,7 +204,7 @@
         [ngModel]="form.itemCategoryId"
         (ngModelChange)="onCategorySelect($event)"
       >
-        <option [ngValue]="null">— Selecione</option>
+        <option [ngValue]="null">, Selecione</option>
         @for (cat of itemCategories(); track cat.id) {
           <option [ngValue]="cat.id">{{ categoryIconFor(cat.name, cat.icon) }} {{ cat.name }}</option>
         }
@@ -212,21 +243,34 @@
 
     @if (!isInvestment()) {
       <label>
-        <span>{{ meta().kind === 'income' ? 'Conta bancária de destino (opcional)' : 'Conta bancária de saída (opcional)' }}</span>
+        <span>
+          @if (meta().kind === 'income') {
+            Conta bancária de destino (opcional)
+          } @else {
+            Pagar com , banco ou cartão (opcional)
+          }
+        </span>
         @if (!bankFinancialAccounts().length) {
           <p class="hint-warn">
-            Sem contas bancárias — a conta será escolhida ao confirmar em
+            Sem contas , cadastre em
+            <a routerLink="/contas">Conta e Cartão</a>
+            ou escolha na confirmação em
             <a routerLink="/movimentos">Movimentos</a>.
           </p>
         } @else {
           <select [(ngModel)]="form.sourceFinancialAccountId">
             <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
             @for (a of bankFinancialAccounts(); track a.id) {
-              <option [ngValue]="a.id">{{ a.name }}</option>
+              <option [ngValue]="a.id">
+                {{ a.type === 'credit' ? 'Cartão' : 'Banco' }} · {{ a.name }}
+              </option>
             }
           </select>
           <small class="hint">
-            Vincule aqui para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a> (aba Prevista).
+            @if (meta().kind === 'expense' || isInstallmentMode()) {
+              No cartão, o valor entra na previsão da fatura do mês.
+            }
+            Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
           </small>
         }
       </label>
@@ -237,7 +281,7 @@
         @if (!bankFinancialAccounts().length) {
           <p class="hint-warn">
             Cadastre uma conta bancária em
-            <a routerLink="/contas">Contas</a> ou defina na confirmação em Movimentos.
+            <a routerLink="/contas">Conta e Cartão</a> ou defina na confirmação em Movimentos.
           </p>
         } @else {
           <select [(ngModel)]="form.sourceFinancialAccountId">
@@ -248,15 +292,15 @@
           </select>
         }
       </label>
-      <label><span>Conta de investimento — destino (opcional)</span>
+      <label><span>Conta de investimento , destino (opcional)</span>
         @if (!investmentFinancialAccounts().length) {
           <p class="hint-warn">
             Cadastre uma conta de investimento em
-            <a routerLink="/contas">Contas</a>.
+            <a routerLink="/contas">Conta e Cartão</a>.
           </p>
         } @else {
           <select [(ngModel)]="form.financialAccountId">
-            <option [ngValue]="null">— Sem destino fixo</option>
+            <option [ngValue]="null">, Sem destino fixo</option>
             @for (a of investmentFinancialAccounts(); track a.id) {
               <option [ngValue]="a.id">{{ a.name }}</option>
             }

@@ -24,15 +24,43 @@
       </div>
       <div class="planning-list">
         @for (p of planning.items(); track p.id) {
-          <button
-            type="button"
+          <div
             class="planning-item"
             [class.active]="p.id === planning.activeId()"
-            (click)="selectPlanning(p.id)"
           >
-            <span class="planning-name">{{ p.name }}</span>
-            <small>{{ p.memberCount }} {{ p.memberCount === 1 ? 'membro' : 'membros' }}</small>
-          </button>
+            <button
+              type="button"
+              class="planning-item-main"
+              (click)="selectPlanning(p.id)"
+            >
+              <span class="planning-name">{{ p.name }}</span>
+              <small>{{ p.memberCount }} {{ p.memberCount === 1 ? 'membro' : 'membros' }}</small>
+            </button>
+            @if (p.role === 'owner') {
+              <div class="planning-item-actions">
+                <button
+                  type="button"
+                  class="planning-action"
+                  title="Renomear"
+                  (click)="openEditModal(p, $event)"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="planning-action planning-action--danger"
+                  title="Apagar"
+                  (click)="openDeleteModal(p, $event)"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
         }
       </div>
       @if (planning.items().length) {
@@ -80,7 +108,7 @@
   <div class="content-area">
     <header class="topbar">
       <div class="topbar-left">
-        <!-- Logo da marca — visível apenas no mobile (desktop fica na sidebar) -->
+        <!-- Logo da marca , visível apenas no mobile (desktop fica na sidebar) -->
         <div class="topbar-brand-mobile" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
@@ -164,6 +192,57 @@
         <button type="button" class="btn-muted" (click)="closeCreateModal()">Cancelar</button>
         <button type="button" class="btn-brand" [disabled]="createLoading()" (click)="submitCreatePlanning()">
           {{ createLoading() ? 'Criando…' : 'Criar planejamento' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showEditModal()) {
+  <div class="modal-backdrop" (click)="closeEditModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Renomear planejamento</h3>
+      <p>Altere o nome deste espaço financeiro.</p>
+      <label class="modal-field">
+        <span>Nome</span>
+        <input
+          type="text"
+          placeholder="Nome do planejamento"
+          [ngModel]="editName()"
+          (ngModelChange)="editName.set($event)"
+          (keyup.enter)="submitEditPlanning()"
+        />
+      </label>
+      @if (editError()) {
+        <p class="modal-error">{{ editError() }}</p>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeEditModal()">Cancelar</button>
+        <button type="button" class="btn-brand" [disabled]="editLoading()" (click)="submitEditPlanning()">
+          {{ editLoading() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showDeleteModal()) {
+  <div class="modal-backdrop" (click)="closeDeleteModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Apagar planejamento</h3>
+      @if (deleteTarget(); as p) {
+        <p>
+          Tem certeza que quer apagar <strong>{{ p.name }}</strong>?
+          Todos os movimentos, contas, metas e fixos deste planejamento serão removidos de forma permanente.
+        </p>
+      }
+      @if (deleteError()) {
+        <p class="modal-error">{{ deleteError() }}</p>
+      }
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="closeDeleteModal()">Cancelar</button>
+        <button type="button" class="btn-danger" [disabled]="deleteLoading()" (click)="submitDeletePlanning()">
+          {{ deleteLoading() ? 'Apagando…' : 'Apagar definitivamente' }}
         </button>
       </div>
     </div>
