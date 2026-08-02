@@ -7,7 +7,7 @@
   </header>
 
   @if (loading()) {
-    <p class="muted">Carregando…</p>
+    <app-skeleton variant="cards" [count]="3" label="Carregando metas" />
   } @else if (!items().length) {
     <div class="empty-panel">
       <p>Nenhuma meta cadastrada.</p>

@@ -109,6 +109,8 @@ applyMigration023($pdo);
 applyMigration024($pdo);
 applyMigration025($pdo);
 applyMigration026($pdo);
+applyMigration027($pdo);
+applyMigration028($pdo);
 
 $pdo->exec(
     'UPDATE transactions SET registered_by_user_id = user_id
@@ -1121,6 +1123,37 @@ function applyMigration025(PDO $pdo): void
     }
 
     echo "→ Moeda USD + nomes duplicados em fixos OK\n";
+}
+
+function applyMigration027(PDO $pdo): void
+{
+    // Sempre tenta CREATE IF NOT EXISTS no DATABASE() atual (evita falso positivo
+    // se a tabela existir só em outro schema no mesmo servidor MySQL).
+    applyMigrationFile($pdo, dirname(__DIR__) . '/database/migrations/027_ai_reports.sql');
+    if (tableExists($pdo, 'ai_reports')) {
+        echo "→ Relatórios IA (ai_reports) OK\n";
+        return;
+    }
+    echo "→ AVISO: ai_reports não encontrada após migration 027\n";
+}
+
+function applyMigration028(PDO $pdo): void
+{
+    if (!tableExists($pdo, 'ai_reports')) {
+        return;
+    }
+    try {
+        $pdo->exec(
+            "ALTER TABLE ai_reports
+             MODIFY COLUMN status ENUM('pending','completed','failed') NOT NULL DEFAULT 'pending'"
+        );
+        echo "→ ai_reports.status inclui pending OK\n";
+    } catch (PDOException $e) {
+        if (!isIgnorableMigrationError($e)) {
+            throw $e;
+        }
+        echo "→ ai_reports.status já atualizado\n";
+    }
 }
 
 function applyMigration026(PDO $pdo): void

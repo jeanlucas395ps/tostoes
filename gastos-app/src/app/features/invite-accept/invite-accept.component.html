@@ -14,11 +14,7 @@
     </div>
 
     @if (loading()) {
-
-      <div class="invite-loading">
-        <p>Carregando convite…</p>
-      </div>
-
+      <app-skeleton variant="detail" [count]="2" label="Carregando convite" />
     } @else if (done()) {
 
       <div class="invite-done">

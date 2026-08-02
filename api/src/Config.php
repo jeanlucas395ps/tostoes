@@ -41,6 +41,16 @@ final class Config
             'RATE_LIMIT_AUTH_PER_DAY' => '500',
             'RATE_LIMIT_TRUST_PROXY' => 'false',
             'APP_DEBUG' => 'false',
+            'OPENAI_API_KEY' => '',
+            'OPENAI_API_URL' => 'https://api.openai.com/v1/chat/completions',
+            'OPENAI_MODEL' => 'gpt-4o-mini',
+            'AI_REPORTS_DAILY_LIMIT' => '2',
+            'RATE_LIMIT_AI_REPORTS_PER_MINUTE' => '1',
+            'RATE_LIMIT_AI_REPORTS_PER_HOUR' => '2',
+            'RATE_LIMIT_AI_REPORTS_PER_DAY' => '3',
+            'RATE_LIMIT_AI_REPORTS_IP_PER_MINUTE' => '2',
+            'RATE_LIMIT_AI_REPORTS_IP_PER_HOUR' => '8',
+            'RATE_LIMIT_AI_REPORTS_IP_PER_DAY' => '20',
         ];
 
         self::$env = $defaults;
@@ -66,6 +76,7 @@ final class Config
             }
         }
 
+        // Docker/cPanel: env_file e variáveis do processo sobrescrevem o .env do arquivo.
         foreach (array_keys(self::$env) as $key) {
             $fromEnv = getenv($key);
             if ($fromEnv !== false) {
@@ -112,6 +123,14 @@ final class Config
 
     public static function get(string $key, ?string $default = null): string
     {
-        return self::$env[$key] ?? $default ?? '';
+        if (array_key_exists($key, self::$env)) {
+            return (string) self::$env[$key];
+        }
+        $fromEnv = getenv($key);
+        if ($fromEnv !== false) {
+            return $fromEnv;
+        }
+
+        return $default ?? '';
     }
 }

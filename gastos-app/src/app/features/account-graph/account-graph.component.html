@@ -181,8 +181,7 @@
   <div class="graph-canvas-card">
     @if (loading()) {
       <div class="graph-overlay graph-overlay--loading">
-        <div class="graph-spinner"></div>
-        <span>Carregando diagrama…</span>
+        <app-skeleton variant="detail" [count]="4" label="Carregando diagrama" />
       </div>
     }
     @if (isEmpty() && !loading()) {

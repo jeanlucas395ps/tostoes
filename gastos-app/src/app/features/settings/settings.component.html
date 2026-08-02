@@ -3,6 +3,11 @@
   <p class="page-lead">Câmbio, abas personalizadas e categorias dos itens fixos</p>
 </header>
 
+@if (loading()) {
+  <app-skeleton variant="form" [count]="4" label="Carregando configurações" />
+  <app-skeleton variant="list" [count]="3" label="Carregando abas e categorias" />
+} @else {
+
 <section class="card">
   <h2>Parâmetros financeiros</h2>
   <p class="hint">
@@ -104,4 +109,7 @@
     <button type="button" class="btn-primary" (click)="addCategory()">Adicionar categoria</button>
   </div>
 </section>
+
+}
+
 </div>

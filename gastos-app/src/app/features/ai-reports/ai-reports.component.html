@@ -1,0 +1,319 @@
+<div class="ai-reports-page">
+  <header class="page-top page-top--toolbar">
+    <div>
+      <p class="page-lead">
+        Gere um relatório inteligente do seu período com resumo, saúde financeira e sugestões personalizadas.
+      </p>
+      <p class="quota">
+        Restam <strong>{{ remainingToday() }}</strong> de {{ dailyLimit() }} relatórios hoje
+      </p>
+    </div>
+    <button
+      type="button"
+      class="btn-brand"
+      [disabled]="remainingToday() <= 0"
+      (click)="openPicker()"
+    >
+      Gerar relatório com IA
+    </button>
+  </header>
+
+  @if (error()) {
+    <p class="banner-error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <div class="reports-list" aria-busy="true" aria-label="Carregando histórico">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="skeleton-report-card">
+          <div class="sk-line sk-title"></div>
+          <div class="sk-line sk-period"></div>
+          <div class="sk-line sk-body"></div>
+          <div class="sk-line sk-body short"></div>
+          <div class="sk-line sk-meta"></div>
+        </div>
+      }
+    </div>
+  } @else if (!items().length) {
+    <div class="empty-panel">
+      <div class="empty-icon" aria-hidden="true">✦</div>
+      <h2>Nenhum relatório ainda</h2>
+      <p>Escolha de 1 a 3 meses e a IA monta um panorama da sua saúde financeira.</p>
+      <button type="button" class="btn-brand" [disabled]="remainingToday() <= 0" (click)="openPicker()">
+        Gerar primeiro relatório
+      </button>
+    </div>
+  } @else {
+    <div class="reports-list">
+      @for (item of items(); track item.id) {
+        <article class="report-card" (click)="openDetail(item)">
+          <div class="report-card-main">
+            <div class="report-card-head">
+              <h2>{{ item.title }}</h2>
+              @if (item.financialHealth; as health) {
+                <span class="health-pill" [attr.data-tone]="healthTone(health.score)">
+                  {{ health.score }}/10 · {{ health.label }}
+                </span>
+              }
+            </div>
+            <p class="period">{{ formatPeriod(item) }}</p>
+            @if (item.summary) {
+              <p class="excerpt">{{ item.summary }}</p>
+            }
+            <time>{{ formatCreatedAt(item.createdAt) }}</time>
+          </div>
+          <button
+            type="button"
+            class="btn-remove-icon"
+            title="Remover"
+            aria-label="Remover relatório"
+            (click)="remove(item, $event)"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+          </button>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+@if (showPicker()) {
+  <div class="modal-backdrop ai-modal-backdrop" (click)="closePicker($event)">
+    <div class="modal modal--wide ai-picker-modal" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="modal-close-x"
+        aria-label="Fechar"
+        (click)="closePicker($event)"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+      </button>
+
+      <header class="modal-head">
+        <div>
+          <h3>Escolher período</h3>
+          <p>Selecione de 1 a 3 meses consecutivos</p>
+        </div>
+      </header>
+
+      <div class="picker-year">
+        <button type="button" class="nav-btn" (click)="shiftPickerYear(-1)" [disabled]="generating()">‹</button>
+        <strong>{{ pickerYear() }}</strong>
+        <button type="button" class="nav-btn" (click)="shiftPickerYear(1)" [disabled]="generating()">›</button>
+      </div>
+
+      @if (pickerLoading()) {
+        <div class="month-grid" aria-busy="true" aria-label="Carregando meses">
+          @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
+            <div class="skeleton-month-cell">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-meta"></div>
+              <div class="sk-line sk-meta"></div>
+              <div class="sk-line sk-meta"></div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="month-grid">
+          @for (label of ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; track $index) {
+            @let cell = monthCell($index + 1);
+            @let preview = monthPreview($index + 1);
+            <button
+              type="button"
+              class="month-cell"
+              [class.selected]="isSelected($index + 1)"
+              [class.empty]="cell?.beforePlanningStart"
+              [class.forecast]="preview.forecast && !cell?.beforePlanningStart"
+              [disabled]="!!cell?.beforePlanningStart || generating()"
+              (click)="toggleMonth($index + 1, cell?.beforePlanningStart)"
+            >
+              <span class="m-label">
+                {{ label }}
+                @if (preview.forecast && !cell?.beforePlanningStart) {
+                  <em>prev.</em>
+                }
+              </span>
+              @if (cell?.beforePlanningStart) {
+                <span class="m-empty">—</span>
+              } @else {
+                <span class="m-line income">↑ {{ preview.income | currencyBrl }}</span>
+                <span class="m-line expense">↓ {{ preview.expense | currencyBrl }}</span>
+                <span
+                  class="m-line balance"
+                  [class.positive]="preview.balance >= 0"
+                  [class.negative]="preview.balance < 0"
+                >= {{ preview.balance | currencyBrl }}</span>
+              }
+            </button>
+          }
+        </div>
+      }
+
+      @if (selectedPreview().length) {
+        <div class="selection-preview">
+          <strong>{{ periodLabel() }}</strong>
+          <div class="preview-chips">
+            @for (p of selectedPreview(); track p.key) {
+              <div class="preview-chip">
+                <span>{{ p.label }}@if (p.forecast) { <em class="tag">prev.</em> }</span>
+                <em [class.positive]="p.balance >= 0" [class.negative]="p.balance < 0">
+                  {{ p.balance | currencyBrl }}
+                </em>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (pickerError()) {
+        <p class="banner-error">{{ pickerError() }}</p>
+      }
+
+      @if (generating()) {
+        <div class="generating-banner" aria-live="polite">
+          <div class="sk-line sk-title"></div>
+          <div class="sk-line sk-body"></div>
+          <p>Gerando relatório com IA… Isso pode levar até alguns minutos.</p>
+        </div>
+      }
+
+      <footer class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closePicker($event)">
+          {{ generating() ? 'Cancelar geração' : 'Cancelar' }}
+        </button>
+        <button
+          type="button"
+          class="btn-brand"
+          [disabled]="!selectedKeys().length || generating()"
+          (click)="generate()"
+        >
+          @if (generating()) {
+            Gerando…
+          } @else {
+            Gerar relatório
+          }
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (showDetail()) {
+  <div class="modal-backdrop ai-modal-backdrop" (click)="closeDetail()">
+    <div class="modal modal--report" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="modal-close-x"
+        aria-label="Fechar"
+        (click)="closeDetail()"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+      </button>
+
+      @if (detailLoading() || !detail()) {
+        <div class="report-skeleton" aria-busy="true" aria-label="Carregando relatório">
+          <div class="sk-line sk-period"></div>
+          <div class="sk-line sk-title lg"></div>
+          <div class="sk-health">
+            <div class="sk-ring"></div>
+            <div class="sk-health-text">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-body"></div>
+            </div>
+          </div>
+          <div class="sk-block">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body short"></div>
+          </div>
+          <div class="sk-block">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body short"></div>
+          </div>
+        </div>
+      } @else {
+        @let report = detail()!;
+        @let content = report.content;
+        <header class="report-hero">
+          <p class="hero-period">{{ formatPeriod(report) }}</p>
+          <h2>{{ content.title || report.title }}</h2>
+          @if (content.financialHealth; as health) {
+            <div class="health-score" [attr.data-tone]="healthTone(health.score)">
+              <div class="score-ring">
+                <strong>{{ health.score }}</strong>
+                <span>/10</span>
+              </div>
+              <div>
+                <em>{{ health.label }}</em>
+                @if (health.analysis) {
+                  <p>{{ health.analysis }}</p>
+                }
+              </div>
+            </div>
+          }
+        </header>
+
+        <section class="report-block">
+          <h3>Resumo</h3>
+          <p class="summary-text">{{ content.summary }}</p>
+        </section>
+
+        @if (content.highlights.length) {
+          <section class="report-block">
+            <h3>O que está bom</h3>
+            <ul class="praise-list">
+              @for (h of content.highlights; track h) {
+                <li>{{ h }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (content.concerns.length) {
+          <section class="report-block">
+            <h3>Pontos de atenção</h3>
+            <ul class="concern-list">
+              @for (c of content.concerns; track c) {
+                <li>{{ c }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (content.suggestions.length) {
+          <section class="report-block">
+            <h3>Sugestões de melhoria</h3>
+            <ul class="suggest-list">
+              @for (s of content.suggestions; track s) {
+                <li>{{ s }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @for (section of content.detailedSections; track section.title) {
+          <section class="report-block">
+            <h3>{{ section.title }}</h3>
+            <p class="section-text">{{ section.content }}</p>
+          </section>
+        }
+
+        <footer class="report-footer">
+          <time>{{ formatCreatedAt(report.createdAt) }}</time>
+          <button type="button" class="btn-remove" (click)="remove(report)">
+            Remover relatório
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}

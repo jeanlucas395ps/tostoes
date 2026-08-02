@@ -10,6 +10,7 @@ import dagre from 'cytoscape-dagre';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../shared/components/month-nav/month-nav.component';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import {
   AccountFlowGraph,
@@ -75,7 +76,7 @@ function hexRgba(hex: string, a: number): string {
 @Component({
   selector: 'app-account-graph',
   standalone: true,
-  imports: [CurrencyBrlPipe, MonthNavComponent, LucideSvgComponent],
+  imports: [CurrencyBrlPipe, MonthNavComponent, LucideSvgComponent, SkeletonComponent],
   templateUrl: './account-graph.component.html',
   styleUrl: './account-graph.component.scss',
 })

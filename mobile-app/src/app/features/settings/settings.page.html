@@ -8,87 +8,91 @@
 </ion-header>
 
 <ion-content class="page-content">
-  <div class="card form-card">
-    <h3>Parâmetros financeiros</h3>
+  @if (loading()) {
+    <app-skeleton variant="form" [count]="6" label="Carregando configurações" />
+  } @else {
+    <div class="card form-card">
+      <h3>Parâmetros financeiros</h3>
 
-    <label class="field">
-      <span class="field-label">EUR → BRL (fallback manual)</span>
-      <input class="num" type="number" step="0.01" [(ngModel)]="form.eurToBrl" />
-    </label>
-    <label class="field">
-      <span class="field-label">USD → BRL (fallback manual)</span>
-      <input class="num" type="number" step="0.01" [(ngModel)]="form.usdToBrl" />
-    </label>
-    <label class="field">
-      <span class="field-label">Taxa CDI mensal</span>
-      <input class="num" type="number" step="0.0001" [(ngModel)]="form.cdiMonthlyRate" />
-    </label>
+      <label class="field">
+        <span class="field-label">EUR → BRL (fallback manual)</span>
+        <input class="num" type="number" step="0.01" [(ngModel)]="form.eurToBrl" />
+      </label>
+      <label class="field">
+        <span class="field-label">USD → BRL (fallback manual)</span>
+        <input class="num" type="number" step="0.01" [(ngModel)]="form.usdToBrl" />
+      </label>
+      <label class="field">
+        <span class="field-label">Taxa CDI mensal</span>
+        <input class="num" type="number" step="0.0001" [(ngModel)]="form.cdiMonthlyRate" />
+      </label>
 
-    @if (saved()) {
-      <p class="field-success">Salvo</p>
-    }
-
-    <button class="btn-brand full" type="button" [disabled]="saving()" (click)="save()">
-      {{ saving() ? 'Salvando…' : 'Salvar' }}
-    </button>
-  </div>
-
-  <div class="card form-card">
-    <h3>Abas personalizadas</h3>
-    <div class="taxonomy-list">
-      @for (tab of customTabs(); track tab.id) {
-        <div class="taxonomy-row">
-          <span class="taxonomy-name">{{ tab.name }}</span>
-          <button class="link-btn danger" type="button" (click)="removeTab(tab)">Remover</button>
-        </div>
+      @if (saved()) {
+        <p class="field-success">Salvo</p>
       }
-    </div>
-    <div class="add-row">
-      <input type="text" placeholder="Nova aba (ex.: Brasil)" [(ngModel)]="newTabName" (keyup.enter)="addTab()" />
-      <button class="btn-soft" type="button" (click)="addTab()">Adicionar</button>
-    </div>
-  </div>
 
-  <div class="card form-card">
-    <h3>Categorias do item</h3>
-    <div class="taxonomy-list">
-      @for (cat of itemCategories(); track cat.id) {
-        <div class="taxonomy-row category-row">
-          <span class="taxonomy-name">
-            <app-lucide-svg [nodes]="lucideFor(cat.icon)" />
-            {{ cat.name }}
-          </span>
-          <button class="link-btn danger" type="button" (click)="removeCategory(cat)">Remover</button>
-        </div>
-        <div class="icon-picker">
-          @for (opt of categoryIconOptions; track opt.icon) {
-            <button
-              type="button"
-              class="icon-opt"
-              [class.selected]="cat.icon === opt.icon"
-              [title]="opt.label"
-              (click)="updateCategoryIcon(cat, opt.icon)"
-            ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
-          }
-        </div>
-      }
+      <button class="btn-brand full" type="button" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Salvando…' : 'Salvar' }}
+      </button>
     </div>
 
-    <label class="field">
-      <span class="field-label">Nova categoria</span>
-      <input type="text" placeholder="Nome da categoria" [ngModel]="newCategoryName" (ngModelChange)="onNewCategoryNameChange($event)" />
-    </label>
-    <div class="icon-picker">
-      @for (opt of categoryIconOptions; track opt.icon) {
-        <button
-          type="button"
-          class="icon-opt"
-          [class.selected]="newCategoryIcon === opt.icon"
-          [title]="opt.label"
-          (click)="newCategoryIcon = opt.icon"
-        ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
-      }
+    <div class="card form-card">
+      <h3>Abas personalizadas</h3>
+      <div class="taxonomy-list">
+        @for (tab of customTabs(); track tab.id) {
+          <div class="taxonomy-row">
+            <span class="taxonomy-name">{{ tab.name }}</span>
+            <button class="link-btn danger" type="button" (click)="removeTab(tab)">Remover</button>
+          </div>
+        }
+      </div>
+      <div class="add-row">
+        <input type="text" placeholder="Nova aba (ex.: Brasil)" [(ngModel)]="newTabName" (keyup.enter)="addTab()" />
+        <button class="btn-soft" type="button" (click)="addTab()">Adicionar</button>
+      </div>
     </div>
-    <button class="btn-soft full" type="button" (click)="addCategory()">Adicionar categoria</button>
-  </div>
+
+    <div class="card form-card">
+      <h3>Categorias do item</h3>
+      <div class="taxonomy-list">
+        @for (cat of itemCategories(); track cat.id) {
+          <div class="taxonomy-row category-row">
+            <span class="taxonomy-name">
+              <app-lucide-svg [nodes]="lucideFor(cat.icon)" />
+              {{ cat.name }}
+            </span>
+            <button class="link-btn danger" type="button" (click)="removeCategory(cat)">Remover</button>
+          </div>
+          <div class="icon-picker">
+            @for (opt of categoryIconOptions; track opt.icon) {
+              <button
+                type="button"
+                class="icon-opt"
+                [class.selected]="cat.icon === opt.icon"
+                [title]="opt.label"
+                (click)="updateCategoryIcon(cat, opt.icon)"
+              ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
+            }
+          </div>
+        }
+      </div>
+
+      <label class="field">
+        <span class="field-label">Nova categoria</span>
+        <input type="text" placeholder="Nome da categoria" [ngModel]="newCategoryName" (ngModelChange)="onNewCategoryNameChange($event)" />
+      </label>
+      <div class="icon-picker">
+        @for (opt of categoryIconOptions; track opt.icon) {
+          <button
+            type="button"
+            class="icon-opt"
+            [class.selected]="newCategoryIcon === opt.icon"
+            [title]="opt.label"
+            (click)="newCategoryIcon = opt.icon"
+          ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
+        }
+      </div>
+      <button class="btn-soft full" type="button" (click)="addCategory()">Adicionar categoria</button>
+    </div>
+  }
 </ion-content>

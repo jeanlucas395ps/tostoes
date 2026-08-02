@@ -3,12 +3,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { PlanningService } from '../../core/services/planning.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { PlanningInvitePreview } from '../../core/models/api.models';
 
 @Component({
   selector: 'app-invite-accept',
   standalone: true,
-  imports: [RouterLink, IonContent, IonSpinner],
+  imports: [RouterLink, IonContent, IonSpinner, SkeletonComponent],
   templateUrl: './invite-accept.page.html',
   styleUrls: ['../auth-shared.scss', './invite-accept.page.scss'],
 })

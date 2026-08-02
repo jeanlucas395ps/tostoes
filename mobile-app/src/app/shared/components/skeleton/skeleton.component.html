@@ -1,0 +1,108 @@
+<div class="sk-root" [attr.data-variant]="variant()" aria-busy="true" [attr.aria-label]="label()">
+  @switch (variant()) {
+    @case ('kpi') {
+      <div class="sk-kpi-row">
+        @for (i of items(); track i) {
+          <div class="sk-kpi">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-value"></div>
+          </div>
+        }
+      </div>
+    }
+    @case ('totals') {
+      <div class="sk-totals">
+        @for (i of items(); track i) {
+          <div class="sk-total-card">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-value"></div>
+          </div>
+        }
+      </div>
+    }
+    @case ('list') {
+      <div class="sk-list">
+        @for (i of items(); track i) {
+          <div class="sk-list-card">
+            <div class="sk-avatar"></div>
+            <div class="sk-list-body">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-body"></div>
+              <div class="sk-line sk-meta"></div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+    @case ('cards') {
+      <div class="sk-cards">
+        @for (i of items(); track i) {
+          <div class="sk-card">
+            <div class="sk-line sk-title"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body short"></div>
+            <div class="sk-bar"></div>
+            <div class="sk-line sk-meta"></div>
+          </div>
+        }
+      </div>
+    }
+    @case ('rows') {
+      <div class="sk-rows">
+        @for (i of items(); track i) {
+          <div class="sk-row">
+            <div class="sk-line sk-title"></div>
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-value"></div>
+          </div>
+        }
+      </div>
+    }
+    @case ('detail') {
+      <div class="sk-detail">
+        <div class="sk-line sk-title lg"></div>
+        <div class="sk-line sk-body"></div>
+        <div class="sk-line sk-body short"></div>
+        <div class="sk-bar wide"></div>
+        @for (i of items(); track i) {
+          <div class="sk-row">
+            <div class="sk-line sk-title"></div>
+            <div class="sk-line sk-value"></div>
+          </div>
+        }
+      </div>
+    }
+    @case ('form') {
+      <div class="sk-form">
+        @for (i of items(); track i) {
+          <div class="sk-field">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-input"></div>
+          </div>
+        }
+      </div>
+    }
+    @default {
+      <div class="sk-page">
+        <div class="sk-totals">
+          @for (i of [0, 1, 2, 3]; track i) {
+            <div class="sk-total-card">
+              <div class="sk-line sk-meta"></div>
+              <div class="sk-line sk-value"></div>
+            </div>
+          }
+        </div>
+        <div class="sk-cards">
+          @for (i of items(); track i) {
+            <div class="sk-card">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-body"></div>
+              <div class="sk-line sk-body short"></div>
+              <div class="sk-bar"></div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

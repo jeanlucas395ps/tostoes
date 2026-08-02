@@ -11,6 +11,10 @@
 
   <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
 
+  @if (loading()) {
+    <app-skeleton variant="totals" [count]="3" label="Carregando resumo" />
+    <app-skeleton variant="list" [count]="6" label="Carregando movimentos" />
+  } @else {
   @if (ledger(); as l) {
     <div class="summary-strip">
       <div class="summary-item">
@@ -164,6 +168,7 @@
         </div>
       }
     </div>
+  }
   }
 </ion-content>
 

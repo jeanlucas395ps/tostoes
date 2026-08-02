@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Gastos\Api;
 
 use Gastos\Api\Controllers\AccountController;
+use Gastos\Api\Controllers\AiReportController;
 use Gastos\Api\Controllers\AuthController;
 use Gastos\Api\Controllers\DashboardController;
 use Gastos\Api\Controllers\FxRateController;
@@ -137,6 +138,22 @@ final class Router
 
         if ($method === 'GET' && $path === '/dashboard/summary') {
             DashboardController::summary();
+        }
+
+        if ($method === 'GET' && $path === '/ai-reports') {
+            AiReportController::index();
+        }
+        if ($method === 'POST' && $path === '/ai-reports') {
+            AiReportController::store();
+        }
+        if (preg_match('#^/ai-reports/(\d+)$#', $path, $m)) {
+            $id = (int) $m[1];
+            if ($method === 'GET') {
+                AiReportController::show($id);
+            }
+            if ($method === 'DELETE') {
+                AiReportController::destroy($id);
+            }
         }
 
         if ($method === 'GET' && $path === '/accounts/summary') {

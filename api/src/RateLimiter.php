@@ -16,7 +16,10 @@ final class RateLimiter
     /** @var string|null Diretório de storage nos testes. */
     public static ?string $storageDirOverride = null;
 
-    public static function enforce(string $bucket = 'api'): void
+    /**
+     * @param string|null $identity Chave extra (ex.: user:123). Sem identity, usa só o IP.
+     */
+    public static function enforce(string $bucket = 'api', ?string $identity = null): void
     {
         if (!self::enabled()) {
             return;
@@ -24,7 +27,10 @@ final class RateLimiter
 
         $limits = self::limitsFor($bucket);
         $ip = self::clientIp();
-        $key = hash('sha256', $bucket . '|' . $ip);
+        $subject = ($identity !== null && trim($identity) !== '')
+            ? trim($identity)
+            : $ip;
+        $key = hash('sha256', $bucket . '|' . $subject);
         $path = self::storageDir() . '/' . $key . '.json';
 
         $now = time();
@@ -75,6 +81,25 @@ final class RateLimiter
                 'minute' => self::intConfig('RATE_LIMIT_AUTH_PER_MINUTE', 30),
                 'hour' => self::intConfig('RATE_LIMIT_AUTH_PER_HOUR', 200),
                 'day' => self::intConfig('RATE_LIMIT_AUTH_PER_DAY', 500),
+            ];
+        }
+
+        if ($bucket === 'ai_reports_user') {
+            $daily = max(1, (int) Config::get('AI_REPORTS_DAILY_LIMIT', '2'));
+
+            return [
+                // 1/min evita rajadas; day alinhado ao limite de negócio (+1 para retry raro).
+                'minute' => self::intConfig('RATE_LIMIT_AI_REPORTS_PER_MINUTE', 1),
+                'hour' => self::intConfig('RATE_LIMIT_AI_REPORTS_PER_HOUR', max(2, $daily)),
+                'day' => self::intConfig('RATE_LIMIT_AI_REPORTS_PER_DAY', $daily + 1),
+            ];
+        }
+
+        if ($bucket === 'ai_reports_ip') {
+            return [
+                'minute' => self::intConfig('RATE_LIMIT_AI_REPORTS_IP_PER_MINUTE', 2),
+                'hour' => self::intConfig('RATE_LIMIT_AI_REPORTS_IP_PER_HOUR', 8),
+                'day' => self::intConfig('RATE_LIMIT_AI_REPORTS_IP_PER_DAY', 20),
             ];
         }
 

@@ -49,28 +49,32 @@
       }
     </div>
 
-    @if (!loading() && !a.statement?.length) {
+    @if (loading()) {
+      <app-skeleton variant="rows" [count]="6" label="Carregando extrato" />
+    } @else if (!a.statement?.length) {
       <p class="empty-state">Nenhum lançamento neste período.</p>
+    } @else {
+      <div class="statement-list">
+        @for (line of a.statement; track line.id ?? line.date + line.description) {
+          <div class="statement-row">
+            <div class="statement-main">
+              <span class="statement-desc">{{ line.description }}</span>
+              <span class="statement-meta">{{ line.date | slice: 8 : 10 }}/{{ line.date | slice: 5 : 7 }} · {{ line.category || accountTypeShort(a.type) }}</span>
+            </div>
+            <div class="statement-amounts">
+              <span class="num" [class.text-income]="line.signedAmountBrl! > 0" [class.text-expense]="line.signedAmountBrl! < 0">
+                {{ line.signedAmountBrl ?? line.signedAmount | currencyBrl }}
+              </span>
+              <span class="statement-balance num">saldo {{ line.balanceAfterBrl ?? line.balanceAfter | currencyBrl }}</span>
+            </div>
+          </div>
+        }
+      </div>
     }
 
-    <div class="statement-list">
-      @for (line of a.statement; track line.id ?? line.date + line.description) {
-        <div class="statement-row">
-          <div class="statement-main">
-            <span class="statement-desc">{{ line.description }}</span>
-            <span class="statement-meta">{{ line.date | slice: 8 : 10 }}/{{ line.date | slice: 5 : 7 }} · {{ line.category || accountTypeShort(a.type) }}</span>
-          </div>
-          <div class="statement-amounts">
-            <span class="num" [class.text-income]="line.signedAmountBrl! > 0" [class.text-expense]="line.signedAmountBrl! < 0">
-              {{ line.signedAmountBrl ?? line.signedAmount | currencyBrl }}
-            </span>
-            <span class="statement-balance num">saldo {{ line.balanceAfterBrl ?? line.balanceAfter | currencyBrl }}</span>
-          </div>
-        </div>
-      }
-    </div>
-
     <button class="btn-danger full remove-btn" type="button" (click)="remove()">Remover conta</button>
+  } @else if (loading()) {
+    <app-skeleton variant="detail" [count]="6" label="Carregando conta" />
   }
 </ion-content>
 

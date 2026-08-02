@@ -328,7 +328,7 @@
   >
     <div class="fixed-main">
       @if (loading()) {
-        <p class="muted">Carregando…</p>
+        <app-skeleton variant="list" [count]="6" label="Carregando itens" />
       } @else if (!filteredItems().length) {
         <p class="empty">Nenhum item nesta aba. Use + para cadastrar.</p>
       } @else {

@@ -1,0 +1,303 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/mais" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Relatório com IA</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <div class="hero-card">
+    <p class="lead">
+      Resumo inteligente do período com saúde financeira e sugestões personalizadas.
+    </p>
+    <p class="quota">
+      Restam <strong>{{ remainingToday() }}</strong> de {{ dailyLimit() }} hoje
+    </p>
+    <button
+      type="button"
+      class="btn-generate"
+      [disabled]="remainingToday() <= 0"
+      (click)="openPicker()"
+    >
+      <ion-icon name="sparkles-outline"></ion-icon>
+      Gerar relatório com IA
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="banner-error">{{ error() }}</p>
+  }
+
+  <h2 class="section-title">Histórico</h2>
+
+  @if (loading()) {
+    <div class="list" aria-busy="true" aria-label="Carregando histórico">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="skeleton-card">
+          <div class="sk-line sk-title"></div>
+          <div class="sk-line sk-period"></div>
+          <div class="sk-line sk-body"></div>
+          <div class="sk-line sk-body short"></div>
+          <div class="sk-line sk-meta"></div>
+        </div>
+      }
+    </div>
+  } @else if (!items().length) {
+    <div class="empty">
+      <ion-icon name="document-text-outline"></ion-icon>
+      <p>Nenhum relatório gerado ainda.</p>
+    </div>
+  } @else {
+    <div class="list">
+      @for (item of items(); track item.id) {
+        <article class="card" (click)="openDetail(item)">
+          <div class="card-body">
+            <div class="card-head">
+              <h3>{{ item.title }}</h3>
+              @if (item.financialHealth; as health) {
+                <span class="health-pill" [attr.data-tone]="healthTone(health.score)">
+                  {{ health.score }}/10
+                </span>
+              }
+            </div>
+            <p class="period">{{ formatPeriod(item) }}</p>
+            @if (item.summary) {
+              <p class="excerpt">{{ item.summary }}</p>
+            }
+            <time>{{ formatCreatedAt(item.createdAt) }}</time>
+          </div>
+          <button
+            type="button"
+            class="icon-btn danger"
+            aria-label="Remover"
+            (click)="remove(item, $event)"
+          >
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+        </article>
+      }
+    </div>
+  }
+</ion-content>
+
+@if (showPicker()) {
+  <div class="sheet-backdrop" (click)="closePicker($event)">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <header class="sheet-head">
+        <div>
+          <h3>Escolher período</h3>
+          <p>1 a 3 meses consecutivos</p>
+        </div>
+        <button type="button" class="icon-btn" (click)="closePicker($event)">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </header>
+
+      <div class="year-nav">
+        <button type="button" class="icon-btn" (click)="shiftPickerYear(-1)" [disabled]="generating()">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </button>
+        <strong>{{ pickerYear() }}</strong>
+        <button type="button" class="icon-btn" (click)="shiftPickerYear(1)" [disabled]="generating()">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </button>
+      </div>
+
+      @if (pickerLoading()) {
+        <div class="month-grid" aria-busy="true" aria-label="Carregando meses">
+          @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
+            <div class="skeleton-month">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-meta"></div>
+              <div class="sk-line sk-meta"></div>
+              <div class="sk-line sk-meta"></div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="month-grid">
+          @for (label of shortMonths; track $index) {
+            @let cell = monthCell($index + 1);
+            @let preview = monthPreview($index + 1);
+            <button
+              type="button"
+              class="month-cell"
+              [class.selected]="isSelected($index + 1)"
+              [class.empty]="cell?.beforePlanningStart"
+              [class.forecast]="preview.forecast && !cell?.beforePlanningStart"
+              [disabled]="!!cell?.beforePlanningStart || generating()"
+              (click)="toggleMonth($index + 1, cell?.beforePlanningStart)"
+            >
+              <span class="m-label">
+                {{ label }}
+                @if (preview.forecast && !cell?.beforePlanningStart) {
+                  <em>prev.</em>
+                }
+              </span>
+              @if (cell?.beforePlanningStart) {
+                <span class="m-empty">—</span>
+              } @else {
+                <span class="m-line income">↑ {{ preview.income | currencyBrl }}</span>
+                <span class="m-line expense">↓ {{ preview.expense | currencyBrl }}</span>
+                <span
+                  class="m-line balance"
+                  [class.positive]="preview.balance >= 0"
+                  [class.negative]="preview.balance < 0"
+                >= {{ preview.balance | currencyBrl }}</span>
+              }
+            </button>
+          }
+        </div>
+      }
+
+      @if (periodLabel()) {
+        <p class="selection">Selecionado: <strong>{{ periodLabel() }}</strong></p>
+      }
+
+      @if (pickerError()) {
+        <p class="banner-error">{{ pickerError() }}</p>
+      }
+
+      @if (generating()) {
+        <div class="generating-banner" aria-live="polite">
+          <div class="sk-line sk-title"></div>
+          <div class="sk-line sk-body"></div>
+          <p>Gerando relatório com IA… Pode levar alguns minutos.</p>
+        </div>
+      }
+
+      <div class="sheet-actions">
+        <button type="button" class="btn-cancel-sheet" (click)="closePicker($event)">
+          {{ generating() ? 'Cancelar geração' : 'Cancelar' }}
+        </button>
+        <button
+          type="button"
+          class="btn-generate full"
+          [disabled]="!selectedKeys().length || generating()"
+          (click)="generate()"
+        >
+          @if (generating()) {
+            Gerando…
+          } @else {
+            Gerar relatório
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showDetail()) {
+  <div class="sheet-backdrop" (click)="closeDetail($event)">
+    <div class="sheet sheet--report" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="sheet-close-x"
+        aria-label="Fechar"
+        (click)="closeDetail($event)"
+      >
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+
+      @if (detailLoading() || !detail()) {
+        <div class="report-skeleton" aria-busy="true" aria-label="Carregando relatório">
+          <div class="sk-line sk-period"></div>
+          <div class="sk-line sk-title lg"></div>
+          <div class="sk-health">
+            <div class="sk-ring"></div>
+            <div class="sk-health-text">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-body"></div>
+            </div>
+          </div>
+          <div class="sk-block">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body short"></div>
+          </div>
+          <div class="sk-block">
+            <div class="sk-line sk-meta"></div>
+            <div class="sk-line sk-body"></div>
+            <div class="sk-line sk-body short"></div>
+          </div>
+        </div>
+      } @else {
+        @let report = detail()!;
+        @let content = report.content;
+        <header class="report-hero">
+          <p class="hero-period">{{ formatPeriod(report) }}</p>
+          <h2>{{ content.title || report.title }}</h2>
+          @if (content.financialHealth; as health) {
+            <div class="health-score" [attr.data-tone]="healthTone(health.score)">
+              <div class="score-ring">
+                <strong>{{ health.score }}</strong>
+                <span>/10</span>
+              </div>
+              <div>
+                <em>{{ health.label }}</em>
+                @if (health.analysis) {
+                  <p>{{ health.analysis }}</p>
+                }
+              </div>
+            </div>
+          }
+        </header>
+
+        <section class="report-block">
+          <h3>Resumo</h3>
+          <p class="summary-text">{{ content.summary }}</p>
+        </section>
+
+        @if (content.highlights.length) {
+          <section class="report-block">
+            <h3>O que está bom</h3>
+            <ul class="praise-list">
+              @for (h of content.highlights; track h) {
+                <li>{{ h }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (content.concerns.length) {
+          <section class="report-block">
+            <h3>Pontos de atenção</h3>
+            <ul class="concern-list">
+              @for (c of content.concerns; track c) {
+                <li>{{ c }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (content.suggestions.length) {
+          <section class="report-block">
+            <h3>Sugestões</h3>
+            <ul class="suggest-list">
+              @for (s of content.suggestions; track s) {
+                <li>{{ s }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @for (section of content.detailedSections; track section.title) {
+          <section class="report-block">
+            <h3>{{ section.title }}</h3>
+            <p class="section-text">{{ section.content }}</p>
+          </section>
+        }
+
+        <footer class="report-footer">
+          <time>{{ formatCreatedAt(report.createdAt) }}</time>
+          <button type="button" class="btn-remove" (click)="remove(report)">
+            Remover
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}

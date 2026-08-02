@@ -19,6 +19,9 @@
 
   <p class="subtitle">{{ meta.subtitle }}</p>
 
+  @if (loading()) {
+    <app-skeleton variant="cards" [count]="4" label="Carregando itens" />
+  } @else {
   @if (meta.userOverviewTabs && userTabOverviews().length > 1) {
     <div class="user-tabs">
       @for (tab of userTabOverviews(); track tab.key) {
@@ -53,7 +56,7 @@
     </div>
   }
 
-  @if (!loading() && !itemsByUserTab().length) {
+  @if (!itemsByUserTab().length) {
     <p class="empty-state">Nenhum item cadastrado ainda. Toque em + para criar o primeiro.</p>
   }
 
@@ -89,6 +92,7 @@
       </div>
     }
   </div>
+  }
 </ion-content>
 
 @if (showForm()) {

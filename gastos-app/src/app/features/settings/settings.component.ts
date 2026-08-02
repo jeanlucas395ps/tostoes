@@ -13,11 +13,12 @@ import {
   suggestCategoryIcon,
 } from '../../core/utils/category-icon.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, LucideSvgComponent],
+  imports: [FormsModule, LucideSvgComponent, SkeletonComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
@@ -34,6 +35,7 @@ export class SettingsComponent implements OnInit {
     montanteInicialBrl: 0,
   };
   saved = signal(false);
+  loading = signal(true);
 
   customTabs = signal<PlanningCustomTab[]>([]);
   itemCategories = signal<PlanningItemCategory[]>([]);
@@ -47,16 +49,33 @@ export class SettingsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.api.getSettings().subscribe((s) => {
-      this.form = {
-        ...s,
-        eurToBrlFallback: s.eurToBrlFallback ?? s.eurToBrl,
-        eurToBrl: s.eurToBrlFallback ?? s.eurToBrl,
-        usdToBrlFallback: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
-        usdToBrl: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
-      };
+    let pending = 2;
+    const done = () => {
+      pending -= 1;
+      if (pending <= 0) this.loading.set(false);
+    };
+
+    this.api.getSettings().subscribe({
+      next: (s) => {
+        this.form = {
+          ...s,
+          eurToBrlFallback: s.eurToBrlFallback ?? s.eurToBrl,
+          eurToBrl: s.eurToBrlFallback ?? s.eurToBrl,
+          usdToBrlFallback: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
+          usdToBrl: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
+        };
+        done();
+      },
+      error: () => done(),
     });
-    this.loadTaxonomy();
+    this.api.getPlanningTaxonomy().subscribe({
+      next: (t) => {
+        this.customTabs.set(t.customTabs);
+        this.itemCategories.set(t.itemCategories);
+        done();
+      },
+      error: () => done(),
+    });
   }
 
   loadTaxonomy(): void {

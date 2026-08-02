@@ -4,6 +4,7 @@ import { IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonIcon, IonRe
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { AccountFormComponent } from './account-form/account-form.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { AccountsSummary, FinancialAccount } from '../../core/models/api.models';
 
 @Component({
@@ -12,6 +13,7 @@ import { AccountsSummary, FinancialAccount } from '../../core/models/api.models'
   imports: [
     CurrencyBrlPipe,
     AccountFormComponent,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,

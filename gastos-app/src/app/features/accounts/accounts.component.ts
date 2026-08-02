@@ -17,11 +17,12 @@ import {
   isForeignCurrency,
   currencySymbol,
 } from '../../core/utils/money.util';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-accounts',
   standalone: true,
-  imports: [FormsModule, CurrencyBrlPipe, MonthNavComponent, SlicePipe, DecimalPipe, LowerCasePipe],
+  imports: [FormsModule, CurrencyBrlPipe, MonthNavComponent, SlicePipe, DecimalPipe, LowerCasePipe, SkeletonComponent],
   templateUrl: './accounts.component.html',
   styleUrl: './accounts.component.scss',
 })

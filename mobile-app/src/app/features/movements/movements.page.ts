@@ -38,6 +38,7 @@ import {
 } from '../../core/models/api.models';
 import { CATEGORY_ICON_OPTIONS, categoryLucideNodes, resolveItemIcon, suggestCategoryIcon } from '../../core/utils/category-icon.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import type { IconNode } from 'lucide';
 import { responsibleLabel } from '../../core/utils/responsible.util';
 import { entryAmount, formatMoneyWithBrl, previewBrl, currencySymbol, isForeignCurrency } from '../../core/utils/money.util';
@@ -51,6 +52,7 @@ import { entryAmount, formatMoneyWithBrl, previewBrl, currencySymbol, isForeignC
     MonthNavComponent,
     ConfirmAccountDialogComponent,
     LucideSvgComponent,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,

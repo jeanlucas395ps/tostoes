@@ -12,14 +12,7 @@
   </header>
 
   @if (loading()) {
-    <div class="skeleton-grid">
-      <div class="skeleton-card tall"></div>
-      <div class="skeleton-card tall"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-    </div>
+    <app-skeleton variant="page" [count]="4" label="Carregando resumo" />
   } @else {
     @if (data(); as d) {
       @if (selectedMonth(); as m) {
@@ -104,8 +97,8 @@
               </div>
             }
           } @else {
-            <div class="patrimony-panel patrimony-panel--empty">
-              <p class="muted">Carregando patrimônio…</p>
+            <div class="patrimony-panel">
+              <app-skeleton variant="cards" [count]="2" label="Carregando patrimônio" />
             </div>
           }
 

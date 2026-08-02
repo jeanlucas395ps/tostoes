@@ -93,6 +93,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/account-graph/account-graph.page').then((m) => m.AccountGraphPage),
   },
   {
+    path: 'relatorios-ia',
+    canActivate: [authGuard, appLockGuard],
+    loadComponent: () => import('./features/ai-reports/ai-reports.page').then((m) => m.AiReportsPage),
+  },
+  {
     path: 'gastos-fixos',
     canActivate: [authGuard, appLockGuard],
     loadComponent: () => import('./features/fixed-items/fixed-items.page').then((m) => m.FixedItemsPage),

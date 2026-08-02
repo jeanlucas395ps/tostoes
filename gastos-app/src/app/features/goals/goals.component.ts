@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { FinancialAccount, FinancialGoal } from '../../core/models/api.models';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-goals',
   standalone: true,
-  imports: [FormsModule, CurrencyBrlPipe],
+  imports: [FormsModule, CurrencyBrlPipe, SkeletonComponent],
   templateUrl: './goals.component.html',
   styleUrl: './goals.component.scss',
 })

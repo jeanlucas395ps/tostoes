@@ -29,6 +29,7 @@ export class MorePage {
 
   readonly shortcuts: Shortcut[] = [
     { label: 'Grafo de contas', icon: 'git-network-outline', route: '/grafo-contas', accent: 'var(--primary)' },
+    { label: 'Relatório com IA', icon: 'sparkles-outline', route: '/relatorios-ia', accent: 'var(--primary)' },
     { label: 'Gastos fixos', icon: 'repeat-outline', route: '/gastos-fixos', accent: 'var(--danger)' },
     { label: 'Compras parceladas', icon: 'card-outline', route: '/compras-parceladas', accent: 'var(--warning-dark)' },
     { label: 'Recebimentos fixos', icon: 'cash-outline', route: '/recebimentos-fixos', accent: 'var(--income)' },

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AccountType,
@@ -25,7 +25,13 @@ import {
   RecurringItem,
   Transaction,
   User,
+  AiReport,
+  AiReportListItem,
+  AiReportsResponse,
 } from '../models/api.models';
+
+/** Geração de relatório IA pode levar >30s (OpenAI). */
+const AI_REPORT_TIMEOUT_MS = 180_000;
 
 @Injectable({ providedIn: 'root' })
 export class FinanceApiService {
@@ -408,5 +414,26 @@ export class FinanceApiService {
 
   deleteRecurringItem(id: number): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${this.base}/recurring-items/${id}`);
+  }
+
+  getAiReports(): Observable<AiReportsResponse> {
+    return this.http.get<AiReportsResponse>(`${this.base}/ai-reports`);
+  }
+
+  getAiReport(id: number): Observable<{ item: AiReport }> {
+    return this.http.get<{ item: AiReport }>(`${this.base}/ai-reports/${id}`);
+  }
+
+  generateAiReport(body: {
+    periodStart: string;
+    periodEnd: string;
+  }): Observable<{ item: AiReport; remainingToday: number }> {
+    return this.http
+      .post<{ item: AiReport; remainingToday: number }>(`${this.base}/ai-reports`, body)
+      .pipe(timeout(AI_REPORT_TIMEOUT_MS));
+  }
+
+  deleteAiReport(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${this.base}/ai-reports/${id}`);
   }
 }

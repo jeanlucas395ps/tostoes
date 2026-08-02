@@ -36,6 +36,7 @@ import {
   CATEGORY_PIE_COLORS,
 } from '../../core/utils/donut-chart.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import type { IconNode } from 'lucide';
 
 export interface FixedPageMeta {
@@ -71,6 +72,7 @@ type CategoryFilter = 'all' | 'sem' | number;
     RouterLink,
     UserAvatarComponent,
     LucideSvgComponent,
+    SkeletonComponent,
   ],
   templateUrl: './fixed-items.component.html',
   styleUrl: './fixed-items.component.scss',

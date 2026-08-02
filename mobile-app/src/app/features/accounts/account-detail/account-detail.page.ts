@@ -16,6 +16,7 @@ import { FinanceApiService } from '../../../core/services/finance-api.service';
 import { CurrencyBrlPipe } from '../../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../../shared/components/month-nav/month-nav.component';
 import { AccountFormComponent } from '../account-form/account-form.component';
+import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { EntryKind, FinancialAccount } from '../../../core/models/api.models';
 import { accountTypeShortLabel } from '../../../core/utils/account-labels.util';
 
@@ -43,6 +44,7 @@ const KIND_LABELS_CREDIT: Record<'' | EntryKind, string> = {
     CurrencyBrlPipe,
     MonthNavComponent,
     AccountFormComponent,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,

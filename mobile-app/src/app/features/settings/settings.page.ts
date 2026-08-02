@@ -4,6 +4,7 @@ import { IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import { CATEGORY_ICON_OPTIONS, categoryLucideNodes, suggestCategoryIcon } from '../../core/utils/category-icon.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { AppSettings, PlanningCustomTab, PlanningItemCategory } from '../../core/models/api.models';
 import type { IconNode } from 'lucide';
 
@@ -16,7 +17,7 @@ interface SettingsFormState {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, LucideSvgComponent],
+  imports: [FormsModule, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, LucideSvgComponent, SkeletonComponent],
   templateUrl: './settings.page.html',
   styleUrl: './settings.page.scss',
 })
@@ -25,6 +26,7 @@ export class SettingsPage implements OnInit {
   private alertCtrl = inject(AlertController);
 
   form: SettingsFormState = { eurToBrl: 6, usdToBrl: 5, cdiMonthlyRate: 0.009 };
+  loading = signal(true);
   saving = signal(false);
   saved = signal(false);
 
@@ -39,8 +41,32 @@ export class SettingsPage implements OnInit {
   lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
 
   ngOnInit(): void {
-    this.api.getSettings().subscribe((s) => this.applySettings(s));
-    this.loadTaxonomy();
+    this.hydrate();
+  }
+
+  private hydrate(): void {
+    this.loading.set(true);
+    let pending = 2;
+    const done = () => {
+      pending -= 1;
+      if (pending <= 0) this.loading.set(false);
+    };
+
+    this.api.getSettings().subscribe({
+      next: (s) => {
+        this.applySettings(s);
+        done();
+      },
+      error: () => done(),
+    });
+    this.api.getPlanningTaxonomy().subscribe({
+      next: (t) => {
+        this.customTabs.set(t.customTabs);
+        this.itemCategories.set(t.itemCategories);
+        done();
+      },
+      error: () => done(),
+    });
   }
 
   private applySettings(s: AppSettings): void {

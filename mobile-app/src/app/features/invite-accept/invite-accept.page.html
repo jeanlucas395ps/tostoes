@@ -10,8 +10,7 @@
   <div class="auth-sheet invite-sheet">
     @if (loading()) {
       <div class="invite-state">
-        <ion-spinner name="crescent"></ion-spinner>
-        <p>Carregando convite…</p>
+        <app-skeleton variant="detail" [count]="2" label="Carregando convite" />
       </div>
     } @else if (done()) {
       <div class="invite-state">

@@ -9,7 +9,8 @@
   </header>
 
   @if (loading()) {
-    <p class="muted">Carregando…</p>
+    <app-skeleton variant="totals" [count]="4" label="Carregando totais" />
+    <app-skeleton variant="cards" [count]="4" label="Carregando contas" />
   } @else {
     @if (summary(); as s) {
       <div class="totals-strip">

@@ -366,26 +366,10 @@
   }
 
   &--loading {
-    gap: 1rem;
-
-    span {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 1.5rem;
   }
-}
-
-/* Spinner */
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.graph-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border-strong);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
 }
 
 /* ── Tooltip de hover ───────────────────────────────────────────────────── */

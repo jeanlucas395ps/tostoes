@@ -7,6 +7,7 @@ import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../shared/components/month-nav/month-nav.component';
 import { YearCalendarComponent } from '../../shared/components/year-calendar/year-calendar.component';
 import { PlanningManagerComponent } from '../../shared/components/planning-manager/planning-manager.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { AccountsSummary, DashboardSummary, FinancialGoal, MONTH_LABELS } from '../../core/models/api.models';
 import { isPastMonth } from '../../core/utils/month.util';
 import { clampMonthIndexForYear, isBeforePlanningUsageStart } from '../../core/utils/planning-usage.util';
@@ -22,6 +23,7 @@ const BAR_H = 96;
     MonthNavComponent,
     YearCalendarComponent,
     PlanningManagerComponent,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,

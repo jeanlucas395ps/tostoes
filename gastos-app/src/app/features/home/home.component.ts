@@ -17,6 +17,7 @@ import {
   isBeforePlanningUsageStart,
 } from '../../core/utils/planning-usage.util';
 import { formatMoney, isForeignCurrency } from '../../core/utils/money.util';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 const BAR_H = 140; // pixel height of bar tracks
 
@@ -39,7 +40,7 @@ function donutArcPath(cx: number, cy: number, R: number, ri: number, a1: number,
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CurrencyBrlPipe, MonthNavComponent, RouterLink, YearCalendarComponent],
+  imports: [CurrencyBrlPipe, MonthNavComponent, RouterLink, YearCalendarComponent, SkeletonComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

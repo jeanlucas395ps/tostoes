@@ -574,3 +574,47 @@ export const MONTH_LABELS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ] as const;
+
+export interface AiReportFinancialHealth {
+  score: number;
+  label: string;
+  analysis?: string;
+}
+
+export interface AiReportSection {
+  title: string;
+  content: string;
+}
+
+export interface AiReportContent {
+  title: string;
+  summary: string;
+  financialHealth: AiReportFinancialHealth;
+  highlights: string[];
+  concerns: string[];
+  suggestions: string[];
+  detailedSections: AiReportSection[];
+}
+
+export interface AiReportListItem {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  monthsCount: number;
+  title: string;
+  status: string;
+  summary?: string | null;
+  financialHealth?: Pick<AiReportFinancialHealth, 'score' | 'label'> | null;
+  createdAt: string;
+}
+
+export interface AiReport extends AiReportListItem {
+  content: AiReportContent;
+  errorMessage?: string | null;
+}
+
+export interface AiReportsResponse {
+  items: AiReportListItem[];
+  dailyLimit: number;
+  remainingToday: number;
+}

@@ -120,7 +120,7 @@
   <div class="graph-canvas-card">
     @if (loading()) {
       <div class="canvas-overlay">
-        <span>Carregando…</span>
+        <app-skeleton variant="detail" [count]="3" label="Carregando grafo" />
       </div>
     } @else if (!graph()?.nodes?.length) {
       <div class="canvas-overlay">

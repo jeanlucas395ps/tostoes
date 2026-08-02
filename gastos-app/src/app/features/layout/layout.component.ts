@@ -124,6 +124,11 @@ export class LayoutComponent implements OnInit {
           label: 'Grafo de contas',
           icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M9 6h6M9 18h3M15 9v6"/></svg>',
         },
+        {
+          path: '/relatorios-ia',
+          label: 'Relatórios com AI',
+          icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="4"/><path d="m16.5 7.5 1.5-1.5"/><path d="m6 18 1.5-1.5"/><path d="m16.5 16.5 1.5 1.5"/><path d="M6 6l1.5 1.5"/></svg>',
+        },
       ],
     },
     {

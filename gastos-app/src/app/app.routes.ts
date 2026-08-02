@@ -86,6 +86,14 @@ export const routes: Routes = [
         data: { title: 'Grafo de contas' },
       },
       {
+        path: 'relatorios-ia',
+        loadComponent: () =>
+          import('./features/ai-reports/ai-reports.component').then(
+            (m) => m.AiReportsComponent
+          ),
+        data: { title: 'Relatórios com AI' },
+      },
+      {
         path: 'gastos-fixos',
         loadComponent: () =>
           import('./features/fixed-items/fixed-items.component').then(

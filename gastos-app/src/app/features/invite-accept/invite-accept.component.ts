@@ -3,11 +3,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PlanningService } from '../../core/services/planning.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PlanningInvitePreview } from '../../core/models/api.models';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-invite-accept',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, SkeletonComponent],
   templateUrl: './invite-accept.component.html',
   styleUrl: './invite-accept.component.scss',
 })

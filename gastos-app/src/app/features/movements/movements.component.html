@@ -27,7 +27,8 @@
   </header>
 
   @if (loading()) {
-    <p class="muted">Carregando…</p>
+    <app-skeleton variant="totals" [count]="3" label="Carregando resumo" />
+    <app-skeleton variant="list" [count]="5" label="Carregando movimentos" />
   } @else {
     @if (ledger(); as L) {
 

@@ -19,6 +19,7 @@ import { AccountFlowGraph, AccountFlowGraphMode } from '../../core/models/api.mo
 import { nodeTypeLabel, nodeDisplayName } from '../../core/utils/account-labels.util';
 import { categoryLucideNodes } from '../../core/utils/category-icon.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import type { IconNode } from 'lucide';
 import {
   GraphFilterState,
@@ -51,6 +52,7 @@ const MODE_OPTIONS: { value: AccountFlowGraphMode; label: string }[] = [
     CurrencyBrlPipe,
     MonthNavComponent,
     LucideSvgComponent,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,

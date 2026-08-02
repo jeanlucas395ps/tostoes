@@ -14,84 +14,87 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  @if (summary(); as s) {
-    <div class="totals-row">
-      <div class="total-card">
-        <span class="label-caps">Bancos</span>
-        <strong class="num">{{ s.totals.bank | currencyBrl }}</strong>
-      </div>
-      <div class="total-card">
-        <span class="label-caps">Investido</span>
-        <strong class="num text-invest">{{ s.totals.investment | currencyBrl }}</strong>
-      </div>
-      @if (s.totals.creditLimit) {
-        <div class="total-card">
-          <span class="label-caps">Cartão usado</span>
-          <strong class="num text-expense">{{ s.totals.creditUsed ?? 0 | currencyBrl }}</strong>
-        </div>
-      }
-      <div class="total-card">
-        <span class="label-caps">Patrimônio</span>
-        <strong class="num">{{ s.totals.all | currencyBrl }}</strong>
-      </div>
-    </div>
-  }
-
-  @if (banks().length) {
-    <h3 class="group-title">Bancos</h3>
-    <div class="account-list">
-      @for (a of banks(); track a.id) {
-        <button class="account-card card card-hover" type="button" (click)="openAccount(a)">
-          <span class="account-dot" [style.background]="a.color || 'var(--primary)'"></span>
-          <div class="account-main">
-            <span class="account-name">{{ a.name }}</span>
-            <span class="account-currency">{{ a.currency }}</span>
-          </div>
-          <strong class="num">{{ a.balanceBrl | currencyBrl }}</strong>
-        </button>
-      }
-    </div>
-  }
-
-  @if (investments().length) {
-    <h3 class="group-title">Investimentos</h3>
-    <div class="account-list">
-      @for (a of investments(); track a.id) {
-        <button class="account-card card card-hover" type="button" (click)="openAccount(a)">
-          <span class="account-dot" [style.background]="a.color || 'var(--accent-invest)'"></span>
-          <div class="account-main">
-            <span class="account-name">{{ a.name }}</span>
-            <span class="account-currency">{{ a.currency }}</span>
-          </div>
-          <strong class="num text-invest">{{ a.balanceBrl | currencyBrl }}</strong>
-        </button>
-      }
-    </div>
-  }
-
-  @if (cards().length) {
-    <h3 class="group-title">Cartões de crédito</h3>
-    <div class="account-list">
-      @for (a of cards(); track a.id) {
-        <button class="card-account card card-hover" type="button" (click)="openAccount(a)">
-          <div class="account-main">
-            <span class="account-name">{{ a.name }}</span>
-            <span class="num">{{ a.usedLimitBrl ?? 0 | currencyBrl }} usado</span>
-          </div>
-          <div class="usage-track">
-            <div class="usage-fill" [style.width.%]="cardUsagePct(a)"></div>
-          </div>
-          <div class="usage-legend">
-            <span>Limite {{ a.creditLimitBrl ?? 0 | currencyBrl }}</span>
-            <span>Disponível {{ a.availableLimitBrl ?? 0 | currencyBrl }}</span>
-          </div>
-        </button>
-      }
-    </div>
-  }
-
-  @if (!loading() && !banks().length && !investments().length && !cards().length) {
+  @if (loading()) {
+    <app-skeleton variant="totals" [count]="4" label="Carregando totais" />
+    <app-skeleton variant="list" [count]="4" label="Carregando contas" />
+  } @else if (!banks().length && !investments().length && !cards().length) {
     <p class="empty-state">Nenhuma conta cadastrada ainda. Toque em + para criar a primeira.</p>
+  } @else {
+    @if (summary(); as s) {
+      <div class="totals-row">
+        <div class="total-card">
+          <span class="label-caps">Bancos</span>
+          <strong class="num">{{ s.totals.bank | currencyBrl }}</strong>
+        </div>
+        <div class="total-card">
+          <span class="label-caps">Investido</span>
+          <strong class="num text-invest">{{ s.totals.investment | currencyBrl }}</strong>
+        </div>
+        @if (s.totals.creditLimit) {
+          <div class="total-card">
+            <span class="label-caps">Cartão usado</span>
+            <strong class="num text-expense">{{ s.totals.creditUsed ?? 0 | currencyBrl }}</strong>
+          </div>
+        }
+        <div class="total-card">
+          <span class="label-caps">Patrimônio</span>
+          <strong class="num">{{ s.totals.all | currencyBrl }}</strong>
+        </div>
+      </div>
+    }
+
+    @if (banks().length) {
+      <h3 class="group-title">Bancos</h3>
+      <div class="account-list">
+        @for (a of banks(); track a.id) {
+          <button class="account-card card card-hover" type="button" (click)="openAccount(a)">
+            <span class="account-dot" [style.background]="a.color || 'var(--primary)'"></span>
+            <div class="account-main">
+              <span class="account-name">{{ a.name }}</span>
+              <span class="account-currency">{{ a.currency }}</span>
+            </div>
+            <strong class="num">{{ a.balanceBrl | currencyBrl }}</strong>
+          </button>
+        }
+      </div>
+    }
+
+    @if (investments().length) {
+      <h3 class="group-title">Investimentos</h3>
+      <div class="account-list">
+        @for (a of investments(); track a.id) {
+          <button class="account-card card card-hover" type="button" (click)="openAccount(a)">
+            <span class="account-dot" [style.background]="a.color || 'var(--accent-invest)'"></span>
+            <div class="account-main">
+              <span class="account-name">{{ a.name }}</span>
+              <span class="account-currency">{{ a.currency }}</span>
+            </div>
+            <strong class="num text-invest">{{ a.balanceBrl | currencyBrl }}</strong>
+          </button>
+        }
+      </div>
+    }
+
+    @if (cards().length) {
+      <h3 class="group-title">Cartões de crédito</h3>
+      <div class="account-list">
+        @for (a of cards(); track a.id) {
+          <button class="card-account card card-hover" type="button" (click)="openAccount(a)">
+            <div class="account-main">
+              <span class="account-name">{{ a.name }}</span>
+              <span class="num">{{ a.usedLimitBrl ?? 0 | currencyBrl }} usado</span>
+            </div>
+            <div class="usage-track">
+              <div class="usage-fill" [style.width.%]="cardUsagePct(a)"></div>
+            </div>
+            <div class="usage-legend">
+              <span>Limite {{ a.creditLimitBrl ?? 0 | currencyBrl }}</span>
+              <span>Disponível {{ a.availableLimitBrl ?? 0 | currencyBrl }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
   }
 </ion-content>
 

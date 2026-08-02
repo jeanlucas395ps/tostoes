@@ -13,6 +13,7 @@ import {
 } from '@ionic/angular/standalone';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { FinancialGoal } from '../../core/models/api.models';
 
 @Component({
@@ -20,6 +21,7 @@ import { FinancialGoal } from '../../core/models/api.models';
   standalone: true,
   imports: [
     CurrencyBrlPipe,
+    SkeletonComponent,
     IonContent,
     IonHeader,
     IonToolbar,
