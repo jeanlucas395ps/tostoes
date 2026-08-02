@@ -28,10 +28,11 @@
             <select [(ngModel)]="editCurrency">
               <option value="BRL">Real (R$)</option>
               <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
             </select>
           </label>
           <label class="field">
-            <span>Valor {{ editCurrency() === 'EUR' ? '(€)' : '(R$)' }}</span>
+            <span>Valor ({{ currencySymbol(editCurrency()) }})</span>
             <input type="number" [(ngModel)]="editAmount" step="0.01" min="0" />
           </label>
         </div>
@@ -68,6 +69,7 @@
           <select [(ngModel)]="editCurrency" (ngModelChange)="onOutCurrencyOrAmountChange()">
             <option value="BRL">Real (R$)</option>
             <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
           </select>
         </label>
         <label class="field">
@@ -101,6 +103,7 @@
           <select [(ngModel)]="editCurrencyIn">
             <option value="BRL">Real (R$)</option>
             <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
           </select>
         </label>
         <label class="field">

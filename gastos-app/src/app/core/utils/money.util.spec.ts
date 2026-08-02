@@ -19,6 +19,11 @@ describe('money.util', () => {
       expect(formatMoney(10.5, 'EUR')).toContain('€');
       expect(formatMoney(10.5, 'EUR')).toContain('10,50');
     });
+
+    it('formats USD', () => {
+      expect(formatMoney(10.5, 'USD')).toContain('US$');
+      expect(formatMoney(10.5, 'USD')).toContain('10,50');
+    });
   });
 
   describe('formatMoneyWithBrl', () => {
@@ -31,6 +36,12 @@ describe('money.util', () => {
       const s = formatMoneyWithBrl(10, 'EUR', 62);
       expect(s).toContain('€');
       expect(s).toContain('62');
+    });
+
+    it('includes BRL equivalent for USD', () => {
+      const s = formatMoneyWithBrl(10, 'USD', 50);
+      expect(s).toContain('US$');
+      expect(s).toContain('50');
     });
   });
 
@@ -63,6 +74,10 @@ describe('money.util', () => {
 
     it('converts EUR with rate', () => {
       expect(previewBrl(10, 'EUR', 6.2)).toBe(62);
+    });
+
+    it('converts USD with rate', () => {
+      expect(previewBrl(10, 'USD', 5)).toBe(50);
     });
   });
 });

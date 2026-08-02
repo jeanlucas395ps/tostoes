@@ -14,6 +14,8 @@ import {
   formatMoney,
   formatMoneyWithBrl,
   previewBrl,
+  isForeignCurrency,
+  currencySymbol,
 } from '../../core/utils/money.util';
 
 @Component({
@@ -44,6 +46,9 @@ export class AccountsComponent implements OnInit {
   year = signal(new Date().getFullYear());
   month = signal(new Date().getMonth());
   eurToBrl = signal(6.2);
+  usdToBrl = signal(5.0);
+  currencySymbol = currencySymbol;
+  isForeignCurrency = isForeignCurrency;
   stmtKindFilter = signal<EntryKind | ''>('');
   stmtSearch = signal('');
   stmtFiltersActive = computed(
@@ -72,10 +77,15 @@ export class AccountsComponent implements OnInit {
   creditAccounts = computed(() => this.accounts().filter((a) => a.type === 'credit'));
 
   ngOnInit(): void {
-    this.api.getSettings().subscribe((s) =>
-      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl)
-    );
+    this.api.getSettings().subscribe((s) => {
+      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl);
+      this.usdToBrl.set(s.usdToBrlFallback ?? s.usdToBrl ?? 5);
+    });
     this.loadSummary();
+  }
+
+  fxRateFor(currency: Currency): number {
+    return currency === 'USD' ? this.usdToBrl() : this.eurToBrl();
   }
 
   accountBalanceLabel(a: FinancialAccount): string {
@@ -88,7 +98,7 @@ export class AccountsComponent implements OnInit {
   }
 
   accountInitialLabel(a: FinancialAccount): string {
-    const brl = a.initialBalanceBrl ?? previewBrl(a.initialBalance, a.currency, this.eurToBrl());
+    const brl = a.initialBalanceBrl ?? previewBrl(a.initialBalance, a.currency, this.fxRateFor(a.currency));
     return formatMoneyWithBrl(a.initialBalance, a.currency, brl);
   }
 
@@ -112,8 +122,8 @@ export class AccountsComponent implements OnInit {
 
   lineAmountLabel(line: { amount: number; amountBrl?: number; currency: Currency }, account: FinancialAccount): string {
     const brl = line.amountBrl ?? line.amount;
-    if (account.currency === 'EUR') {
-      return formatMoneyWithBrl(line.amount, 'EUR', brl);
+    if (isForeignCurrency(account.currency)) {
+      return formatMoneyWithBrl(line.amount, account.currency, brl);
     }
     return formatMoney(line.amount, 'BRL');
   }
@@ -122,9 +132,9 @@ export class AccountsComponent implements OnInit {
     const brl = line.signedAmountBrl ?? line.signedAmount;
     const absNative = Math.abs(line.signedAmount);
     const absBrl = Math.abs(brl);
-    if (account.currency === 'EUR' && line.signedAmount !== 0) {
+    if (isForeignCurrency(account.currency) && line.signedAmount !== 0) {
       const sign = line.signedAmount > 0 ? '+' : '−';
-      return `${sign}${formatMoneyWithBrl(absNative, 'EUR', absBrl)}`;
+      return `${sign}${formatMoneyWithBrl(absNative, account.currency, absBrl)}`;
     }
     if (line.signedAmount === 0) return '—';
     const sign = line.signedAmount > 0 ? '+' : '−';
@@ -132,13 +142,13 @@ export class AccountsComponent implements OnInit {
   }
 
   formInitialBrlPreview(): number {
-    return previewBrl(this.form.initialBalance, this.form.currency, this.eurToBrl());
+    return previewBrl(this.form.initialBalance, this.form.currency, this.fxRateFor(this.form.currency));
   }
 
   lineBalanceLabel(line: { balanceAfter: number; balanceAfterBrl?: number }, account: FinancialAccount): string {
     const brl = line.balanceAfterBrl ?? line.balanceAfter;
-    if (account.currency === 'EUR') {
-      return formatMoneyWithBrl(line.balanceAfter, 'EUR', brl);
+    if (isForeignCurrency(account.currency)) {
+      return formatMoneyWithBrl(line.balanceAfter, account.currency, brl);
     }
     return formatMoney(line.balanceAfter, 'BRL');
   }

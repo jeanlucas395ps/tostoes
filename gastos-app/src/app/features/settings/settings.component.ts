@@ -24,6 +24,8 @@ export class SettingsComponent implements OnInit {
   form: AppSettings = {
     eurToBrl: 6,
     eurToBrlFallback: 6,
+    usdToBrl: 5,
+    usdToBrlFallback: 5,
     cdiMonthlyRate: 0.0095,
     leisureMonthlyBrl: 0,
     montanteInicialBrl: 0,
@@ -43,6 +45,8 @@ export class SettingsComponent implements OnInit {
         ...s,
         eurToBrlFallback: s.eurToBrlFallback ?? s.eurToBrl,
         eurToBrl: s.eurToBrlFallback ?? s.eurToBrl,
+        usdToBrlFallback: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
+        usdToBrl: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
       };
     });
     this.loadTaxonomy();
@@ -58,9 +62,14 @@ export class SettingsComponent implements OnInit {
   save(): void {
     this.api.updateSettings({
       eurToBrl: this.form.eurToBrl,
+      usdToBrl: this.form.usdToBrl ?? 5,
       cdiMonthlyRate: this.form.cdiMonthlyRate,
     }).subscribe((s) => {
-      this.form = s;
+      this.form = {
+        ...s,
+        eurToBrl: s.eurToBrlFallback ?? s.eurToBrl,
+        usdToBrl: s.usdToBrlFallback ?? s.usdToBrl ?? 5,
+      };
       this.saved.set(true);
       setTimeout(() => this.saved.set(false), 2500);
     });

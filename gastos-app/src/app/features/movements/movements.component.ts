@@ -38,6 +38,8 @@ import {
   formatMoney,
   formatMoneyWithBrl,
   previewBrl,
+  currencySymbol,
+  isForeignCurrency,
 } from '../../core/utils/money.util';
 import {
   clampInstallmentCount,
@@ -71,6 +73,9 @@ export class MovementsComponent implements OnInit {
   customTabs = signal<PlanningCustomTab[]>([]);
   itemCategories = signal<PlanningItemCategory[]>([]);
   eurToBrl = signal(6.2);
+  usdToBrl = signal(5.0);
+  currencySymbol = currencySymbol;
+  isForeignCurrency = isForeignCurrency;
   fxPreview = signal<FxRateQuote | null>(null);
   loading = signal(true);
   busyId = signal<number | null>(null);
@@ -154,8 +159,13 @@ export class MovementsComponent implements OnInit {
   });
 
   formPreviewBrl = computed(() => {
-    const rate = this.fxPreview()?.eurToBrl ?? this.eurToBrl();
-    return previewBrl(this.variableForm.amount, this.variableForm.currency, rate);
+    const cur = this.variableForm.currency;
+    const fx = this.fxPreview();
+    const rate =
+      cur === 'USD'
+        ? (fx?.usdToBrl ?? this.usdToBrl())
+        : (fx?.eurToBrl ?? this.eurToBrl());
+    return previewBrl(this.variableForm.amount, cur, rate);
   });
 
   showProjected = computed(() => !isPastMonth(this.year(), this.month()));
@@ -185,9 +195,10 @@ export class MovementsComponent implements OnInit {
   creditBills = computed(() => this.ledger()?.creditBills ?? []);
 
   ngOnInit(): void {
-    this.api.getSettings().subscribe((s) =>
-      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl)
-    );
+    this.api.getSettings().subscribe((s) => {
+      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl);
+      this.usdToBrl.set(s.usdToBrlFallback ?? s.usdToBrl ?? 5);
+    });
     this.api.getAccounts().subscribe((r) => this.accounts.set(r.items));
     this.api.getInvestmentTypes().subscribe((r) => this.investmentTypes.set(r.items));
     this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
@@ -301,12 +312,13 @@ export class MovementsComponent implements OnInit {
   }
 
   refreshFxPreview(): void {
-    if (this.variableForm.currency !== 'EUR') {
+    if (this.variableForm.currency !== 'EUR' && this.variableForm.currency !== 'USD') {
       this.fxPreview.set(null);
       return;
     }
     const date = this.variableForm.transactionDate || this.defaultTxDate();
-    this.api.getFxRate(date).subscribe({
+    const cur = this.variableForm.currency === 'USD' ? 'USD' : 'EUR';
+    this.api.getFxRate(date, cur).subscribe({
       next: (q) => this.fxPreview.set(q),
       error: () => this.fxPreview.set(null),
     });
@@ -939,6 +951,9 @@ export class MovementsComponent implements OnInit {
     let label = formatMoneyWithBrl(t.amount, t.currency, t.amountBrl);
     if (t.currency === 'EUR' && t.eurToBrl) {
       label += ` · €1=R$${t.eurToBrl.toFixed(4)}`;
+    }
+    if (t.currency === 'USD' && t.usdToBrl) {
+      label += ` · US$1=R$${t.usdToBrl.toFixed(4)}`;
     }
     if (t.accountName) {
       label += ` · ${t.accountName}`;

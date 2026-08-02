@@ -1,5 +1,5 @@
 export type EntryKind = 'income' | 'expense' | 'investment' | 'leisure' | 'transfer';
-export type Currency = 'BRL' | 'EUR';
+export type Currency = 'BRL' | 'EUR' | 'USD';
 export type Region = 'BR' | 'PT' | 'geral';
 export type AccountType = 'bank' | 'investment' | 'credit';
 
@@ -46,6 +46,8 @@ export interface AppSettings {
   eurToBrl: number;
   /** Cotação manual quando a API de câmbio não estiver disponível. */
   eurToBrlFallback: number;
+  usdToBrl?: number;
+  usdToBrlFallback?: number;
   leisureMonthlyBrl: number;
   montanteInicialBrl: number;
   cdiMonthlyRate: number;
@@ -53,7 +55,8 @@ export interface AppSettings {
 
 export interface FxRateQuote {
   date: string;
-  eurToBrl: number;
+  eurToBrl?: number;
+  usdToBrl?: number;
   source: 'api' | 'fallback';
   fallback: boolean;
 }
@@ -113,6 +116,7 @@ export interface FinancialAccount {
     totalBrl: number;
   };
   eurToBrl?: number;
+  usdToBrl?: number;
   statement?: AccountStatementLine[];
 }
 
@@ -130,6 +134,7 @@ export interface AccountStatementLine {
   balanceAfterBrl?: number;
   currency: Currency;
   eurToBrl?: number | null;
+  usdToBrl?: number | null;
 }
 
 export interface AccountsSummary {
@@ -154,6 +159,8 @@ export interface Transaction {
   amountBrl: number;
   /** Cotação EUR→BRL usada neste lançamento (quando currency = EUR). */
   eurToBrl?: number | null;
+  /** Cotação USD→BRL usada neste lançamento (quando currency = USD). */
+  usdToBrl?: number | null;
   category: string;
   region: Region;
   accountId?: number | null;

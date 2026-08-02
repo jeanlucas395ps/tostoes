@@ -147,12 +147,13 @@
       <select [(ngModel)]="form.currency">
         <option value="BRL">Real (R$)</option>
         <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
       </select>
     </label>
-    <label><span>Valor mensal ({{ form.currency === 'EUR' ? '€' : 'R$' }})</span>
+    <label><span>Valor mensal ({{ currencySymbol(form.currency ?? 'BRL') }})</span>
       <input type="number" [(ngModel)]="form.amount" step="0.01" min="0" />
     </label>
-    @if (form.currency === 'EUR') {
+    @if (isForeignCurrency(form.currency ?? 'BRL')) {
       <small class="hint">≈ {{ formPreviewBrl() | number:'1.2-2':'pt-BR' }} em reais (estimativa; na confirmação usa cotação do dia)</small>
     }
 

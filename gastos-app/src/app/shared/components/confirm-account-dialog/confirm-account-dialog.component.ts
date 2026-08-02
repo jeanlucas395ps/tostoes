@@ -7,7 +7,7 @@ import {
   FinancialAccount,
   MonthPlanEntry,
 } from '../../../core/models/api.models';
-import { entryAmount, formatMoneyWithBrl } from '../../../core/utils/money.util';
+import { entryAmount, formatMoneyWithBrl, currencySymbol } from '../../../core/utils/money.util';
 
 import { accountTypeShortLabel } from '../../../core/utils/account-labels.util';
 
@@ -46,6 +46,8 @@ export interface ConfirmAccountResult {
   styleUrl: './confirm-account-dialog.component.scss',
 })
 export class ConfirmAccountDialogComponent {
+  currencySymbol = currencySymbol;
+
   entry = input.required<MonthPlanEntry>();
   accounts = input<FinancialAccount[]>([]);
   amount = input<number | null>(null);

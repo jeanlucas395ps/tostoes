@@ -40,8 +40,9 @@ export class FinanceApiService {
     return this.http.put<AppSettings>(`${this.base}/settings`, body);
   }
 
-  getFxRate(date: string): Observable<FxRateQuote> {
-    return this.http.get<FxRateQuote>(`${this.base}/fx/eur-brl`, {
+  getFxRate(date: string, currency: 'EUR' | 'USD' = 'EUR'): Observable<FxRateQuote> {
+    const path = currency === 'USD' ? 'usd-brl' : 'eur-brl';
+    return this.http.get<FxRateQuote>(`${this.base}/fx/${path}`, {
       params: { date },
     });
   }

@@ -16,7 +16,7 @@ import {
   clampMonthIndexForYear,
   isBeforePlanningUsageStart,
 } from '../../core/utils/planning-usage.util';
-import { formatMoney } from '../../core/utils/money.util';
+import { formatMoney, isForeignCurrency } from '../../core/utils/money.util';
 
 const BAR_H = 140; // pixel height of bar tracks
 
@@ -149,8 +149,14 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  isForeignCurrency = isForeignCurrency;
+
   accountEurBalance(a: FinancialAccount): string {
-    return formatMoney(a.balance, 'EUR');
+    return formatMoney(a.balance, a.currency === 'USD' ? 'USD' : 'EUR');
+  }
+
+  accountForeignBalance(a: FinancialAccount): string {
+    return formatMoney(a.balance, a.currency);
   }
 
   /** Investimentos + metas , só para a tabela «Detalhe mensal». */

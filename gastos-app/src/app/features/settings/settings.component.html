@@ -6,13 +6,17 @@
 <section class="card">
   <h2>Parâmetros financeiros</h2>
   <p class="hint">
-    Nos lançamentos em euro, usamos a cotação do dia (API Frankfurter). O valor abaixo só entra em ação
-    quando a API não responder , é o <strong>fallback</strong>, não a cotação diária.
+    Nos lançamentos em euro ou dólar, usamos a cotação do dia (API Frankfurter). Os valores abaixo só entram em ação
+    quando a API não responder — são o <strong>fallback</strong>, não a cotação diária.
   </p>
   <form (ngSubmit)="save()">
     <label>
       EUR → BRL (fallback manual)
       <input type="number" step="0.01" [(ngModel)]="form.eurToBrl" name="eur" />
+    </label>
+    <label>
+      USD → BRL (fallback manual)
+      <input type="number" step="0.01" [(ngModel)]="form.usdToBrl" name="usd" />
     </label>
     <label>
       Taxa CDI mensal (ex: 0.0095 = 0,95%)

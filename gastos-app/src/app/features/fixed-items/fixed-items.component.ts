@@ -21,6 +21,8 @@ import {
   entryAmount,
   formatMoneyWithBrl,
   previewBrl,
+  currencySymbol,
+  isForeignCurrency,
 } from '../../core/utils/money.util';
 import {
   CATEGORY_ICON_OPTIONS,
@@ -92,6 +94,9 @@ export class FixedItemsComponent implements OnInit {
   investmentFinancialAccounts = signal<FinancialAccount[]>([]);
   bankFinancialAccounts = signal<FinancialAccount[]>([]);
   eurToBrl = signal(6.2);
+  usdToBrl = signal(5.0);
+  currencySymbol = currencySymbol;
+  isForeignCurrency = isForeignCurrency;
   activeTab = signal<TabFilter>('all');
   activeUserTab = signal<UserTabFilter>('all');
   activeCategory = signal<CategoryFilter>('all');
@@ -328,9 +333,11 @@ export class FixedItemsComponent implements OnInit {
     return this.householdUserById(key) ?? null;
   }
 
-  formPreviewBrl = computed(() =>
-    previewBrl(this.form.amount ?? 0, this.form.currency ?? 'BRL', this.eurToBrl())
-  );
+  formPreviewBrl = computed(() => {
+    const cur = this.form.currency ?? 'BRL';
+    const rate = cur === 'USD' ? this.usdToBrl() : this.eurToBrl();
+    return previewBrl(this.form.amount ?? 0, cur, rate);
+  });
 
   ngOnInit(): void {
     const data = this.route.snapshot.data as Partial<FixedPageMeta>;
@@ -348,9 +355,10 @@ export class FixedItemsComponent implements OnInit {
     this.activeTab.set('all');
     this.activeUserTab.set('all');
     this.activeCategory.set('all');
-    this.api.getSettings().subscribe((s) =>
-      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl)
-    );
+    this.api.getSettings().subscribe((s) => {
+      this.eurToBrl.set(s.eurToBrlFallback ?? s.eurToBrl);
+      this.usdToBrl.set(s.usdToBrlFallback ?? s.usdToBrl ?? 5);
+    });
     this.loadTaxonomy();
     this.load();
     this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
@@ -426,7 +434,8 @@ export class FixedItemsComponent implements OnInit {
     if (storedBrl > 0) {
       return storedBrl;
     }
-    return previewBrl(entryAmount(item), 'EUR', this.eurToBrl());
+    const rate = currency === 'USD' ? this.usdToBrl() : this.eurToBrl();
+    return previewBrl(entryAmount(item), currency, rate);
   }
 
   setCategory(cat: CategoryFilter): void {

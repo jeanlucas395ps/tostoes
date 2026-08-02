@@ -235,7 +235,7 @@
                     <th>Data</th>
                     <th>Descrição</th>
                     <th class="num">Valor</th>
-                    <th class="num">{{ st.type === 'credit' ? 'Dívida' : 'Saldo' }} ({{ st.currency === 'EUR' ? '€ / R$' : 'R$' }})</th>
+                    <th class="num">{{ st.type === 'credit' ? 'Dívida' : 'Saldo' }} ({{ isForeignCurrency(st.currency) ? (currencySymbol(st.currency) + ' / R$') : 'R$' }})</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,6 +248,9 @@
                         @if (line.category) { <small>{{ line.category }}</small> }
                         @if (line.eurToBrl) {
                           <small class="fx-line">€1 = R$ {{ line.eurToBrl | number:'1.4-4':'pt-BR' }}</small>
+                        }
+                        @if (line.usdToBrl) {
+                          <small class="fx-line">US$1 = R$ {{ line.usdToBrl | number:'1.4-4':'pt-BR' }}</small>
                         }
                       </td>
                       <td class="num" [class.pos]="line.signedAmount > 0" [class.neg]="line.signedAmount < 0">
@@ -296,12 +299,13 @@
         <select [(ngModel)]="form.currency">
           <option value="BRL">Real (R$)</option>
           <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
         </select>
       </label>
 
       @if (form.type === 'credit') {
         <label>
-          <span>Limite do cartão {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <span>Limite do cartão ({{ currencySymbol(form.currency) }})</span>
           <input type="number" [(ngModel)]="form.creditLimit" step="0.01" min="0" />
         </label>
         <div class="form-row">
@@ -315,16 +319,16 @@
           </label>
         </div>
         <label>
-          <span>Dívida atual (fatura aberta) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <span>Dívida atual (fatura aberta) ({{ currencySymbol(form.currency) }})</span>
           <input type="number" [(ngModel)]="form.initialBalance" step="0.01" min="0" />
           <small class="hint">Quanto você já deve neste cartão hoje. Compras aumentam; pagamentos diminuem.</small>
         </label>
       } @else {
         <label>
-          <span>Saldo inicial (hoje) {{ form.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <span>Saldo inicial (hoje) ({{ currencySymbol(form.currency) }})</span>
           <input type="number" [(ngModel)]="form.initialBalance" step="0.01" />
-          @if (form.currency === 'EUR') {
-            <small class="hint">≈ {{ formInitialBrlPreview() | currencyBrl }} em reais (fallback {{ eurToBrl() }})</small>
+          @if (isForeignCurrency(form.currency)) {
+            <small class="hint">≈ {{ formInitialBrlPreview() | currencyBrl }} em reais (fallback {{ fxRateFor(form.currency) }})</small>
           }
         </label>
       }

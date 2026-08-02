@@ -86,11 +86,11 @@
                           {{ (a.usedLimitBrl ?? a.balanceBrl) | currencyBrl }}
                           <span class="limit-ratio">/ {{ (a.creditLimitBrl ?? a.creditLimit ?? 0) | currencyBrl }}</span>
                         } @else {
-                          {{ a.currency === 'EUR' ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
+                          {{ isForeignCurrency(a.currency) ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
                         }
                       </strong>
-                      @if (a.currency === 'EUR') {
-                        <small class="account-mini-fx">{{ accountEurBalance(a) }}</small>
+                      @if (isForeignCurrency(a.currency)) {
+                        <small class="account-mini-fx">{{ accountForeignBalance(a) }}</small>
                       }
                     </a>
                   }

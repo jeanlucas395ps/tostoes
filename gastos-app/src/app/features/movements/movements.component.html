@@ -218,7 +218,7 @@
                         (ngModelChange)="setAmount(e, $event)"
                         (blur)="saveAmount(e)"
                         step="0.01"
-                        [attr.placeholder]="e.currency === 'EUR' ? '€' : 'R$'"
+                        [attr.placeholder]="currencySymbol(e.currency ?? 'BRL')"
                       />
                     } @else {
                       <span class="item-amount">{{ pendingLabel(e) }}</span>
@@ -394,7 +394,7 @@
       </label>
       <p class="modal-hint">
         Cada parcela: {{ ip.result.amount | number:'1.2-2':'pt-BR' }}
-        {{ ip.result.currency === 'EUR' ? '€' : 'R$' }}
+        {{ currencySymbol(ip.result.currency) }}
         · {{ installmentCount() }}x no cartão
       </p>
       <div class="modal-actions">
@@ -612,21 +612,26 @@
           <select [(ngModel)]="variableForm.currency" (ngModelChange)="onVariableDateOrCurrencyChange()">
             <option value="BRL">Real (R$)</option>
             <option value="EUR">Euro (€)</option>
+          <option value="USD">Dólar (US$)</option>
           </select>
         </label>
 
         <label class="modal-field">
-          <span>Valor {{ variableForm.currency === 'EUR' ? '(€)' : '(R$)' }}</span>
+          <span>Valor ({{ currencySymbol(variableForm.currency) }})</span>
           <input type="number" [(ngModel)]="variableForm.amount" step="0.01" placeholder="0,00" />
         </label>
       </div>
 
-      @if (variableForm.currency === 'EUR') {
+      @if (isForeignCurrency(variableForm.currency)) {
         <p class="modal-hint">
           ≈ R$ {{ formPreviewBrl() | number:'1.2-2':'pt-BR' }}
           @if (fxPreview(); as fx) {
             <span class="fx-tag" [class.fallback]="fx.fallback">
-              · €1 = R$ {{ fx.eurToBrl | number:'1.4-4':'pt-BR' }}
+              @if (variableForm.currency === 'USD') {
+                · US$1 = R$ {{ (fx.usdToBrl ?? usdToBrl()) | number:'1.4-4':'pt-BR' }}
+              } @else {
+                · €1 = R$ {{ (fx.eurToBrl ?? eurToBrl()) | number:'1.4-4':'pt-BR' }}
+              }
               {{ fx.fallback ? '(fallback)' : '(cotação do dia)' }}
             </span>
           }
