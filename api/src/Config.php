@@ -32,6 +32,15 @@ final class Config
             'MAIL_FROM_ADDRESS' => 'noreply@tostoes.app',
             'MAIL_FROM_NAME' => 'Tostoes',
             'APP_NAME' => 'Tostoes',
+            'RATE_LIMIT_ENABLED' => 'true',
+            'RATE_LIMIT_API_PER_MINUTE' => '120',
+            'RATE_LIMIT_API_PER_HOUR' => '2000',
+            'RATE_LIMIT_API_PER_DAY' => '10000',
+            'RATE_LIMIT_AUTH_PER_MINUTE' => '30',
+            'RATE_LIMIT_AUTH_PER_HOUR' => '200',
+            'RATE_LIMIT_AUTH_PER_DAY' => '500',
+            'RATE_LIMIT_TRUST_PROXY' => 'false',
+            'APP_DEBUG' => 'false',
         ];
 
         self::$env = $defaults;
@@ -81,12 +90,6 @@ final class Config
         }
         if (isset(self::$env['DB_PASSWORD']) && self::$env['DB_PASSWORD'] !== '') {
             self::$env['DB_PASS'] = self::$env['DB_PASSWORD'];
-        }
-        if (empty(self::$env['DB_NAME']) && !empty(self::$env['DB_DATABASE'])) {
-            self::$env['DB_NAME'] = self::$env['DB_DATABASE'];
-        }
-        if (empty(self::$env['DB_USER']) && !empty(self::$env['DB_USERNAME'])) {
-            self::$env['DB_USER'] = self::$env['DB_USERNAME'];
         }
     }
 

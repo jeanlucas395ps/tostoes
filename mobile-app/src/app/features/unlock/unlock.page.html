@@ -1,0 +1,20 @@
+<ion-content [fullscreen]="true" class="unlock-content">
+  <div class="unlock-wrap">
+    <app-brand-mark variant="default" />
+    <h1>Tostoes bloqueado</h1>
+
+    @if (verifying()) {
+      <div class="unlock-status">
+        <ion-spinner name="crescent"></ion-spinner>
+        <p>Confirmando com {{ biometryLabel() }}…</p>
+      </div>
+    } @else if (failed()) {
+      <p class="unlock-hint">Não foi possível confirmar sua identidade.</p>
+      <button class="btn-brand" (click)="attempt()">Tentar novamente</button>
+      <button class="btn-soft" (click)="useLogout()">Sair e usar senha</button>
+    } @else {
+      <p class="unlock-hint">Toque para desbloquear com {{ biometryLabel() }}.</p>
+      <button class="btn-brand" (click)="attempt()">Desbloquear</button>
+    }
+  </div>
+</ion-content>

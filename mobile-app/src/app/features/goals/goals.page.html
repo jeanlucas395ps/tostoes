@@ -1,0 +1,39 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Metas</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  @if (!loading() && !goals().length) {
+    <p class="empty-state">Nenhuma meta cadastrada em {{ year }}.</p>
+  }
+
+  <div class="goal-cards">
+    @for (g of goals(); track g.id) {
+      <div class="card goal-card">
+        <div class="goal-card-top">
+          <span class="goal-dot" [style.background]="g.color"></span>
+          <span class="goal-name">{{ g.name }}</span>
+          <span class="goal-pct num">{{ g.pct }}%</span>
+        </div>
+        <div class="goal-track">
+          <div class="goal-fill" [style.width.%]="g.pct" [style.background]="g.color"></div>
+        </div>
+        <div class="goal-amounts num">
+          {{ g.currentAmountBrl | currencyBrl }} de {{ g.targetAmountBrl | currencyBrl }}
+        </div>
+        <div class="goal-meta">
+          <span>Parcela: {{ g.monthlyAmountBrl | currencyBrl }}/mês</span>
+          @if (g.targetFinancialAccountName) {
+            <span>{{ g.targetFinancialAccountName }}</span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</ion-content>

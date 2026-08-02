@@ -129,17 +129,15 @@ final class ProjectionService
         float $amount,
         ?float $storedBrl = null
     ): float {
-        if ($currency !== 'EUR') {
+        if ($currency !== 'EUR' && $currency !== 'USD') {
             return round($storedBrl ?? $amount, 2);
         }
 
-        $fx = FxRateService::resolveEurToBrl(
-            $pdo,
-            $planningId,
-            self::fxReferenceDate($year, $month)
-        );
+        $fx = $currency === 'USD'
+            ? FxRateService::resolveUsdToBrl($pdo, $planningId, self::fxReferenceDate($year, $month))
+            : FxRateService::resolveEurToBrl($pdo, $planningId, self::fxReferenceDate($year, $month));
 
-        return MoneyHelper::toBrl($amount, 'EUR', $fx['rate']);
+        return MoneyHelper::toBrl($amount, $currency, $fx['rate']);
     }
 
     /**
@@ -305,13 +303,13 @@ final class ProjectionService
             $override = $amtStmt->fetchColumn();
             if ($override !== false) {
                 $amount = (float) $override;
-                if ($currency === 'EUR') {
+                if ($currency === 'EUR' || $currency === 'USD') {
                     $totals[$kind] += self::amountInBrlForMonth(
                         $pdo,
                         $planningId,
                         $year,
                         $month,
-                        'EUR',
+                        $currency,
                         $original,
                         $amount
                     );
@@ -381,13 +379,13 @@ final class ProjectionService
                     continue;
                 }
                 if (isset($amounts[$m])) {
-                    if ($currency === 'EUR') {
+                    if ($currency === 'EUR' || $currency === 'USD') {
                         $byMonth[$m][$kind] += self::amountInBrlForMonth(
                             $pdo,
                             $planningId,
                             $year,
                             $m,
-                            'EUR',
+                            $currency,
                             $original,
                             $amounts[$m]
                         );

@@ -3,14 +3,28 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { SafeHtmlPipe } from './safe-html.pipe';
 
 describe('SafeHtmlPipe', () => {
-  it('bypasses sanitization for html', () => {
+  let pipe: SafeHtmlPipe;
+  let sanitizer: DomSanitizer;
+
+  beforeEach(() => {
     TestBed.configureTestingModule({ providers: [SafeHtmlPipe] });
-    const pipe = TestBed.inject(SafeHtmlPipe);
-    const sanitizer = TestBed.inject(DomSanitizer);
-    const html = '<b>ok</b>';
+    pipe = TestBed.inject(SafeHtmlPipe);
+    sanitizer = TestBed.inject(DomSanitizer);
+  });
+
+  it('allows static svg icons', () => {
     const spy = spyOn(sanitizer, 'bypassSecurityTrustHtml').and.callThrough();
-    const result = pipe.transform(html);
-    expect(spy).toHaveBeenCalledWith(html);
-    expect(result).toBeTruthy();
+    const svg =
+      '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/></svg>';
+    pipe.transform(svg);
+    expect(spy).toHaveBeenCalledWith(svg);
+  });
+
+  it('rejects script and event handlers', () => {
+    const spy = spyOn(sanitizer, 'bypassSecurityTrustHtml').and.callThrough();
+    pipe.transform('<svg onload="alert(1)"></svg>');
+    expect(spy).toHaveBeenCalledWith('');
+    pipe.transform('<script>alert(1)</script>');
+    expect(spy).toHaveBeenCalledWith('');
   });
 });

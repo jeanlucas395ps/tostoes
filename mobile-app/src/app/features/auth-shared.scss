@@ -1,0 +1,144 @@
+/* Padrão visual compartilhado pelas telas de autenticação: hero escuro em
+   cima + "sheet" claro/surface embaixo, com cantos arredondados subindo. */
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.auth-hero {
+  position: relative;
+  height: 42vh;
+  min-height: 260px;
+  background: var(--gradient-hero);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: #fff;
+  padding: 0 var(--sp-6);
+
+  app-brand-mark {
+    margin-bottom: var(--sp-4);
+  }
+}
+
+.hero-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--sp-2);
+}
+
+.hero-subtitle {
+  font-size: 0.9375rem;
+  opacity: 0.78;
+  font-weight: 500;
+}
+
+.auth-sheet {
+  position: relative;
+  margin-top: -28px;
+  background: var(--surface);
+  border-radius: 28px 28px 0 0;
+  min-height: 58vh;
+  padding: var(--sp-8) var(--sp-6) var(--sp-8);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.auth-sheet h2 {
+  font-size: 1.375rem;
+  margin-bottom: var(--sp-6);
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--sp-4);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.field input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+
+  &::placeholder { color: var(--text-faint); }
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+}
+
+.field-error {
+  color: var(--danger-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-4);
+}
+
+.field-success {
+  color: var(--income-dark);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-4);
+  line-height: 1.5;
+}
+
+.submit-btn {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.9375rem;
+  font-size: 1rem;
+  margin-top: var(--sp-4);
+  opacity: 1;
+  visibility: visible;
+
+  ion-spinner { width: 20px; height: 20px; }
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-6);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  a { color: var(--primary); }
+}
+
+.auth-links.center {
+  justify-content: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  font-weight: 500;
+}

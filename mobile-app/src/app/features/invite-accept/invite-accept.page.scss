@@ -1,0 +1,53 @@
+.invite-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-4);
+  padding-top: var(--sp-8);
+
+  ion-spinner { width: 28px; height: 28px; }
+}
+
+.invite-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+
+  &.success { background: var(--income-soft); color: var(--income-dark); }
+  &.danger  { background: var(--danger-soft); color: var(--danger-dark); }
+}
+
+.invite-message {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.invite-card {
+  text-align: center;
+  margin-bottom: var(--sp-8);
+
+  h2 { margin-bottom: var(--sp-2); }
+}
+
+.invite-detail {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  &.muted { font-size: 0.8125rem; color: var(--text-faint); }
+}
+
+.invite-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+a.submit-btn {
+  text-decoration: none;
+}

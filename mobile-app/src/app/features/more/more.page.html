@@ -1,0 +1,37 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Mais</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <div class="planning-strip">
+    <span class="label-caps">Planejamento ativo</span>
+    <strong>{{ planning.active()?.name ?? '—' }}</strong>
+  </div>
+
+  <div class="shortcut-grid">
+    @for (item of shortcuts; track item.route) {
+      <a class="shortcut-card card card-hover" [routerLink]="item.route">
+        <ion-icon [name]="item.icon" [style.color]="item.accent"></ion-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </div>
+
+  <a class="row-link card" routerLink="/perfil">
+    <ion-icon name="person-circle-outline"></ion-icon>
+    <span>Meu perfil</span>
+    <ion-icon class="chevron" name="chevron-forward-outline"></ion-icon>
+  </a>
+
+  <button class="row-link card theme-toggle" (click)="theme.toggle()">
+    <ion-icon [name]="theme.isDark() ? 'sunny-outline' : 'moon-outline'"></ion-icon>
+    <span>{{ theme.isDark() ? 'Tema claro' : 'Tema escuro' }}</span>
+  </button>
+
+  <button class="row-link card logout-row" (click)="confirmLogout()">
+    <ion-icon name="log-out-outline"></ion-icon>
+    <span>Sair</span>
+  </button>
+</ion-content>

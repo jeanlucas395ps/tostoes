@@ -11,6 +11,9 @@ use PDO;
 
 final class Auth
 {
+    /** @var (callable(): array<string, string>)|null */
+    public static $requestHeadersProvider = null;
+
     public static function bearerUserId(): ?int
     {
         $header = self::authorizationHeader();
@@ -28,15 +31,27 @@ final class Auth
         if (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
             return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
-        if (function_exists('apache_request_headers')) {
-            $headers = apache_request_headers();
-            foreach ($headers as $key => $value) {
-                if (strtolower($key) === 'authorization') {
-                    return $value;
-                }
+        $headers = self::requestHeaders();
+        foreach ($headers as $key => $value) {
+            if (strtolower((string) $key) === 'authorization') {
+                return (string) $value;
             }
         }
         return '';
+    }
+
+    /** @return array<string, string> */
+    private static function requestHeaders(): array
+    {
+        if (self::$requestHeadersProvider !== null) {
+            return (self::$requestHeadersProvider)();
+        }
+        if (function_exists('apache_request_headers')) {
+            /** @var array<string, string> */
+            return apache_request_headers();
+        }
+
+        return [];
     }
 
     public static function planningIdHeader(): ?int
@@ -62,10 +77,11 @@ final class Auth
     {
         $userId = self::requireUser();
         $pdo = Database::connection();
-        $planningId = self::planningIdHeader();
-        if ($planningId !== null && $planningId <= 0) {
+        $raw = $_SERVER['HTTP_X_PLANNING_ID'] ?? $_GET['planningId'] ?? '';
+        if ($raw !== '' && $raw !== null && (int) $raw <= 0) {
             Response::error('Planejamento inválido.', 422);
         }
+        $planningId = self::planningIdHeader();
         if ($planningId === null) {
             $planningId = PlanningService::defaultPlanningForUser($pdo, $userId);
         }

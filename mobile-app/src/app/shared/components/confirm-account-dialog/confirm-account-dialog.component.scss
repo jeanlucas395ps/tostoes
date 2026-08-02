@@ -1,0 +1,92 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 22, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.modal.sheet {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-lg);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: 0 auto var(--sp-4);
+}
+
+h3 {
+  font-size: 1.125rem;
+  margin-bottom: 2px;
+}
+
+.entry-name {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--sp-4);
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--sp-3);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.select,
+input[type='number'] {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+}
+
+.amount-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+
+  .grow { flex: 1; }
+  .currency-field { width: 92px; }
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+
+  button { flex: 1; }
+}

@@ -26,4 +26,20 @@ final class FxRateController
             'fallback' => $fx['source'] === 'fallback',
         ]);
     }
+
+    public static function usdToBrl(): void
+    {
+        Auth::requireUser();
+        $planningId = Auth::requirePlanningId();
+        $date = FxRateService::normalizeDate($_GET['date'] ?? null);
+        $pdo = Database::connection();
+        $fx = FxRateService::resolveUsdToBrl($pdo, $planningId, $date);
+
+        Response::json([
+            'date' => $fx['date'],
+            'usdToBrl' => $fx['rate'],
+            'source' => $fx['source'],
+            'fallback' => $fx['source'] === 'fallback',
+        ]);
+    }
 }

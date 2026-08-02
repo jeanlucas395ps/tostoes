@@ -69,13 +69,15 @@ final class GoalPlanService
             $stmt->execute([$accountId, $planningId]);
             $account = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($account) {
-                $eurToBrl = MoneyHelper::getEurToBrlFallback($pdo, $planningId);
-                $bal = AccountService::balanceAtDate($pdo, $account, $asOf, $eurToBrl);
-
-                return round(
-                    AccountService::balanceToBrl($bal, (string) ($account['currency'] ?? 'BRL'), $eurToBrl),
-                    2
+                $accCurrency = (string) ($account['currency'] ?? 'BRL');
+                $rate = MoneyHelper::getFxFallback(
+                    $pdo,
+                    $planningId,
+                    $accCurrency === 'BRL' ? 'EUR' : $accCurrency
                 );
+                $bal = AccountService::balanceAtDate($pdo, $account, $asOf, $rate);
+
+                return round(AccountService::balanceToBrl($bal, $accCurrency, $rate), 2);
             }
         }
 
@@ -111,7 +113,7 @@ final class GoalPlanService
             $count++;
         }
 
-        return max(1, $count);
+        return $count;
     }
 
     /**

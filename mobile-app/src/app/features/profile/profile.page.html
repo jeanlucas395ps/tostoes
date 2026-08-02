@@ -1,0 +1,92 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/mais" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Meu perfil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <div class="avatar-block">
+    <label class="avatar-wrap">
+      @if (auth.user()?.avatarUrl; as url) {
+        <img [src]="url" alt="" />
+      } @else {
+        <span class="avatar-initials">{{ initials() }}</span>
+      }
+      <input type="file" accept="image/*" (change)="onAvatarSelected($event)" hidden />
+      <span class="avatar-edit-badge">
+        <ion-icon name="pencil-outline"></ion-icon>
+      </span>
+    </label>
+    @if (uploadingAvatar()) {
+      <span class="hint">Enviando foto…</span>
+    }
+    @if (avatarError()) {
+      <span class="hint error">{{ avatarError() }}</span>
+    }
+  </div>
+
+  <div class="card form-card">
+    <h3>Dados pessoais</h3>
+    <label class="field">
+      <span class="field-label">Nome</span>
+      <input type="text" [(ngModel)]="name" />
+    </label>
+    <label class="field">
+      <span class="field-label">Gênero</span>
+      <select class="select" [(ngModel)]="gender">
+        <option value="male">Masculino</option>
+        <option value="female">Feminino</option>
+      </select>
+    </label>
+    @if (profileError()) {
+      <p class="field-error">{{ profileError() }}</p>
+    }
+    @if (profileSuccess()) {
+      <p class="field-success">{{ profileSuccess() }}</p>
+    }
+    <button class="btn-brand full" type="button" [disabled]="savingProfile()" (click)="saveProfile()">
+      {{ savingProfile() ? 'Salvando…' : 'Salvar' }}
+    </button>
+  </div>
+
+  <div class="card form-card">
+    <h3>Alterar senha</h3>
+    <label class="field">
+      <span class="field-label">Senha atual</span>
+      <input type="password" [(ngModel)]="currentPassword" autocomplete="current-password" />
+    </label>
+    <label class="field">
+      <span class="field-label">Nova senha</span>
+      <input type="password" [(ngModel)]="newPassword" autocomplete="new-password" />
+    </label>
+    <label class="field">
+      <span class="field-label">Confirmar nova senha</span>
+      <input type="password" [(ngModel)]="newPasswordConfirm" autocomplete="new-password" />
+    </label>
+    @if (passwordError()) {
+      <p class="field-error">{{ passwordError() }}</p>
+    }
+    @if (passwordSuccess()) {
+      <p class="field-success">{{ passwordSuccess() }}</p>
+    }
+    <button class="btn-soft full" type="button" [disabled]="savingPassword()" (click)="changePassword()">
+      {{ savingPassword() ? 'Alterando…' : 'Alterar senha' }}
+    </button>
+  </div>
+
+  @if (biometricAvailable()) {
+    <div class="card form-card row-card" (click)="toggleBiometric()">
+      <ion-icon name="finger-print-outline"></ion-icon>
+      <div class="row-text">
+        <span>Entrar com {{ biometricLabel() }}</span>
+        <span class="hint">{{ biometric.isEnabled() ? 'Ativado' : 'Desativado' }}</span>
+      </div>
+      <span class="switch" [class.on]="biometric.isEnabled()"><span class="knob"></span></span>
+    </div>
+  }
+
+  <button class="btn-danger full logout-btn" type="button" (click)="confirmLogout()">Sair da conta</button>
+</ion-content>

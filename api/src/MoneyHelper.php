@@ -9,7 +9,9 @@ use PDO;
 
 final class MoneyHelper
 {
-    /** Cotação manual de reserva (configurações do planejamento). */
+    public const CURRENCIES = ['BRL', 'EUR', 'USD'];
+
+    /** Cotação manual de reserva EUR (configurações do planejamento). */
     public static function getEurToBrlFallback(PDO $pdo, int $planningId): float
     {
         $stmt = $pdo->prepare('SELECT eur_to_brl FROM planning_settings WHERE planning_id = ? LIMIT 1');
@@ -19,19 +21,51 @@ final class MoneyHelper
         return $value !== false ? (float) $value : 6.0;
     }
 
+    /** Cotação manual de reserva USD (configurações do planejamento). */
+    public static function getUsdToBrlFallback(PDO $pdo, int $planningId): float
+    {
+        if (!self::hasUsdToBrlColumn($pdo)) {
+            return 5.0;
+        }
+        $stmt = $pdo->prepare('SELECT usd_to_brl FROM planning_settings WHERE planning_id = ? LIMIT 1');
+        $stmt->execute([$planningId]);
+        $value = $stmt->fetchColumn();
+
+        return $value !== false ? (float) $value : 5.0;
+    }
+
+    /** Taxa fallback → BRL conforme a moeda da conta/lançamento. */
+    public static function getFxFallback(PDO $pdo, int $planningId, string $currency): float
+    {
+        return match ($currency) {
+            'EUR' => self::getEurToBrlFallback($pdo, $planningId),
+            'USD' => self::getUsdToBrlFallback($pdo, $planningId),
+            default => 1.0,
+        };
+    }
+
     /** @deprecated Use getEurToBrlFallback ou FxRateService::resolveEurToBrl */
     public static function getEurToBrl(PDO $pdo, int $planningId): float
     {
         return self::getEurToBrlFallback($pdo, $planningId);
     }
 
-    public static function toBrl(float $amount, string $currency, float $eurToBrl): float
+    /**
+     * Converte valor na moeda informada para BRL.
+     * $rateToBrl é a cotação da moeda estrangeira (ignorado para BRL).
+     */
+    public static function toBrl(float $amount, string $currency, float $rateToBrl): float
     {
-        if ($currency === 'EUR') {
-            return round($amount * $eurToBrl, 2);
+        if ($currency === 'EUR' || $currency === 'USD') {
+            return round($amount * $rateToBrl, 2);
         }
 
         return round($amount, 2);
+    }
+
+    public static function isForeign(string $currency): bool
+    {
+        return $currency === 'EUR' || $currency === 'USD';
     }
 
     /**
@@ -40,6 +74,7 @@ final class MoneyHelper
      *   amount: float,
      *   amountBrl: float,
      *   eurToBrl: float|null,
+     *   usdToBrl: float|null,
      *   fxSource: string|null,
      *   fxDate: string|null
      * }
@@ -47,17 +82,28 @@ final class MoneyHelper
     public static function parseInput(PDO $pdo, int $planningId, array $input): array
     {
         $currency = $input['currency'] ?? 'BRL';
-        $currency = in_array($currency, ['BRL', 'EUR'], true) ? (string) $currency : 'BRL';
+        $currency = in_array($currency, self::CURRENCIES, true) ? (string) $currency : 'BRL';
 
         $fxDate = FxRateService::normalizeDate(
             isset($input['transactionDate']) ? (string) $input['transactionDate']
                 : (isset($input['date']) ? (string) $input['date'] : null)
         );
         $eurToBrl = null;
+        $usdToBrl = null;
         $fxSource = null;
+        $rate = null;
+
         if ($currency === 'EUR') {
             $fx = FxRateService::resolveEurToBrl($pdo, $planningId, $fxDate);
             $eurToBrl = $fx['rate'];
+            $rate = $fx['rate'];
+            $fxSource = $fx['source'];
+        } elseif ($currency === 'USD') {
+            $fx = FxRateService::resolveUsdToBrl($pdo, $planningId, $fxDate);
+            $usdToBrl = $fx['rate'];
+            // Persiste na coluna eur_to_brl (snapshot FX) para não quebrar inserts existentes
+            $eurToBrl = $fx['rate'];
+            $rate = $fx['rate'];
             $fxSource = $fx['source'];
         }
 
@@ -78,14 +124,16 @@ final class MoneyHelper
         }
 
         $amount = round($amount, 2);
+        $fallback = $rate ?? self::getFxFallback($pdo, $planningId, $currency === 'BRL' ? 'EUR' : $currency);
 
         return [
             'currency' => $currency,
             'amount' => $amount,
-            'amountBrl' => self::toBrl($amount, $currency, $eurToBrl ?? self::getEurToBrlFallback($pdo, $planningId)),
+            'amountBrl' => self::toBrl($amount, $currency, $fallback),
             'eurToBrl' => $eurToBrl,
+            'usdToBrl' => $usdToBrl,
             'fxSource' => $fxSource,
-            'fxDate' => $currency === 'EUR' ? $fxDate : null,
+            'fxDate' => self::isForeign($currency) ? $fxDate : null,
         ];
     }
 
@@ -101,5 +149,23 @@ final class MoneyHelper
                 : (float) ($mapped['defaultAmountBrl'] ?? $mapped['suggestedAmountBrl'] ?? $mapped['amountBrl'] ?? 0));
 
         return $mapped;
+    }
+
+    private static function hasUsdToBrlColumn(PDO $pdo): bool
+    {
+        static $has = null;
+        if ($has !== null) {
+            return $has;
+        }
+        $stmt = $pdo->query(
+            "SELECT 1 FROM information_schema.columns
+             WHERE table_schema = DATABASE()
+               AND table_name = 'planning_settings'
+               AND column_name = 'usd_to_brl'
+             LIMIT 1"
+        );
+        $has = (bool) ($stmt && $stmt->fetchColumn());
+
+        return $has;
     }
 }

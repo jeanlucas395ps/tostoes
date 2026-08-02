@@ -1,0 +1,125 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Início</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
+
+  <div #sections>
+    <div class="hero-balance reveal">
+      <span class="label-caps">Saldo real do mês</span>
+      <div class="hero-value num" #balanceValue>R$ 0,00</div>
+      @if (showProjected() && selectedMonth(); as m) {
+        <span class="hero-projected">
+          previsto: <strong class="num">{{ m.balanceProjected | currencyBrl }}</strong>
+        </span>
+      }
+    </div>
+
+    @if (selectedMonth(); as m) {
+      <div class="kpi-row reveal">
+        <div class="kpi-card">
+          <span class="label-caps">Recebimentos</span>
+          <strong class="num text-income">{{ m.real.income | currencyBrl }}</strong>
+        </div>
+        <div class="kpi-card">
+          <span class="label-caps">Gastos</span>
+          <strong class="num text-expense">{{ m.real.expense | currencyBrl }}</strong>
+        </div>
+        <div class="kpi-card">
+          <span class="label-caps">Investido</span>
+          <strong class="num text-invest">{{ m.real.investment | currencyBrl }}</strong>
+        </div>
+      </div>
+    }
+
+    @if (flowData(); as fd) {
+      <div class="card chart-card reveal">
+        <div class="chart-card-header">
+          <h3>Recebimentos vs Gastos</h3>
+          <div class="legend">
+            <span class="dot income"></span> Recebimentos
+            <span class="dot expense"></span> Gastos
+          </div>
+        </div>
+        <div class="bars-scroll">
+          @for (m of fd.months; track m.month) {
+            <div class="bar-col" [class.inactive]="m.inactive">
+              <div class="bar-pair">
+                <div class="bar income" [style.height.px]="m.incomeH"></div>
+                <div class="bar expense" [style.height.px]="m.expenseH"></div>
+              </div>
+              <span class="bar-label" [class.current]="m.month === month() + 1">{{ m.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (donutData(); as dd) {
+      <div class="card chart-card reveal">
+        <h3>Distribuição do mês</h3>
+        <div class="donut-wrap">
+          <svg viewBox="0 0 200 200" class="donut-svg">
+            @for (s of dd.slices; track s.label) {
+              <path [attr.d]="s.path" [attr.fill]="s.color"></path>
+            }
+            <text x="100" y="94" text-anchor="middle" class="donut-center-label">Saldo</text>
+            <text x="100" y="116" text-anchor="middle" class="donut-center-value">{{ dd.balance | currencyBrl }}</text>
+          </svg>
+          <div class="donut-legend">
+            @for (s of dd.slices; track s.label) {
+              <div class="donut-legend-row">
+                <span class="dot" [style.background]="s.color"></span>
+                <span class="donut-legend-label">{{ s.label }}</span>
+                <span class="donut-legend-pct num">{{ s.pct }}%</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (goalsChart(); as gc) {
+      <div class="card chart-card reveal">
+        <h3>Metas</h3>
+        <div class="goal-list">
+          @for (g of gc.items; track g.id) {
+            <div class="goal-row">
+              <div class="goal-row-top">
+                <span class="goal-name">{{ g.name }}</span>
+                <span class="goal-pct num">{{ g.pct }}%</span>
+              </div>
+              <div class="goal-track">
+                <div class="goal-fill" [style.width.%]="g.pct" [style.background]="g.color"></div>
+              </div>
+              <div class="goal-row-bottom num">
+                {{ g.currentAmountBrl | currencyBrl }} de {{ g.targetAmountBrl | currencyBrl }}
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (data(); as d) {
+      <div class="card reveal year-cal-card">
+        <h3>Calendário do ano</h3>
+        <app-year-calendar
+          [year]="year()"
+          [selectedMonth]="month()"
+          [months]="d.months"
+          [planningUsageStart]="d.planningUsageStart ?? null"
+          (yearChange)="onYearChange($event)"
+          (monthChange)="onMonthChange($event)"
+        />
+      </div>
+    }
+  </div>
+</ion-content>

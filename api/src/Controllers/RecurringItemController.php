@@ -323,7 +323,7 @@ final class RecurringItemController
             'region' => PlanningTaxonomyController::parseRegion($body),
             'responsibleUserId' => $body['responsibleUserId'] ?? null,
             'responsible' => $body['responsible'] ?? null,
-            'currency' => in_array($body['currency'] ?? 'BRL', ['BRL', 'EUR'], true)
+            'currency' => in_array($body['currency'] ?? 'BRL', ['BRL', 'EUR', 'USD'], true)
                 ? $body['currency'] : 'BRL',
             'amount' => (float) ($body['amount'] ?? $body['defaultAmountBrl'] ?? 0),
             'dueDay' => $dueDay,

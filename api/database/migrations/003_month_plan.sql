@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS recurring_items (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (investment_type_id) REFERENCES investment_types(id) ON DELETE SET NULL,
-  UNIQUE KEY uq_recurring_name (user_id, kind, name(100))
+  INDEX idx_recurring_user (user_id),
+  INDEX idx_recurring_name (user_id, kind, name(100))
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS recurring_item_amounts (

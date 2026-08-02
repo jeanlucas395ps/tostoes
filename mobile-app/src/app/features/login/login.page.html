@@ -1,0 +1,57 @@
+<ion-content [fullscreen]="true" [scrollY]="true">
+  <div class="auth-hero">
+    <canvas #heroCanvas class="hero-canvas"></canvas>
+    <div class="hero-content" #heroContent>
+      <app-brand-mark variant="light" />
+      <div class="hero-title">Tostoes</div>
+      <div class="hero-subtitle">Planejamento financeiro a dois</div>
+    </div>
+  </div>
+
+  <div class="auth-sheet" #sheet>
+    <h2>Entrar</h2>
+    <form (ngSubmit)="submit()">
+      <label class="field">
+        <span class="field-label">Usuário</span>
+        <input
+          type="text"
+          name="user"
+          autocomplete="username"
+          autocapitalize="off"
+          [(ngModel)]="user"
+        />
+      </label>
+      <label class="field">
+        <span class="field-label">Senha</span>
+        <input
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          [(ngModel)]="password"
+        />
+      </label>
+
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+
+      <button
+        class="btn-brand submit-btn login-submit"
+        type="submit"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          <ion-spinner name="crescent"></ion-spinner>
+          Entrando…
+        } @else {
+          Entrar
+        }
+      </button>
+    </form>
+
+    <div class="auth-links">
+      <a routerLink="/recuperar-senha">Esqueci minha senha</a>
+      <a routerLink="/cadastro">Criar conta</a>
+    </div>
+  </div>
+</ion-content>

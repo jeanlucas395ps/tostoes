@@ -14,17 +14,31 @@ final class Cors
     {
         $raw = Config::get('CORS_ORIGIN', '');
         $allowed = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        // Fallback sem Origin usa só CORS_ORIGIN (antes das origens mobile).
+        $configured = $allowed;
+        // Capacitor / Ionic WebView (Android/iOS) — sempre aceitar além de CORS_ORIGIN.
+        foreach ([
+            'https://localhost',
+            'http://localhost',
+            'capacitor://localhost',
+            'ionic://localhost',
+            'https://app.tostoes.com.br',
+        ] as $mobileOrigin) {
+            if (!in_array($mobileOrigin, $allowed, true)) {
+                $allowed[] = $mobileOrigin;
+            }
+        }
         $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
         if ($requestOrigin !== '' && self::originAllowed($requestOrigin, $allowed)) {
             header('Access-Control-Allow-Origin: ' . $requestOrigin);
             header('Access-Control-Allow-Credentials: true');
             header('Vary: Origin');
-        } elseif (count($allowed) === 1 && !str_contains($allowed[0], '*')) {
-            header('Access-Control-Allow-Origin: ' . $allowed[0]);
+        } elseif (count($configured) === 1 && !str_contains($configured[0], '*')) {
+            header('Access-Control-Allow-Origin: ' . $configured[0]);
         }
 
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Planning-Id, X-Requested-With');
         header('Access-Control-Max-Age: 86400');
     }

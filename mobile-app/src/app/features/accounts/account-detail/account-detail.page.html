@@ -1,0 +1,79 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/contas" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ account()?.name ?? 'Conta' }}</ion-title>
+    <ion-buttons slot="end">
+      <button class="icon-btn" type="button" (click)="showForm.set(true)">
+        <ion-icon name="pencil-outline"></ion-icon>
+      </button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  @if (account(); as a) {
+    <div class="balance-hero" [style.--acct-color]="a.color || 'var(--primary)'">
+      <span class="label-caps">{{ a.type === 'credit' ? 'Dívida atual' : 'Saldo' }}</span>
+      <strong class="num hero-value">{{ a.balanceBrl | currencyBrl }}</strong>
+      @if (a.type === 'credit') {
+        <div class="hero-sub-row">
+          <span>Disponível <strong class="num">{{ a.availableLimitBrl ?? 0 | currencyBrl }}</strong></span>
+          @if (a.monthForecast) {
+            <span>Fatura do mês <strong class="num">{{ a.monthForecast.totalBrl | currencyBrl }}</strong></span>
+          }
+        </div>
+      }
+    </div>
+
+    <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
+
+    <div class="filters-row">
+      <select class="select" [(ngModel)]="kindFilter" (ngModelChange)="load()">
+        @for (opt of kindOptions(); track opt.value) {
+          <option [value]="opt.value">{{ opt.label }}</option>
+        }
+      </select>
+      <input
+        class="search-input"
+        type="search"
+        placeholder="Buscar…"
+        [(ngModel)]="search"
+        (keyup.enter)="load()"
+      />
+      @if (hasActiveFilters()) {
+        <button class="icon-btn" type="button" (click)="clearFilters()">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      }
+    </div>
+
+    @if (!loading() && !a.statement?.length) {
+      <p class="empty-state">Nenhum lançamento neste período.</p>
+    }
+
+    <div class="statement-list">
+      @for (line of a.statement; track line.id ?? line.date + line.description) {
+        <div class="statement-row">
+          <div class="statement-main">
+            <span class="statement-desc">{{ line.description }}</span>
+            <span class="statement-meta">{{ line.date | slice: 8 : 10 }}/{{ line.date | slice: 5 : 7 }} · {{ line.category || accountTypeShort(a.type) }}</span>
+          </div>
+          <div class="statement-amounts">
+            <span class="num" [class.text-income]="line.signedAmountBrl! > 0" [class.text-expense]="line.signedAmountBrl! < 0">
+              {{ line.signedAmountBrl ?? line.signedAmount | currencyBrl }}
+            </span>
+            <span class="statement-balance num">saldo {{ line.balanceAfterBrl ?? line.balanceAfter | currencyBrl }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <button class="btn-danger full remove-btn" type="button" (click)="remove()">Remover conta</button>
+  }
+</ion-content>
+
+@if (showForm()) {
+  <app-account-form [account]="account()" (saved)="onSaved()" (cancelled)="showForm.set(false)" />
+}

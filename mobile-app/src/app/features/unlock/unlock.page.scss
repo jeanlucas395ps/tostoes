@@ -1,0 +1,47 @@
+.unlock-content {
+  --background: var(--gradient-hero);
+}
+
+.unlock-wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  text-align: center;
+  padding: var(--sp-8);
+  color: #fff;
+
+  h1 { font-size: 1.375rem; margin-bottom: var(--sp-2); }
+
+  app-brand-mark {
+    margin-bottom: var(--sp-2);
+  }
+}
+
+.unlock-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  ion-spinner { width: 28px; height: 28px; }
+}
+
+.unlock-hint {
+  opacity: 0.82;
+  font-size: 0.9375rem;
+  margin-bottom: var(--sp-2);
+}
+
+.unlock-wrap .btn-brand,
+.unlock-wrap .btn-soft {
+  width: 100%;
+  max-width: 280px;
+}
+
+.unlock-wrap .btn-soft {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+}

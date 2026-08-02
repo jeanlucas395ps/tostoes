@@ -1,0 +1,151 @@
+/* Ionic core CSS */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+@import "@ionic/angular/css/display.css";
+@import "@ionic/angular/css/padding.css";
+@import "@ionic/angular/css/text-alignment.css";
+@import "@ionic/angular/css/flex-utils.css";
+
+@import "./theme/variables.scss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Public Sans', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+p { margin: 0; }
+
+ion-content {
+  --background: var(--bg);
+  --color: var(--text);
+}
+
+ion-content.page-content {
+  --padding-top: var(--sp-4);
+  --padding-bottom: var(--sp-8);
+  --padding-start: var(--sp-4);
+  --padding-end: var(--sp-4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRIMITIVES REUTILIZÁVEIS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  &:active { transform: scale(0.98); box-shadow: var(--shadow-card-hover); }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.badge-income  { background: var(--income-soft);        color: var(--income-dark); }
+.badge-expense { background: var(--danger-soft);         color: var(--danger-dark); }
+.badge-invest  { background: var(--accent-invest-soft);  color: var(--accent-invest-dark); }
+.badge-warn    { background: var(--warning-soft);        color: var(--warning-dark); }
+.badge-info    { background: var(--info-soft);           color: var(--info); }
+.badge-neutral { background: var(--surface-hover);       color: var(--text-muted); }
+
+.btn-primary,
+.btn-brand,
+.btn-soft,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &:disabled { opacity: 0.48; cursor: not-allowed; }
+}
+
+.btn-brand {
+  background: var(--gradient-brand);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.btn-primary {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.btn-soft {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+}
+
+.btn-danger {
+  background: var(--danger-soft);
+  color: var(--danger-dark);
+}
+
+/* ── Tipografia numérica ──────────────────────────────────────────────── */
+
+.num, .currency, .mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.text-income  { color: var(--income); }
+.text-expense { color: var(--danger); }
+.text-invest  { color: var(--accent-invest); }
+.text-muted   { color: var(--text-muted); }
+.text-primary { color: var(--primary); }
+.text-warning { color: var(--warning-dark); }
+
+.label-caps {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* ── Safe area (notch / home indicator) ──────────────────────────────────── */
+
+.safe-top    { padding-top: max(var(--sp-4), env(safe-area-inset-top)); }
+.safe-bottom { padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom)); }

@@ -1,0 +1,12 @@
+<div class="month-nav">
+  <button class="nav-btn" type="button" (click)="prevMonth()" aria-label="Mês anterior">
+    <ion-icon name="chevron-back-outline"></ion-icon>
+  </button>
+  <div class="month-nav-label">
+    <strong>{{ MONTH_LABELS[month()] }}</strong>
+    <span>{{ year() }}</span>
+  </div>
+  <button class="nav-btn" type="button" (click)="nextMonth()" aria-label="Próximo mês">
+    <ion-icon name="chevron-forward-outline"></ion-icon>
+  </button>
+</div>

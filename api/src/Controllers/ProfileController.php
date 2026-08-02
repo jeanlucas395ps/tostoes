@@ -89,9 +89,9 @@ final class ProfileController
             Response::error($msg, 422);
         }
 
-        $maxBytes = 500 * 1024 * 1024; // 500 MB
+        $maxBytes = 5 * 1024 * 1024; // 5 MB
         if (($file['size'] ?? 0) > $maxBytes) {
-            Response::error('A foto deve ter no máximo 500 MB.', 422);
+            Response::error('A foto deve ter no máximo 5 MB.', 422);
         }
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
@@ -144,8 +144,20 @@ final class ProfileController
             Response::error('Sem foto.', 404);
         }
 
-        $full = dirname(__DIR__, 2) . '/storage/' . $path;
-        if (!is_file($full)) {
+        $path = (string) $path;
+        // Só caminhos relativos sob storage/avatars/user-{id}.{ext}
+        if (!preg_match('#^avatars/user-\d+\.(jpg|png|webp|gif)$#', $path)) {
+            Response::error('Arquivo não encontrado.', 404);
+        }
+
+        $storageRoot = realpath(dirname(__DIR__, 2) . '/storage');
+        $full = $storageRoot !== false ? realpath($storageRoot . '/' . $path) : false;
+        if (
+            $storageRoot === false
+            || $full === false
+            || !str_starts_with($full, $storageRoot . DIRECTORY_SEPARATOR)
+            || !is_file($full)
+        ) {
             Response::error('Arquivo não encontrado.', 404);
         }
 

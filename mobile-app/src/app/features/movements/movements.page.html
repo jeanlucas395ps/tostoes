@@ -1,0 +1,343 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Movimentos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
+
+  @if (ledger(); as l) {
+    <div class="summary-strip">
+      <div class="summary-item">
+        <span class="label-caps">Recebimentos</span>
+        <strong class="num text-income">{{ l.summary.incomeTotal | currencyBrl }}</strong>
+      </div>
+      <div class="summary-item">
+        <span class="label-caps">Gastos</span>
+        <strong class="num text-expense">{{ l.summary.expenseTotal | currencyBrl }}</strong>
+      </div>
+      <div class="summary-item">
+        <span class="label-caps">Pendentes</span>
+        <strong class="num">{{ l.summary.pendingCount }}</strong>
+      </div>
+    </div>
+  }
+
+  @if (creditBills().length) {
+    <div class="section-header"><h3>Faturas de cartão</h3></div>
+    <div class="bill-list">
+      @for (bill of creditBills(); track bill.accountId) {
+        <div class="card bill-card" [style.--bill-color]="bill.color || 'var(--warning-dark)'">
+          <div class="bill-header">
+            <div class="bill-header-main">
+              <span class="bill-name">{{ bill.name }}</span>
+              <span class="bill-due">
+                {{ bill.dueDay ? 'Vence dia ' + bill.dueDay : 'Sem vencimento' }} · Fatura {{ bill.forecast.totalBrl | currencyBrl }}
+              </span>
+            </div>
+            @if (bill.remainingBrl > 0) {
+              <button class="btn-brand pay-btn" type="button" (click)="openPayBill(bill)">Pagar</button>
+            } @else {
+              <span class="tag tag-income">Paga</span>
+            }
+          </div>
+
+          <div class="bill-stats">
+            <span>Pendente <strong class="num">{{ bill.forecast.pendingBrl | currencyBrl }}</strong></span>
+            <span>Confirmado <strong class="num">{{ bill.forecast.confirmedBrl | currencyBrl }}</strong></span>
+            <span>Restante <strong class="num">{{ bill.remainingBrl | currencyBrl }}</strong></span>
+          </div>
+
+          @if (bill.items.length) {
+            <div class="bill-items">
+              @for (it of bill.items; track it.id) {
+                <div class="bill-item">
+                  <span class="tag" [class.tag-installment]="it.isInstallment" [class.tag-neutral]="!it.isInstallment">
+                    {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+                  </span>
+                  <span class="bill-item-name">{{ it.name }}</span>
+                  <span class="num">{{ it.amountBrl | currencyBrl }}</span>
+                  <span class="bill-item-status">{{ it.status === 'pending' ? 'a confirmar' : 'ok' }}</span>
+                  @if (it.canCancel !== false) {
+                    <button class="icon-btn small" type="button" (click)="cancelBillItem(it)">
+                      <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-state small">Nenhuma compra vinculada neste mês.</p>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <ion-segment [value]="activeSegment()" (ionChange)="activeSegment.set($any($event.detail.value))">
+    <ion-segment-button value="pending">
+      <ion-label>Pendentes @if (sortedPending().length) { ({{ sortedPending().length }}) }</ion-label>
+    </ion-segment-button>
+    <ion-segment-button value="confirmed">
+      <ion-label>Confirmados @if (sortedConfirmed().length) { ({{ sortedConfirmed().length }}) }</ion-label>
+    </ion-segment-button>
+  </ion-segment>
+
+  @if (activeSegment() === 'pending') {
+    <div class="section-header">
+      <h3>Pendentes</h3>
+      <button class="add-btn" type="button" (click)="openNewVariable()">
+        <ion-icon name="add-outline"></ion-icon> Novo
+      </button>
+    </div>
+
+    @if (!loading() && !sortedPending().length) {
+      <p class="empty-state">Nada pendente neste mês 🎉</p>
+    }
+
+    <div class="entry-list">
+      @for (e of sortedPending(); track e.id) {
+        <div class="entry-card" [class.busy]="busyId() === e.id">
+          <div class="entry-icon">{{ entryIcon(e) }}</div>
+          <div class="entry-main" (click)="isVariablePending(e) && openEditPending(e)">
+            <div class="entry-top">
+              <span class="entry-name">{{ e.name }}</span>
+              <span class="tag" [class]="'tag-' + entryTagClass(e)">{{ entryTagLabel(e) }}</span>
+            </div>
+            <div class="entry-sub">{{ entryCategoryLabel(e) }} · {{ responsibleLabel(e) }}</div>
+          </div>
+          <div class="entry-side">
+            <span class="entry-amount num">{{ pendingLabel(e) }}</span>
+            <div class="entry-actions">
+              @if (isVariablePending(e)) {
+                <button class="icon-btn" type="button" (click)="removePending(e)">
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
+              } @else {
+                <button class="icon-btn" type="button" (click)="skip(e)">
+                  <ion-icon name="ban-outline"></ion-icon>
+                </button>
+              }
+              <button class="icon-btn confirm" type="button" (click)="confirm(e)">
+                <ion-icon name="checkmark-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="section-header"><h3>Confirmados</h3></div>
+
+    @if (!loading() && !sortedConfirmed().length) {
+      <p class="empty-state">Sem lançamentos ainda</p>
+    }
+
+    <div class="entry-list">
+      @for (t of sortedConfirmed(); track t.id) {
+        <div class="entry-card confirmed" [class.busy]="busyId() === t.id">
+          <div class="entry-main" (click)="isVariableTx(t) && openEditConfirmed(t)">
+            <div class="entry-top">
+              <span class="entry-name">{{ t.description }}</span>
+              <span class="tag" [class]="'tag-' + entryTagClass(t)">{{ entryTagLabel(t) }}</span>
+            </div>
+            <div class="entry-sub">
+              {{ t.category }}
+              @if (transferMeta(t); as meta) {
+                · {{ meta }}
+              }
+            </div>
+          </div>
+          <div class="entry-side">
+            <span class="entry-amount num">{{ txLabel(t) }}</span>
+            @if (t.canUnconfirm || t.monthPlanEntryId) {
+              <button class="icon-btn" type="button" (click)="unconfirmConfirmed(t)">
+                <ion-icon name="arrow-back-outline"></ion-icon>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</ion-content>
+
+@if (confirmEntry(); as ce) {
+  <app-confirm-account-dialog
+    [entry]="ce"
+    [accounts]="accounts()"
+    title="Confirmar lançamento"
+    (confirmed)="submitConfirm($event)"
+    (cancelled)="cancelConfirm()"
+  />
+}
+
+@if (showVariableModal()) {
+  <div class="modal-backdrop" (click)="closeVariableModal()">
+    <div class="modal sheet" (click)="$event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h3>{{ variableModalTitle() }}</h3>
+
+      <label class="field">
+        <span class="field-label">Tipo</span>
+        <select class="select" [(ngModel)]="variableForm.kind">
+          <option value="expense">Gasto</option>
+          <option value="income">Recebimento</option>
+          <option value="investment">Investimento</option>
+          <option value="transfer">Transferência</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Nome</span>
+        <input type="text" [(ngModel)]="variableForm.name" />
+      </label>
+
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Valor</span>
+          <input class="num" type="number" inputmode="decimal" [(ngModel)]="variableForm.amount" />
+        </label>
+        <label class="field currency-field">
+          <span class="field-label">Moeda</span>
+          <select class="select" [(ngModel)]="variableForm.currency" (ngModelChange)="refreshFxPreview()">
+            <option value="BRL">R$</option>
+            <option value="EUR">€</option>
+            <option value="USD">US$</option>
+          </select>
+        </label>
+      </div>
+
+      @if (isForeignCurrency(variableForm.currency)) {
+        <p class="fx-hint">≈ {{ formPreviewBrl() | currencyBrl }}</p>
+      }
+
+      @if (variableIsTransfer()) {
+        <label class="field">
+          <span class="field-label">Conta origem</span>
+          <select class="select" [(ngModel)]="variableForm.bankAccountId">
+            <option [ngValue]="null">Selecione</option>
+            @for (a of allAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Conta destino</span>
+          <select class="select" [(ngModel)]="variableForm.financialAccountId">
+            <option [ngValue]="null">Selecione</option>
+            @for (a of allAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+      } @else if (variableIsInvestment()) {
+        <label class="field">
+          <span class="field-label">Tipo de investimento</span>
+          <select class="select" [(ngModel)]="variableForm.investmentTypeId">
+            <option [ngValue]="null">Selecione</option>
+            @for (t of investmentTypes(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <label class="field">
+          <span class="field-label">Categoria</span>
+          <select class="select" [ngModel]="variableForm.itemCategoryId" (ngModelChange)="onCategorySelect($event)">
+            @for (c of itemCategories(); track c.id) {
+              <option [ngValue]="c.id">{{ c.icon }} {{ c.name }}</option>
+            }
+            <option [ngValue]="'__new__'">+ Nova categoria</option>
+          </select>
+        </label>
+        @if (newCategoryMode()) {
+          <label class="field">
+            <span class="field-label">Nome da nova categoria</span>
+            <input
+              type="text"
+              [ngModel]="variableForm.newCategoryName"
+              (ngModelChange)="onNewCategoryNameChange($event)"
+            />
+          </label>
+        }
+        @if (variableUsesTabs()) {
+          <label class="field">
+            <span class="field-label">Aba</span>
+            <select class="select" [(ngModel)]="variableForm.customTabId">
+              <option [ngValue]="null">—</option>
+              @for (t of customTabs(); track t.id) {
+                <option [ngValue]="t.id">{{ t.name }}</option>
+              }
+            </select>
+          </label>
+        }
+      }
+
+      <label class="field">
+        <span class="field-label">Responsável</span>
+        <select class="select" [(ngModel)]="variableForm.responsibleUserId">
+          <option [ngValue]="null">Conjunto</option>
+          @for (u of householdUsers(); track u.id) {
+            <option [ngValue]="u.id">{{ u.name }}</option>
+          }
+        </select>
+      </label>
+
+      @if (editingTx()) {
+        <label class="field">
+          <span class="field-label">Conta</span>
+          <select class="select" [(ngModel)]="variableForm.accountId">
+            <option [ngValue]="null">Selecione</option>
+            @for (a of allAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Data</span>
+          <input type="date" [(ngModel)]="variableForm.transactionDate" />
+        </label>
+      }
+
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="closeVariableModal()">Cancelar</button>
+        <button class="btn-brand" type="button" (click)="saveVariable()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (payBillPrompt(); as bill) {
+  <div class="modal-backdrop" (click)="cancelPayBill()">
+    <div class="modal sheet" (click)="$event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h3>Pagar fatura</h3>
+      <p class="entry-name">{{ bill.name }}</p>
+
+      <label class="field">
+        <span class="field-label">Pagar com</span>
+        <select class="select" [(ngModel)]="payBillBankId">
+          <option [ngValue]="null">Selecione</option>
+          @for (a of bankAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+
+      <p class="pay-bill-amount">
+        Valor: <strong class="num">{{ bill.remainingBrl | currencyBrl }}</strong>
+      </p>
+
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="cancelPayBill()">Cancelar</button>
+        <button class="btn-brand" type="button" [disabled]="!payBillBankId()" (click)="submitPayBill()">Pagar</button>
+      </div>
+    </div>
+  </div>
+}

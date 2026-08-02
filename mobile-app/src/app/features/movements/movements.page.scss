@@ -1,0 +1,327 @@
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+
+.summary-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  strong { font-size: 0.9375rem; font-weight: 800; }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--sp-5) 0 var(--sp-3);
+
+  h3 { font-size: 0.9375rem; }
+}
+
+.add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.4375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+
+  ion-icon { font-size: 1rem; }
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding: var(--sp-6) 0;
+}
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.entry-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  transition: opacity 0.15s;
+
+  &.busy { opacity: 0.5; pointer-events: none; }
+  &.confirmed { padding-right: var(--sp-2); }
+}
+
+.entry-icon {
+  font-size: 1.25rem;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.entry-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 2px;
+}
+
+.entry-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.entry-amount {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+
+  &.confirm { background: var(--income-soft); color: var(--income-dark); border-color: transparent; }
+  &.small { width: 26px; height: 26px; font-size: 0.875rem; }
+}
+
+.tag {
+  font-size: 0.5625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tag-income      { background: var(--income-soft); color: var(--income-dark); }
+.tag-expense     { background: var(--danger-soft); color: var(--danger-dark); }
+.tag-investment  { background: var(--accent-invest-soft); color: var(--accent-invest-dark); }
+.tag-transfer    { background: var(--surface-hover); color: var(--text-muted); }
+.tag-goal        { background: var(--primary-soft); color: var(--primary); }
+.tag-installment { background: var(--warning-soft); color: var(--warning-dark); }
+.tag-leisure     { background: var(--surface-hover); color: var(--text-muted); }
+
+.bill-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.bill-card {
+  border-left: 3px solid var(--bill-color, var(--warning-dark));
+}
+
+.bill-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.bill-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bill-name { font-weight: 800; font-size: 0.9375rem; }
+
+.bill-due {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.pay-btn {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.bill-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-3);
+
+  strong { display: block; font-size: 0.8125rem; color: var(--text); margin-top: 2px; }
+}
+
+.bill-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.bill-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.8125rem;
+}
+
+.bill-item-name {
+  flex: 1;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bill-item-status {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.tag-neutral { background: var(--surface-hover); color: var(--text-muted); }
+
+.btn-brand.full { width: 100%; }
+
+ion-segment {
+  margin-bottom: var(--sp-4);
+}
+
+/* ── Modais (variável / pagar fatura) ─────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 22, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.modal.sheet {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-lg);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: 0 auto var(--sp-4);
+}
+
+.modal h3 { font-size: 1.125rem; margin-bottom: var(--sp-4); }
+.modal .entry-name { font-size: 0.9375rem; color: var(--text-muted); margin-bottom: var(--sp-4); font-weight: 600; }
+
+.field { display: block; margin-bottom: var(--sp-3); }
+.field-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+
+.select, input[type='text'], input[type='number'], input[type='date'] {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  appearance: none;
+
+  &:focus { outline: none; border-color: var(--primary); }
+}
+
+.amount-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+
+  .grow { flex: 1; }
+  .currency-field { width: 92px; }
+}
+
+.fx-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: -6px 0 var(--sp-3);
+}
+
+.pay-bill-amount {
+  font-size: 0.9375rem;
+  margin: var(--sp-2) 0 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  button { flex: 1; }
+}

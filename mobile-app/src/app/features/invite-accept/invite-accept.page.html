@@ -1,0 +1,55 @@
+<ion-content [fullscreen]="true">
+  <div class="auth-hero" style="height: 26vh; min-height: 180px;">
+    <div class="hero-content">
+      <div class="brand-mark">✉</div>
+      <div class="hero-title" style="font-size: 1.375rem;">Convite</div>
+      <div class="hero-subtitle">Você foi convidado(a) para um planejamento</div>
+    </div>
+  </div>
+
+  <div class="auth-sheet invite-sheet">
+    @if (loading()) {
+      <div class="invite-state">
+        <ion-spinner name="crescent"></ion-spinner>
+        <p>Carregando convite…</p>
+      </div>
+    } @else if (done()) {
+      <div class="invite-state">
+        <div class="invite-icon success">✓</div>
+        <p class="invite-message">{{ doneMessage() }}</p>
+        <a class="btn-brand submit-btn" routerLink="/home">Ir para o app</a>
+      </div>
+    } @else if (error()) {
+      <div class="invite-state">
+        <div class="invite-icon danger">!</div>
+        <p class="invite-message">{{ error() }}</p>
+        <a class="btn-soft submit-btn" routerLink="/login">Voltar para o login</a>
+      </div>
+    } @else if (invite()) {
+      <div class="invite-card">
+        <h2>{{ invite()?.planningName }}</h2>
+        <p class="invite-detail">{{ invite()?.inviterName }} te convidou para planejar junto.</p>
+        <p class="invite-detail muted">Convite enviado para {{ invite()?.email }}</p>
+      </div>
+
+      @if (auth.isAuthenticated()) {
+        <button class="btn-brand submit-btn" [disabled]="accepting()" (click)="tryAccept()">
+          @if (accepting()) {
+            <ion-spinner name="crescent"></ion-spinner>
+          } @else {
+            Aceitar convite
+          }
+        </button>
+      } @else {
+        <div class="invite-actions">
+          <a class="btn-brand submit-btn" [routerLink]="['/login']" [queryParams]="loginQueryParams()">
+            Entrar e aceitar
+          </a>
+          <a class="btn-soft submit-btn" [routerLink]="['/cadastro']" [queryParams]="registerQueryParams()">
+            Criar conta
+          </a>
+        </div>
+      }
+    }
+  </div>
+</ion-content>

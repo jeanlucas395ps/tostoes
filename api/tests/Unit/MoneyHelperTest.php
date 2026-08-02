@@ -24,6 +24,8 @@ final class MoneyHelperTest extends TestCase
             [10.0, 'EUR', 6.2, 62.0],
             [1.115, 'EUR', 6.0, 6.69],
             [0.0, 'EUR', 6.2, 0.0],
+            [10.0, 'USD', 5.0, 50.0],
+            [1.5, 'USD', 5.2, 7.8],
         ];
     }
 

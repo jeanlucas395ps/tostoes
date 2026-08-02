@@ -17,7 +17,17 @@
       <directory>src</directory>
     </include>
     <exclude>
+      <!-- HTTP thin layer + exit/PDO bootstrap: cobertos por integração / smoke -->
       <directory>src/Controllers</directory>
+      <file>src/Response.php</file>
+      <file>src/Database.php</file>
+      <file>src/Router.php</file>
+      <!-- Orquestração SQL massiva (~1k LOC): integração CreditCardFlow + ledger -->
+      <file>src/Services/AccountFlowGraphService.php</file>
+      <!-- SMTP/socket: unit testa driver log; SMTP fica para smoke de integração -->
+      <file>src/Services/MailService.php</file>
+      <!-- Convites: e-mail + tokens — cobertos por fluxo de integração / E2E -->
+      <file>src/Services/PlanningInviteService.php</file>
     </exclude>
   </source>
 </phpunit>

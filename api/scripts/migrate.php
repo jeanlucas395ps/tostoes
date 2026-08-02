@@ -107,6 +107,7 @@ applyMigration021($pdo);
 applyMigration022($pdo);
 applyMigration023($pdo);
 applyMigration024($pdo);
+applyMigration025($pdo);
 
 $pdo->exec(
     'UPDATE transactions SET registered_by_user_id = user_id
@@ -133,7 +134,7 @@ function applyMonthPlanMigration(PDO $pdo): void
           due_day TINYINT UNSIGNED NULL,
           investment_type_id INT UNSIGNED NULL,
           default_amount_brl DECIMAL(14,2) NOT NULL DEFAULT 0,
-          currency ENUM(\'BRL\',\'EUR\') NOT NULL DEFAULT \'BRL\',
+          currency ENUM(\'BRL\',\'EUR\',\'USD\') NOT NULL DEFAULT \'BRL\',
           amount_original DECIMAL(14,2) NULL,
           monthly_adjustment_brl DECIMAL(14,2) NOT NULL DEFAULT 0,
           is_fixed TINYINT(1) NOT NULL DEFAULT 1,
@@ -142,7 +143,7 @@ function applyMonthPlanMigration(PDO $pdo): void
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
           FOREIGN KEY (investment_type_id) REFERENCES investment_types(id) ON DELETE SET NULL,
-          UNIQUE KEY uq_recurring_name (user_id, kind, name(100))
+          INDEX idx_recurring_name (user_id, kind, name(100))
         ) ENGINE=InnoDB',
         'CREATE TABLE IF NOT EXISTS recurring_item_amounts (
           recurring_item_id INT UNSIGNED NOT NULL,
@@ -1072,6 +1073,53 @@ function applyMigration024(PDO $pdo): void
         );
     }
     echo "→ Cartões de crédito (type=credit + limite/fechamento/vencimento) OK\n";
+}
+
+function applyMigration025(PDO $pdo): void
+{
+    $tables = ['transactions', 'recurring_items', 'month_plan_entries', 'financial_accounts'];
+    foreach ($tables as $table) {
+        if (!tableExists($pdo, $table) || !columnExists($pdo, $table, 'currency')) {
+            continue;
+        }
+        $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE 'currency'");
+        $col = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+        $type = strtolower((string) (($col['Type'] ?? $col['type'] ?? '')));
+        if (!str_contains($type, "'usd'") && !str_contains($type, 'usd')) {
+            $pdo->exec(
+                "ALTER TABLE `{$table}`
+                 MODIFY COLUMN currency ENUM('BRL','EUR','USD') NOT NULL DEFAULT 'BRL'"
+            );
+            echo "→ {$table}.currency inclui USD\n";
+        }
+    }
+
+    if (tableExists($pdo, 'planning_settings') && !columnExists($pdo, 'planning_settings', 'usd_to_brl')) {
+        $pdo->exec(
+            'ALTER TABLE planning_settings
+             ADD COLUMN usd_to_brl DECIMAL(10,4) NOT NULL DEFAULT 5.0000 AFTER eur_to_brl'
+        );
+        echo "→ Coluna planning_settings.usd_to_brl\n";
+    }
+
+    if (tableExists($pdo, 'fx_daily_rates') && !columnExists($pdo, 'fx_daily_rates', 'usd_to_brl')) {
+        $pdo->exec(
+            'ALTER TABLE fx_daily_rates
+             ADD COLUMN usd_to_brl DECIMAL(10,6) NULL AFTER eur_to_brl'
+        );
+        echo "→ Coluna fx_daily_rates.usd_to_brl\n";
+    }
+
+    if (tableExists($pdo, 'recurring_items') && indexExists($pdo, 'recurring_items', 'uq_recurring_name')) {
+        // FK user_id pode estar usando o prefixo do UNIQUE; cria índice próprio antes de dropar.
+        if (!indexExists($pdo, 'recurring_items', 'idx_recurring_user')) {
+            $pdo->exec('ALTER TABLE recurring_items ADD INDEX idx_recurring_user (user_id)');
+        }
+        $pdo->exec('ALTER TABLE recurring_items DROP INDEX uq_recurring_name');
+        echo "→ Removido UNIQUE uq_recurring_name (nomes repetidos ok)\n";
+    }
+
+    echo "→ Moeda USD + nomes duplicados em fixos OK\n";
 }
 
 function applyMigration009(PDO $pdo): void

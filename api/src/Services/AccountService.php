@@ -149,10 +149,10 @@ final class AccountService
     public static function computeBalance(PDO $pdo, array $account, ?float $eurToBrl = null): float
     {
         $planningId = (int) $account['planning_id'];
-        $eurToBrl ??= MoneyHelper::getEurToBrlFallback($pdo, $planningId);
+        $currency = (string) ($account['currency'] ?? 'BRL');
+        $eurToBrl ??= MoneyHelper::getFxFallback($pdo, $planningId, $currency === 'BRL' ? 'EUR' : $currency);
         $accountId = (int) $account['id'];
         $since = (string) $account['initial_balance_date'];
-        $currency = (string) ($account['currency'] ?? 'BRL');
         $balance = (float) $account['initial_balance'];
         $isCredit = ($account['type'] ?? '') === 'credit';
 
@@ -170,23 +170,27 @@ final class AccountService
         return round($balance, 2);
     }
 
-    public static function balanceToBrl(float $balance, string $currency, float $eurToBrl): float
+    public static function balanceToBrl(float $balance, string $currency, float $rateToBrl): float
     {
-        return $currency === 'EUR' ? round($balance * $eurToBrl, 2) : round($balance, 2);
+        if ($currency === 'EUR' || $currency === 'USD') {
+            return round($balance * $rateToBrl, 2);
+        }
+
+        return round($balance, 2);
     }
 
     /** @param array<string, mixed> $row */
-    public static function txAmountInAccountCurrency(array $row, string $accountCurrency, float $fallbackEurToBrl): float
+    public static function txAmountInAccountCurrency(array $row, string $accountCurrency, float $fallbackRateToBrl): float
     {
         $txCurrency = $row['currency'] ?? 'BRL';
         $rate = isset($row['eur_to_brl']) && (float) $row['eur_to_brl'] > 0
             ? (float) $row['eur_to_brl']
-            : $fallbackEurToBrl;
+            : $fallbackRateToBrl;
         if ($accountCurrency === $txCurrency) {
             return (float) $row['amount'];
         }
-        if ($accountCurrency === 'EUR') {
-            return round((float) $row['amount_brl'] / $rate, 2);
+        if ($accountCurrency === 'EUR' || $accountCurrency === 'USD') {
+            return $rate > 0 ? round((float) $row['amount_brl'] / $rate, 2) : 0.0;
         }
 
         return (float) $row['amount_brl'];
@@ -219,9 +223,11 @@ final class AccountService
         ?string $statementSearch = null
     ): array {
         $planningId = (int) $row['planning_id'];
-        $eurToBrl = MoneyHelper::getEurToBrlFallback($pdo, $planningId);
         $currency = (string) ($row['currency'] ?? 'BRL');
-        $balance = self::computeBalance($pdo, $row, $eurToBrl);
+        $fxRate = MoneyHelper::getFxFallback($pdo, $planningId, $currency === 'BRL' ? 'EUR' : $currency);
+        $eurToBrl = MoneyHelper::getEurToBrlFallback($pdo, $planningId);
+        $usdToBrl = MoneyHelper::getUsdToBrlFallback($pdo, $planningId);
+        $balance = self::computeBalance($pdo, $row, $fxRate);
         $initialBalance = (float) $row['initial_balance'];
         $isCredit = ($row['type'] ?? '') === 'credit';
         $creditLimit = isset($row['credit_limit']) && $row['credit_limit'] !== null
@@ -232,7 +238,7 @@ final class AccountService
                 $planningId,
                 (int) $row['id'],
                 $currency,
-                $eurToBrl
+                $fxRate
             )
             : 0.0;
         // Limite usado = dívida atual + parcelas futuras ainda não lançadas no cartão
@@ -246,11 +252,11 @@ final class AccountService
             'type' => $row['type'],
             'currency' => $currency,
             'initialBalance' => $initialBalance,
-            'initialBalanceBrl' => self::balanceToBrl($initialBalance, $currency, $eurToBrl),
+            'initialBalanceBrl' => self::balanceToBrl($initialBalance, $currency, $fxRate),
             'initialBalanceDate' => $row['initial_balance_date'],
             'creditLimit' => $creditLimit,
             'creditLimitBrl' => $creditLimit !== null
-                ? self::balanceToBrl($creditLimit, $currency, $eurToBrl) : null,
+                ? self::balanceToBrl($creditLimit, $currency, $fxRate) : null,
             'closingDay' => isset($row['closing_day']) && $row['closing_day'] !== null
                 ? (int) $row['closing_day'] : null,
             'dueDay' => isset($row['due_day']) && $row['due_day'] !== null
@@ -258,19 +264,20 @@ final class AccountService
             'color' => $row['color'],
             'sortOrder' => (int) $row['sort_order'],
             'balance' => $balance,
-            'balanceBrl' => self::balanceToBrl($balance, $currency, $eurToBrl),
+            'balanceBrl' => self::balanceToBrl($balance, $currency, $fxRate),
             'usedLimit' => $used,
             'usedLimitBrl' => $used !== null
-                ? self::balanceToBrl($used, $currency, $eurToBrl) : null,
+                ? self::balanceToBrl($used, $currency, $fxRate) : null,
             'futureInstallments' => $isCredit ? $futureInstallments : null,
             'futureInstallmentsBrl' => $isCredit
-                ? self::balanceToBrl($futureInstallments, $currency, $eurToBrl) : null,
+                ? self::balanceToBrl($futureInstallments, $currency, $fxRate) : null,
             'availableLimit' => $available,
             'availableLimitBrl' => $available !== null
-                ? self::balanceToBrl($available, $currency, $eurToBrl) : null,
+                ? self::balanceToBrl($available, $currency, $fxRate) : null,
             'limitUsagePercent' => ($isCredit && $creditLimit !== null && $creditLimit > 0)
                 ? round(min(100, max(0, ($used / $creditLimit) * 100)), 1) : null,
             'eurToBrl' => $eurToBrl,
+            'usdToBrl' => $usdToBrl,
         ];
 
         if ($isCredit) {
@@ -282,7 +289,7 @@ final class AccountService
                 (int) $row['id'],
                 $nowY,
                 $nowM,
-                $eurToBrl
+                $fxRate
             );
         }
 
@@ -293,7 +300,7 @@ final class AccountService
                 $planningId,
                 $year,
                 $month,
-                $eurToBrl,
+                $fxRate,
                 $statementKind,
                 $statementSearch
             );
@@ -394,8 +401,8 @@ final class AccountService
                     $brl = (float) ($item['default_amount_brl'] ?? 0);
                 }
 
-                if ($accountCurrency === 'EUR') {
-                    if (($item['currency'] ?? '') === 'EUR' && $item['amount_original'] !== null) {
+                if ($accountCurrency === 'EUR' || $accountCurrency === 'USD') {
+                    if (($item['currency'] ?? '') === $accountCurrency && $item['amount_original'] !== null) {
                         $total += (float) $item['amount_original'];
                     } else {
                         $total += $eurToBrl > 0 ? round($brl / $eurToBrl, 2) : 0.0;
@@ -491,8 +498,8 @@ final class AccountService
             return [];
         }
 
-        $eurToBrl ??= MoneyHelper::getEurToBrlFallback($pdo, $planningId);
         $currency = (string) $account['currency'];
+        $eurToBrl ??= MoneyHelper::getFxFallback($pdo, $planningId, $currency === 'BRL' ? 'EUR' : $currency);
         $since = (string) $account['initial_balance_date'];
         $running = (float) $account['initial_balance'];
         $isCredit = ($account['type'] ?? '') === 'credit';
@@ -596,6 +603,9 @@ final class AccountService
             if (($row['currency'] ?? 'BRL') === 'EUR' && isset($row['eur_to_brl']) && $row['eur_to_brl'] !== null) {
                 $line['eurToBrl'] = (float) $row['eur_to_brl'];
             }
+            if (($row['currency'] ?? 'BRL') === 'USD' && isset($row['eur_to_brl']) && $row['eur_to_brl'] !== null) {
+                $line['usdToBrl'] = (float) $row['eur_to_brl'];
+            }
             $lines[] = $line;
         }
 
@@ -614,10 +624,10 @@ final class AccountService
         ?float $eurToBrl = null
     ): float {
         $planningId = (int) $account['planning_id'];
-        $eurToBrl ??= MoneyHelper::getEurToBrlFallback($pdo, $planningId);
+        $currency = (string) ($account['currency'] ?? 'BRL');
+        $eurToBrl ??= MoneyHelper::getFxFallback($pdo, $planningId, $currency === 'BRL' ? 'EUR' : $currency);
         $accountId = (int) $account['id'];
         $since = (string) $account['initial_balance_date'];
-        $currency = (string) ($account['currency'] ?? 'BRL');
         $balance = (float) $account['initial_balance'];
         $isCredit = ($account['type'] ?? '') === 'credit';
 

@@ -1,0 +1,124 @@
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+}
+
+.balance-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--acct-color, var(--primary));
+  border-radius: var(--radius-xl);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-4);
+  text-align: center;
+}
+
+.hero-value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: var(--sp-2) 0;
+}
+
+.hero-sub-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-4);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+
+  strong { display: block; color: var(--text); font-size: 0.8125rem; }
+}
+
+.filters-row {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+
+  .select { flex: 1; }
+}
+
+.select,
+.search-input {
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  appearance: none;
+}
+
+.search-input {
+  flex: 1;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: var(--sp-6) 0;
+}
+
+.statement-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+
+.statement-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.statement-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.statement-desc {
+  font-size: 0.875rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statement-meta {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.statement-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+
+  .num { font-weight: 700; font-size: 0.8125rem; }
+}
+
+.statement-balance {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+.remove-btn { margin-bottom: var(--sp-6); }

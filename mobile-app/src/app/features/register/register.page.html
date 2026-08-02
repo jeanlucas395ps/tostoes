@@ -1,0 +1,55 @@
+<ion-content [fullscreen]="true">
+  <div class="auth-hero" style="height: 26vh; min-height: 180px;">
+    <div class="hero-content">
+      <app-brand-mark variant="light" />
+      <div class="hero-title" style="font-size: 1.375rem;">Criar conta</div>
+      <div class="hero-subtitle">
+        {{ fromInvite ? 'Aceite o convite e comece a planejar' : 'Comece a organizar suas finanças' }}
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-sheet">
+    <form (ngSubmit)="submit()">
+      <label class="field">
+        <span class="field-label">Nome</span>
+        <input type="text" name="name" autocomplete="name" [(ngModel)]="name" />
+      </label>
+      <label class="field">
+        <span class="field-label">E-mail</span>
+        <input type="email" name="email" autocomplete="email" [(ngModel)]="email" />
+      </label>
+      <label class="field">
+        <span class="field-label">Usuário</span>
+        <input type="text" name="username" autocapitalize="off" [(ngModel)]="username" />
+      </label>
+      <label class="field">
+        <span class="field-label">Senha</span>
+        <input type="password" name="password" autocomplete="new-password" [(ngModel)]="password" />
+      </label>
+
+      @if (!fromInvite) {
+        <label class="field">
+          <span class="field-label">Nome do planejamento (opcional)</span>
+          <input type="text" name="planningName" placeholder="Ex.: Casa" [(ngModel)]="planningName" />
+        </label>
+      }
+
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+
+      <button class="btn-brand submit-btn" type="submit" [disabled]="loading()">
+        @if (loading()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          Criar conta
+        }
+      </button>
+    </form>
+
+    <div class="auth-links center">
+      Já tem conta? <a routerLink="/login">Entrar</a>
+    </div>
+  </div>
+</ion-content>

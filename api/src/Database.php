@@ -11,6 +11,12 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
+    /** Injeta PDO (testes unitários). */
+    public static function setConnection(?PDO $pdo): void
+    {
+        self::$pdo = $pdo;
+    }
+
     public static function connection(): PDO
     {
         if (self::$pdo !== null) {
@@ -30,9 +36,7 @@ final class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
         } catch (PDOException $e) {
-            Response::error('Falha na conexão com o banco de dados.', 503, [
-                'detail' => $e->getMessage(),
-            ]);
+            Response::error('Falha na conexão com o banco de dados.', 503);
         }
 
         return self::$pdo;

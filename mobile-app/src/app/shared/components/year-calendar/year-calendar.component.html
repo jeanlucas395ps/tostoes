@@ -1,0 +1,35 @@
+<div class="year-cal">
+  <div class="year-cal-header">
+    <button class="nav-btn" type="button" (click)="prevYear()" aria-label="Ano anterior">
+      <ion-icon name="chevron-back-outline"></ion-icon>
+    </button>
+    <button class="today-btn" type="button" (click)="goToToday()">{{ year() }}</button>
+    <button class="nav-btn" type="button" (click)="nextYear()" aria-label="Próximo ano">
+      <ion-icon name="chevron-forward-outline"></ion-icon>
+    </button>
+  </div>
+
+  <div class="year-cal-grid">
+    @for (cell of cells(); track cell.index) {
+      <button
+        type="button"
+        class="cell"
+        [class.selected]="isSelected(cell.index)"
+        [class.current]="isCurrentMonth(cell.index)"
+        [class.empty]="cell.isEmpty"
+        [class.negative]="(cell.hasReal ? cell.balanceReal : cell.balanceProjected) < 0"
+        (click)="selectMonth(cell.index)"
+      >
+        <span class="cell-label">{{ cell.shortLabel }}</span>
+        @if (!cell.isEmpty) {
+          <span class="cell-balance">
+            {{ (cell.hasReal ? cell.balanceReal : cell.balanceProjected) | currencyBrl }}
+          </span>
+          @if (!cell.hasReal && cell.showPreview) {
+            <span class="cell-tag">previsto</span>
+          }
+        }
+      </button>
+    }
+  </div>
+</div>

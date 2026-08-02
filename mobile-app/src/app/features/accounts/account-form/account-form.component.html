@@ -1,0 +1,81 @@
+<div class="modal-backdrop" (click)="cancelled.emit()">
+  <div class="modal sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h3>{{ isEditing() ? 'Editar conta' : 'Nova conta' }}</h3>
+
+    <label class="field">
+      <span class="field-label">Nome</span>
+      <input type="text" [(ngModel)]="form.name" />
+    </label>
+
+    <label class="field">
+      <span class="field-label">Tipo</span>
+      <select class="select" [(ngModel)]="form.type" [disabled]="isEditing()" (ngModelChange)="onTypeChange()">
+        <option value="bank">Banco</option>
+        <option value="credit">Cartão de crédito</option>
+        <option value="investment">Investimento</option>
+      </select>
+    </label>
+
+    <div class="amount-row">
+      <label class="field grow">
+        <span class="field-label">{{ isCredit() ? 'Dívida atual (fatura aberta)' : 'Saldo inicial (hoje)' }}</span>
+        <input class="num" type="number" inputmode="decimal" [min]="isCredit() ? 0 : null" [(ngModel)]="form.initialBalance" />
+      </label>
+      <label class="field currency-field">
+        <span class="field-label">Moeda</span>
+        <select class="select" [(ngModel)]="form.currency">
+          <option value="BRL">R$</option>
+          <option value="EUR">€</option>
+          <option value="USD">US$</option>
+        </select>
+      </label>
+    </div>
+    @if (isForeign()) {
+      <p class="fx-hint">≈ {{ balancePreviewBrl() }} BRL</p>
+    }
+    @if (isCredit()) {
+      <p class="fx-hint">Compras aumentam; pagamentos diminuem.</p>
+    }
+
+    <label class="field">
+      <span class="field-label">{{ isCredit() ? 'Data da dívida inicial' : 'Data do saldo inicial' }}</span>
+      <input type="date" [(ngModel)]="form.initialBalanceDate" />
+    </label>
+
+    <label class="field">
+      <span class="field-label">Cor</span>
+      <input class="color-input" type="color" [(ngModel)]="form.color" />
+    </label>
+
+    @if (isCredit()) {
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Limite</span>
+          <input class="num" type="number" min="0" inputmode="decimal" [(ngModel)]="form.creditLimit" />
+        </label>
+      </div>
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Dia de fechamento</span>
+          <input class="num" type="number" min="1" max="31" [(ngModel)]="form.closingDay" />
+        </label>
+        <label class="field grow">
+          <span class="field-label">Dia de vencimento</span>
+          <input class="num" type="number" min="1" max="31" [(ngModel)]="form.dueDay" />
+        </label>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="field-error">{{ error() }}</p>
+    }
+
+    <div class="modal-actions">
+      <button class="btn-soft" type="button" (click)="cancelled.emit()">Cancelar</button>
+      <button class="btn-brand" type="button" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Salvando…' : 'Salvar' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -90,7 +90,6 @@ final class InvestmentPortfolioService
             return round(max(0, $storedBalance), 2);
         }
 
-        $eurToBrl = \Gastos\Api\MoneyHelper::getEurToBrlFallback($pdo, $planningId);
         $fromAccounts = 0.0;
         foreach ($accountIds as $accountId) {
             $stmt = $pdo->prepare(
@@ -101,12 +100,14 @@ final class InvestmentPortfolioService
             if (!$account) {
                 continue;
             }
-            $bal = AccountService::computeBalance($pdo, $account, $eurToBrl);
-            $fromAccounts += AccountService::balanceToBrl(
-                $bal,
-                (string) ($account['currency'] ?? 'BRL'),
-                $eurToBrl
+            $accCurrency = (string) ($account['currency'] ?? 'BRL');
+            $rate = \Gastos\Api\MoneyHelper::getFxFallback(
+                $pdo,
+                $planningId,
+                $accCurrency === 'BRL' ? 'EUR' : $accCurrency
             );
+            $bal = AccountService::computeBalance($pdo, $account, $rate);
+            $fromAccounts += AccountService::balanceToBrl($bal, $accCurrency, $rate);
         }
 
         if ($fromAccounts > 0) {
@@ -172,13 +173,13 @@ final class InvestmentPortfolioService
                 : (float) $item['default_amount_brl'];
             if ($override !== false) {
                 $amount = (float) $override;
-                if ($currency === 'EUR') {
+                if ($currency === 'EUR' || $currency === 'USD') {
                     $total += ProjectionService::amountInBrlForMonth(
                         $pdo,
                         $planningId,
                         $year,
                         $month,
-                        'EUR',
+                        $currency,
                         $original,
                         $amount
                     );

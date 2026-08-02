@@ -131,6 +131,9 @@ final class Router
         if ($method === 'GET' && $path === '/fx/eur-brl') {
             FxRateController::eurToBrl();
         }
+        if ($method === 'GET' && $path === '/fx/usd-brl') {
+            FxRateController::usdToBrl();
+        }
 
         if ($method === 'GET' && $path === '/dashboard/summary') {
             DashboardController::summary();

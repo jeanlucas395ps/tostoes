@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tostoes</string>
+    <string name="title_activity_main">Tostoes</string>
+    <string name="package_name">com.tostoes.app</string>
+    <string name="custom_url_scheme">com.tostoes.app</string>
+</resources>

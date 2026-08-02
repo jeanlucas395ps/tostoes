@@ -1,0 +1,28 @@
+ion-content {
+  --background: var(--surface);
+}
+
+/* Hero mais baixo para o botão Entrar caber acima da dobra no emulador. */
+:host ::ng-deep .auth-hero,
+.auth-hero {
+  height: 34vh;
+  min-height: 200px;
+  max-height: 280px;
+}
+
+.login-submit {
+  display: flex !important;
+  width: 100%;
+  min-height: 52px;
+  margin-top: var(--sp-4);
+  margin-bottom: var(--sp-2);
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: var(--gradient-brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  box-shadow: var(--shadow-primary, 0 8px 20px rgba(69, 39, 160, 0.28));
+}

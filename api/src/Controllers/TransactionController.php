@@ -296,7 +296,9 @@ final class TransactionController
             'amount' => (float) $row['amount'],
             'currency' => $row['currency'],
             'amountBrl' => (float) $row['amount_brl'],
-            'eurToBrl' => isset($row['eur_to_brl']) && $row['eur_to_brl'] !== null
+            'eurToBrl' => ($row['currency'] ?? '') === 'EUR' && isset($row['eur_to_brl']) && $row['eur_to_brl'] !== null
+                ? (float) $row['eur_to_brl'] : null,
+            'usdToBrl' => ($row['currency'] ?? '') === 'USD' && isset($row['eur_to_brl']) && $row['eur_to_brl'] !== null
                 ? (float) $row['eur_to_brl'] : null,
             'category' => $row['category'],
             'region' => $row['region'],

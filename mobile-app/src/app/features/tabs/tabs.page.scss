@@ -1,0 +1,22 @@
+ion-tab-bar {
+  --background: var(--surface);
+  --border: 1px solid var(--border);
+  padding-top: 4px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+ion-tab-button {
+  --color: var(--text-faint);
+  --color-selected: var(--primary);
+  font-family: 'Public Sans', sans-serif;
+
+  ion-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  ion-icon {
+    font-size: 1.375rem;
+  }
+}

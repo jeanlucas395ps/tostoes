@@ -230,7 +230,7 @@ final class AccountController
         }
 
         $currency = $body['currency'] ?? 'BRL';
-        if (!in_array($currency, ['BRL', 'EUR'], true)) {
+        if (!in_array($currency, ['BRL', 'EUR', 'USD'], true)) {
             Response::error('Moeda inválida.', 422);
         }
 
