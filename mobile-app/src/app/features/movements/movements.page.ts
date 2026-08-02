@@ -36,7 +36,9 @@ import {
   CreditBill,
   CreditBillItem,
 } from '../../core/models/api.models';
-import { CATEGORY_ICON_OPTIONS, resolveItemIcon, suggestCategoryIcon } from '../../core/utils/category-icon.util';
+import { CATEGORY_ICON_OPTIONS, categoryLucideNodes, resolveItemIcon, suggestCategoryIcon } from '../../core/utils/category-icon.util';
+import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import type { IconNode } from 'lucide';
 import { responsibleLabel } from '../../core/utils/responsible.util';
 import { entryAmount, formatMoneyWithBrl, previewBrl, currencySymbol, isForeignCurrency } from '../../core/utils/money.util';
 
@@ -48,6 +50,7 @@ import { entryAmount, formatMoneyWithBrl, previewBrl, currencySymbol, isForeignC
     CurrencyBrlPipe,
     MonthNavComponent,
     ConfirmAccountDialogComponent,
+    LucideSvgComponent,
     IonContent,
     IonHeader,
     IonToolbar,
@@ -92,6 +95,7 @@ export class MovementsPage implements OnInit {
   newCategoryMode = signal(false);
   categoryIconOptions = CATEGORY_ICON_OPTIONS;
   entryIcon = (e: MonthPlanEntry) => resolveItemIcon(e.itemCategoryName ?? e.category, e.itemCategoryIcon, e.name);
+  lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
   responsibleLabel = responsibleLabel;
   formatMoneyWithBrl = formatMoneyWithBrl;
 
@@ -104,7 +108,7 @@ export class MovementsPage implements OnInit {
     itemCategoryId: null as number | null,
     customTabId: null as number | null,
     newCategoryName: '',
-    newCategoryIcon: '📦',
+    newCategoryIcon: 'package',
     responsibleUserId: null as number | null,
     transactionDate: '',
     accountId: null as number | null,
@@ -279,7 +283,7 @@ export class MovementsPage implements OnInit {
       itemCategoryId: catId,
       customTabId: this.variableUsesTabs() ? this.defaultTabId() : null,
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: null,
       transactionDate: this.defaultTxDate(),
       accountId: null,
@@ -331,7 +335,7 @@ export class MovementsPage implements OnInit {
       itemCategoryId: e.itemCategoryId ?? this.defaultCategoryId(),
       customTabId: e.customTabId ?? this.defaultTabId(),
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: e.responsibleUserId ?? null,
       transactionDate: this.defaultTxDate(),
       accountId: null,
@@ -358,7 +362,7 @@ export class MovementsPage implements OnInit {
       itemCategoryId: this.categoryIdFromName(catName) ?? this.defaultCategoryId(),
       customTabId: this.defaultTabId(),
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: t.responsibleUserId ?? null,
       transactionDate: t.transactionDate,
       accountId: t.accountId ?? null,

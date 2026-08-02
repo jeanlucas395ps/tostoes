@@ -18,7 +18,7 @@ final class Config
             'DB_USER' => 'root',
             'DB_PASS' => '',
             'JWT_SECRET' => 'change-me-in-production',
-            'CORS_ORIGIN' => 'http://localhost:4200',
+            'CORS_ORIGIN' => '*',
             'APP_BASE_PATH' => '',
             'APP_URL' => 'http://localhost:4200',
             'APP_TIMEZONE' => 'America/Sao_Paulo',

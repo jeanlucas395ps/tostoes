@@ -27,4 +27,12 @@ describe('SafeHtmlPipe', () => {
     pipe.transform('<script>alert(1)</script>');
     expect(spy).toHaveBeenCalledWith('');
   });
+
+  it('rejects nullish and foreignObject svg', () => {
+    const spy = spyOn(sanitizer, 'bypassSecurityTrustHtml').and.callThrough();
+    pipe.transform(null as unknown as string);
+    expect(spy).toHaveBeenCalledWith('');
+    pipe.transform('<svg><foreignObject></foreignObject></svg>');
+    expect(spy).toHaveBeenCalledWith('');
+  });
 });

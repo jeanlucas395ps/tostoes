@@ -1,14 +1,22 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
     <ion-title>Mais</ion-title>
+    <ion-buttons slot="end">
+      <button class="theme-toggle-btn" type="button" (click)="theme.toggle()">
+        <ion-icon [name]="theme.isDark() ? 'sunny-outline' : 'moon-outline'"></ion-icon>
+      </button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="page-content">
-  <div class="planning-strip">
-    <span class="label-caps">Planejamento ativo</span>
-    <strong>{{ planning.active()?.name ?? '—' }}</strong>
-  </div>
+  <button class="planning-strip" type="button" (click)="showPlanningManager.set(true)">
+    <span class="planning-strip-text">
+      <span class="label-caps">Planejamento ativo</span>
+      <strong>{{ planning.active()?.name ?? ', ' }}</strong>
+    </span>
+    <ion-icon name="chevron-forward-outline"></ion-icon>
+  </button>
 
   <div class="shortcut-grid">
     @for (item of shortcuts; track item.route) {
@@ -25,13 +33,12 @@
     <ion-icon class="chevron" name="chevron-forward-outline"></ion-icon>
   </a>
 
-  <button class="row-link card theme-toggle" (click)="theme.toggle()">
-    <ion-icon [name]="theme.isDark() ? 'sunny-outline' : 'moon-outline'"></ion-icon>
-    <span>{{ theme.isDark() ? 'Tema claro' : 'Tema escuro' }}</span>
-  </button>
-
   <button class="row-link card logout-row" (click)="confirmLogout()">
     <ion-icon name="log-out-outline"></ion-icon>
     <span>Sair</span>
   </button>
 </ion-content>
+
+@if (showPlanningManager()) {
+  <app-planning-manager (cancelled)="showPlanningManager.set(false)" />
+}

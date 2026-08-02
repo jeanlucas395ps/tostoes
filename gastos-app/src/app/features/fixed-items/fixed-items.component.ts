@@ -27,6 +27,7 @@ import {
 import {
   CATEGORY_ICON_OPTIONS,
   categoryIcon,
+  categoryLucideNodes,
   resolveItemIcon,
   suggestCategoryIcon,
 } from '../../core/utils/category-icon.util';
@@ -34,6 +35,8 @@ import {
   buildDonutSlices,
   CATEGORY_PIE_COLORS,
 } from '../../core/utils/donut-chart.util';
+import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import type { IconNode } from 'lucide';
 
 export interface FixedPageMeta {
   kind: EntryKind;
@@ -67,6 +70,7 @@ type CategoryFilter = 'all' | 'sem' | number;
     NgTemplateOutlet,
     RouterLink,
     UserAvatarComponent,
+    LucideSvgComponent,
   ],
   templateUrl: './fixed-items.component.html',
   styleUrl: './fixed-items.component.scss',
@@ -233,7 +237,7 @@ export class FixedItemsComponent implements OnInit {
     }
     const sem = counts.get('sem') ?? 0;
     if (sem > 0) {
-      filters.push({ id: 'sem', name: 'Sem categoria', icon: '📌', count: sem });
+      filters.push({ id: 'sem', name: 'Sem categoria', icon: 'pin', count: sem });
     }
     return filters;
   });
@@ -443,6 +447,7 @@ export class FixedItemsComponent implements OnInit {
   }
 
   categoryIconFor = categoryIcon;
+  lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
 
   itemCategoryIcon(item: RecurringItem): string {
     return resolveItemIcon(

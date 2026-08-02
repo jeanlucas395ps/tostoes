@@ -1,8 +1,36 @@
+.theme-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
 .planning-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-6);
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+
+  ion-icon { font-size: 1rem; color: var(--text-muted); flex-shrink: 0; }
+}
+
+.planning-strip-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: var(--sp-6);
 
   strong { font-size: 1.0625rem; }
 }

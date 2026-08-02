@@ -1,0 +1,250 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/mais" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ meta.title }}</ion-title>
+    <ion-buttons slot="end">
+      <button class="icon-btn" type="button" (click)="openNew()">
+        <ion-icon name="add-outline"></ion-icon>
+      </button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content" [style.--accent]="meta.accent">
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <p class="subtitle">{{ meta.subtitle }}</p>
+
+  @if (meta.userOverviewTabs && userTabOverviews().length > 1) {
+    <div class="user-tabs">
+      @for (tab of userTabOverviews(); track tab.key) {
+        <button class="user-tab" type="button" [class.active]="activeUserTab() === tab.key" (click)="setUserTab(tab.key)">
+          <span class="user-tab-label">{{ tab.label }}</span>
+          <strong class="num">{{ tab.totalBrl | currencyBrl }}</strong>
+          <span class="user-tab-count">{{ tab.count }} item(s)</span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (showCategoryPie() && categoryDonut(); as dd) {
+    <div class="card chart-card">
+      <h3>Por categoria</h3>
+      <div class="donut-wrap">
+        <svg viewBox="0 0 200 200" class="donut-svg">
+          @for (s of dd.slices; track s.label) {
+            <path [attr.d]="s.path" [attr.fill]="s.color"></path>
+          }
+        </svg>
+        <div class="donut-legend">
+          @for (s of dd.slices; track s.label) {
+            <div class="donut-legend-row">
+              <span class="dot" [style.background]="s.color"></span>
+              <span class="donut-legend-label">{{ s.label }}</span>
+              <span class="donut-legend-pct num">{{ s.pct }}%</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (!loading() && !itemsByUserTab().length) {
+    <p class="empty-state">Nenhum item cadastrado ainda. Toque em + para criar o primeiro.</p>
+  }
+
+  <div class="item-list">
+    @for (i of itemsByUserTab(); track i.id) {
+      <div class="item-row card" (click)="openEdit(i)">
+        <div class="item-row-top">
+          <app-user-avatar [user]="i.responsibleUser ?? null" [name]="responsibleLabel(i)" size="sm" />
+          <span class="item-icon"><app-lucide-svg [nodes]="lucideFor(entryIcon(i))" /></span>
+          <strong class="item-name">{{ i.name }}</strong>
+          <button class="icon-btn small" type="button" (click)="remove(i); $event.stopPropagation()">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+        </div>
+        <div class="item-row-bottom">
+          <div class="item-meta">
+            <span class="item-sub">
+              Dia {{ i.dueDay ?? ', ' }}
+              @if (i.isInstallment && i.startDate && i.endDate) {
+                · {{ i.startDate | slice: 0 : 7 }} → {{ i.endDate | slice: 0 : 7 }}
+              }
+              · {{ i.itemCategoryName ?? i.category }}
+              @if (usesCustomTabs() && i.customTabName) {
+                · {{ i.customTabName }}
+              }
+            </span>
+            @if (itemAccountLabel(i); as acc) {
+              <span class="item-sub">{{ acc }}</span>
+            }
+          </div>
+          <span class="item-amount num">{{ itemLabel(i) }}</span>
+        </div>
+      </div>
+    }
+  </div>
+</ion-content>
+
+@if (showForm()) {
+  <div class="modal-backdrop" (click)="closeForm()">
+    <div class="modal sheet" (click)="$event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h3>{{ editingId() ? 'Editar item' : 'Novo item' }}</h3>
+
+      <label class="field">
+        <span class="field-label">Nome</span>
+        <input type="text" [(ngModel)]="form.name" />
+      </label>
+
+      @if (!isInstallmentMode()) {
+        <label class="field">
+          <span class="field-label">Dia do mês</span>
+          <input class="num" type="number" min="1" max="31" [(ngModel)]="form.dueDay" />
+        </label>
+      }
+
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Valor mensal</span>
+          <input class="num" type="number" inputmode="decimal" [(ngModel)]="form.amount" />
+        </label>
+        <label class="field currency-field">
+          <span class="field-label">Moeda</span>
+          <select class="select" [(ngModel)]="form.currency">
+            <option value="BRL">R$</option>
+            <option value="EUR">€</option>
+            <option value="USD">US$</option>
+          </select>
+        </label>
+      </div>
+      @if (isForeignCurrency(form.currency)) {
+        <p class="fx-hint">≈ {{ formPreviewBrl() | currencyBrl }}</p>
+      }
+
+      @if (isInstallmentMode()) {
+        <div class="amount-row">
+          <label class="field grow">
+            <span class="field-label">Mês da 1ª parcela</span>
+            <input type="month" [(ngModel)]="form.startMonth" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">Nº de parcelas</span>
+            <input class="num" type="number" min="2" max="120" [ngModel]="form.installmentCount" (ngModelChange)="clampInstallments($event)" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">Mês da última parcela</span>
+          <input type="month" [value]="endMonthFromStart()" readonly />
+        </label>
+      }
+
+      @if (showCategoryPicker()) {
+        <label class="field">
+          <span class="field-label">Categoria</span>
+          @if (!newCategoryMode()) {
+            <select class="select" [ngModel]="form.itemCategoryId" (ngModelChange)="onCategorySelect($event)">
+              <option [ngValue]="null">Selecione</option>
+              @for (c of itemCategories(); track c.id) {
+                <option [ngValue]="c.id">{{ c.name }}</option>
+              }
+              <option [ngValue]="'__new__'">+ Nova categoria</option>
+            </select>
+          } @else {
+            <input type="text" placeholder="Nome da nova categoria" [ngModel]="form.newCategoryName" (ngModelChange)="onNewCategoryNameChange($event)" />
+            <div class="icon-picker">
+              @for (opt of categoryIconOptions; track opt.icon) {
+                <button
+                  type="button"
+                  class="icon-opt"
+                  [class.selected]="form.newCategoryIcon === opt.icon"
+                  [title]="opt.label"
+                  (click)="form.newCategoryIcon = opt.icon"
+                ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
+              }
+            </div>
+            <button class="link-btn" type="button" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
+          }
+        </label>
+      }
+
+      @if (usesCustomTabs()) {
+        <label class="field">
+          <span class="field-label">Aba personalizada</span>
+          <select class="select" [(ngModel)]="form.customTabId">
+            <option [ngValue]="null">Sem aba</option>
+            @for (t of customTabs(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      <label class="field">
+        <span class="field-label">Responsável</span>
+        <select class="select" [(ngModel)]="form.responsibleUserId">
+          <option [ngValue]="null">Conjunto</option>
+          @for (u of householdUsers(); track u.id) {
+            <option [ngValue]="u.id">{{ u.name }}</option>
+          }
+        </select>
+      </label>
+
+      @if (isInvestment()) {
+        <label class="field">
+          <span class="field-label">Conta bancária de saída (opcional)</span>
+          <select class="select" [(ngModel)]="form.sourceFinancialAccountId">
+            <option [ngValue]="null">Sem origem fixa</option>
+            @for (a of bankFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Conta de investimento (destino)</span>
+          <select class="select" [(ngModel)]="form.financialAccountId">
+            <option [ngValue]="null">Sem destino fixo</option>
+            @for (a of investmentFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Tipo de aporte</span>
+          <select class="select" [(ngModel)]="form.investmentTypeId">
+            <option [ngValue]="null">, </option>
+            @for (t of investmentTypes(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <label class="field">
+          <span class="field-label">{{ meta.kind === 'income' ? 'Conta bancária de destino (opcional)' : 'Pagar com (opcional)' }}</span>
+          <select class="select" [(ngModel)]="form.sourceFinancialAccountId">
+            <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+            @for (a of bankFinancialAccounts(); track a.id) {
+              <option [ngValue]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="closeForm()">Cancelar</button>
+        <button class="btn-brand" type="button" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

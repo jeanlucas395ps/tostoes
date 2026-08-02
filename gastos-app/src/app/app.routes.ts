@@ -94,7 +94,7 @@ export const routes: Routes = [
         data: {
           kind: 'expense',
           title: 'Gastos fixos',
-          subtitle: 'Despesas recorrentes , confirme o pagamento em Movimentos',
+          subtitle: 'Despesas recorrentes, confirme o pagamento em Movimentos',
           accent: '#f85149',
           categoryDefault: 'Brasil',
           userOverviewTabs: true,
@@ -110,7 +110,7 @@ export const routes: Routes = [
           kind: 'expense',
           title: 'Compras parceladas',
           subtitle:
-            'Parcelas de cartão ou compras a prazo , entram em Movimentos até o mês da última parcela',
+            'Parcelas de cartão ou compras a prazo, entram em Movimentos até o mês da última parcela',
           accent: '#f59e0b',
           categoryDefault: 'Geral',
           userOverviewTabs: true,
@@ -126,7 +126,7 @@ export const routes: Routes = [
         data: {
           kind: 'income',
           title: 'Recebimentos fixos',
-          subtitle: 'Entradas recorrentes , confirme o recebimento em Movimentos',
+          subtitle: 'Entradas recorrentes, confirme o recebimento em Movimentos',
           accent: '#3fb950',
           categoryDefault: 'Salário',
           userOverviewTabs: true,
@@ -141,7 +141,7 @@ export const routes: Routes = [
         data: {
           kind: 'investment',
           title: 'Investimentos fixos',
-          subtitle: 'Aportes recorrentes , confirme em Movimentos (banco → investimento)',
+          subtitle: 'Aportes recorrentes, confirme em Movimentos (banco → investimento)',
           accent: '#a371f7',
           categoryDefault: 'Investimento',
           userOverviewTabs: true,

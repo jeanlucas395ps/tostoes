@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════════════
 
-   TOSTOES , Design System Guidelines v2.0
+   TOSTOES, Design System Guidelines v2.0
    UI: Minimals · Marca primária inspirada no Mobills (roxo)
 
    ┌─────────────────────────────────────────────────────────────────────┐
    │  Este arquivo é a referência viva do design system. Não é importado  │
-   │  diretamente no build , serve como documentação executável em SCSS.   │
+   │  diretamente no build, serve como documentação executável em SCSS.   │
    └─────────────────────────────────────────────────────────────────────┘
 
    ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +41,7 @@
    3. PALETA DE CORES
    ───────────────────
 
-   PRIMÁRIA , Marca (roxo Mobills)
+   PRIMÁRIA, Marca (roxo Mobills)
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --primary           │ #6B4EE6    │ CTA, nav ativa, links          │
    │ --primary-dark      │ #5538D1    │ Hover, texto sobre fundo claro │
@@ -50,14 +50,14 @@
    │ --primary-lighter   │ 12% alpha  │ Chips, seleção                 │
    └─────────────────────┴────────────┴────────────────────────────────┘
 
-   RECEITAS , Ganhos (verde, separado da marca)
+   RECEITAS, Ganhos (verde, separado da marca)
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --income            │ #22C55E    │ Valores de recebimento         │
    │ --income-dark       │ #16A34A    │ Texto / KPI receitas           │
    │ --income-soft       │ 8% alpha   │ Badges de entrada              │
    └─────────────────────┴────────────┴────────────────────────────────┘
 
-   PERIGO , Gastos / Despesas (vermelho)
+   PERIGO, Gastos / Despesas (vermelho)
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --danger            │ #FF5630    │ Valores negativos, erros       │
    │ --danger-dark       │ #B71D18    │ Texto sobre fundo claro        │
@@ -71,13 +71,13 @@
    │ --accent-invest-soft│ 8% alpha   │ Fundos suaves                  │
    └─────────────────────┴────────────┴────────────────────────────────┘
 
-   ATENÇÃO / PLANEJADO (âmbar , WARNING)
+   ATENÇÃO / PLANEJADO (âmbar, WARNING)
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --warning           │ #FFAB00    │ Valores projetados, alertas    │
    │ --warning-dark      │ #B76E00    │ Texto                          │
    └─────────────────────┴────────────┴────────────────────────────────┘
 
-   MARCA , Logo / Brand mark (âmbar, EXCLUSIVO para logo)
+   MARCA, Logo / Brand mark (âmbar, EXCLUSIVO para logo)
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --brand             │ #D97706    │ Logo mark, gradiente da marca  │
    │ --brand-dark        │ #92400E    │ Gradiente escuro               │
@@ -85,7 +85,7 @@
    └─────────────────────┴────────────┴────────────────────────────────┘
    ⚠ Cor âmbar reservada ao logo. NÃO usar para estados de nav ativo.
 
-   NEUTROS , Interface
+   NEUTROS, Interface
    ┌─────────────────────┬────────────┬────────────────────────────────┐
    │ --text              │ #1C252E    │ Texto principal                │
    │ --text-muted        │ #637381    │ Labels, subtítulos             │
@@ -100,7 +100,7 @@
 
    4. SOMBRAS
    ──────────
-   Sistema idêntico ao Minimals , muito sutil, sem sombras dramáticas.
+   Sistema idêntico ao Minimals, muito sutil, sem sombras dramáticas.
 
    --shadow-xs:       0 1px 2px rgba(145,158,171, 0.16)
    --shadow-card:     0 0 2px rgba(…, 0.08), 0 12px 24px -4px rgba(…, 0.12)
@@ -127,7 +127,7 @@
    Page padding lateral: 2rem (32px)  = --sp-8
    Gap entre cards: 1rem (16px) ou 1.25rem (20px)
 
-   7. COMPONENTES , PADRÕES
+   7. COMPONENTES, PADRÕES
    ─────────────────────────
 
    KPI Cards:

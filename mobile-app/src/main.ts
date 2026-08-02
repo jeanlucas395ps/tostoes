@@ -36,6 +36,7 @@ import {
   ellipseOutline,
   checkmarkCircle,
   alertCircleOutline,
+  trashOutline,
 } from 'ionicons/icons';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
@@ -63,6 +64,7 @@ addIcons({
   'chevron-back-outline': chevronBackOutline,
   'add-outline': addOutline,
   'close-outline': closeOutline,
+  'trash-outline': trashOutline,
   'checkmark-outline': checkmarkOutline,
   'checkmark-circle': checkmarkCircle,
   'arrow-back-outline': arrowBackOutline,

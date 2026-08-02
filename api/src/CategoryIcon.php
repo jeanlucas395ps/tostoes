@@ -6,11 +6,15 @@ namespace Gastos\Api;
 
 final class CategoryIcon
 {
+    public const DEFAULT = 'pin';
+
     /** @var list<string> */
     public const ALLOWED = [
-        '🛒', '🥩', '🏠', '🚗', '📱', '💰', '💳', '🍽️', '⚡', '💡', '📺', '🎬', '🎵',
-        '💊', '🏥', '✈️', '🎓', '👶', '🐾',         '🛍️', '🔧', '📋', '🏦', '💼', '🎁', '🍷',
-        '☕', '🚌', '🛡️', '📦', '⭐', '📌', '💪',
+        'shopping-cart', 'beef', 'house', 'car', 'smartphone', 'banknote', 'credit-card',
+        'utensils', 'zap', 'droplets', 'tv', 'clapperboard', 'music', 'pill', 'heart-pulse',
+        'plane', 'graduation-cap', 'baby', 'paw-print', 'shopping-bag', 'wrench',
+        'clipboard-list', 'landmark', 'briefcase', 'gift', 'wine', 'coffee', 'bus',
+        'shield', 'package', 'star', 'pin', 'dumbbell',
     ];
 
     public static function normalize(?string $icon, ?string $categoryName = null): string
@@ -25,7 +29,7 @@ final class CategoryIcon
 
     public static function suggestForName(string $name): string
     {
-        return self::matchIcon($name) ?? '📌';
+        return self::matchIcon($name) ?? self::DEFAULT;
     }
 
     public static function resolveForItem(
@@ -34,7 +38,7 @@ final class CategoryIcon
         ?string $itemName
     ): string {
         $cat = self::normalize($categoryIcon, $categoryName ?? '');
-        if ($cat !== '📌') {
+        if ($cat !== self::DEFAULT) {
             return $cat;
         }
         if ($itemName !== null && trim($itemName) !== '') {
@@ -55,34 +59,34 @@ final class CategoryIcon
         }
 
         $rules = [
-            [['talho', 'açougue', 'acougue', 'carn'], '🥩'],
-            [['mercado', 'supermerc'], '🛒'],
-            [['alimenta', 'restaur', 'lazer'], '🍽️'],
-            [['moradia', 'aluguel', 'apartamento', 'condom', 'arrend', 'lucila'], '🏠'],
-            [['transporte', 'uber', 'combust', 'gasolina', 'metro'], '🚗'],
-            [['assinatura', 'netflix', 'spotify', 'crunch', 'apple', 'drive', 'cursor', 'claude'], '📱'],
-            [['telecomunic', 'internet', 'vivo', 'cel '], '📱'],
-            [['cartão', 'cartao', 'credito', 'crédito', 'itau', 'itáu', 'santander', 'nubank'], '💳'],
-            [['salário', 'salario', 'ordenado'], '💰'],
-            [['recebimento', 'rendimento', 'coders', 'odontoprev', 'odont'], '💰'],
-            [['reembolso'], '💰'],
-            [['extra'], '🎁'],
-            [['invest', 'reserva', 'capitaliza'], '🏦'],
-            [['luz', 'energia', 'eletric'], '⚡'],
-            [['água', 'agua'], '💡'],
-            [['imposto', 'das', 'cau', 'conselho'], '📋'],
-            [['serviço', 'servico', 'contador'], '🔧'],
-            [['trabalho', 'tech'], '💼'],
-            [['exerc', 'ginásio', 'ginasio', 'fitness', 'pilates', 'yoga', 'musculação', 'musculacao'], '💪'],
-            [['saúde', 'saude', 'convênio', 'convenio', 'academia'], '🏥'],
-            [['beleza', 'manicure', 'fotos'], '🛍️'],
-            [['outros'], '📦'],
+            [['talho', 'açougue', 'acougue', 'carn'], 'beef'],
+            [['mercado', 'supermerc'], 'shopping-cart'],
+            [['alimenta', 'restaur', 'lazer'], 'utensils'],
+            [['moradia', 'aluguel', 'apartamento', 'condom', 'arrend', 'lucila'], 'house'],
+            [['transporte', 'uber', 'combust', 'gasolina', 'metro'], 'car'],
+            [['assinatura', 'netflix', 'spotify', 'crunch', 'apple', 'drive', 'cursor', 'claude'], 'smartphone'],
+            [['telecomunic', 'internet', 'vivo', 'cel '], 'smartphone'],
+            [['cartão', 'cartao', 'credito', 'crédito', 'itau', 'itáu', 'santander', 'nubank'], 'credit-card'],
+            [['salário', 'salario', 'ordenado'], 'banknote'],
+            [['recebimento', 'rendimento', 'coders', 'odontoprev', 'odont'], 'banknote'],
+            [['reembolso'], 'banknote'],
+            [['extra'], 'gift'],
+            [['invest', 'reserva', 'capitaliza'], 'landmark'],
+            [['luz', 'energia', 'eletric'], 'zap'],
+            [['água', 'agua'], 'droplets'],
+            [['imposto', 'das', 'cau', 'conselho'], 'clipboard-list'],
+            [['serviço', 'servico', 'contador'], 'wrench'],
+            [['trabalho', 'tech'], 'briefcase'],
+            [['exerc', 'ginásio', 'ginasio', 'fitness', 'pilates', 'yoga', 'musculação', 'musculacao'], 'dumbbell'],
+            [['saúde', 'saude', 'convênio', 'convenio', 'academia'], 'heart-pulse'],
+            [['beleza', 'manicure', 'fotos'], 'shopping-bag'],
+            [['outros'], 'package'],
         ];
 
-        foreach ($rules as [$keywords, $emoji]) {
+        foreach ($rules as [$keywords, $key]) {
             foreach ($keywords as $kw) {
                 if (str_contains($n, $kw)) {
-                    return $emoji;
+                    return $key;
                 }
             }
         }
@@ -94,26 +98,39 @@ final class CategoryIcon
     public static function catalog(): array
     {
         $labels = [
-            '🛒' => 'Mercado',
-            '🥩' => 'Talho',
-            '🏠' => 'Moradia',
-            '🚗' => 'Transporte',
-            '📱' => 'Assinaturas / telecom',
-            '💰' => 'Salário / receita',
-            '💳' => 'Cartão',
-            '🍽️' => 'Alimentação / lazer',
-            '⚡' => 'Energia / luz',
-            '💡' => 'Água',
-            '🏥' => 'Saúde',
-            '💪' => 'Exercícios / fitness',
-            '📋' => 'Impostos / taxas',
-            '🔧' => 'Serviços',
-            '💼' => 'Trabalho / tech',
-            '🏦' => 'Investimento / banco',
-            '🛍️' => 'Compras / beleza',
-            '🎁' => 'Extra / presente',
-            '📦' => 'Outros',
-            '📌' => 'Geral',
+            'shopping-cart' => 'Mercado',
+            'beef' => 'Talho',
+            'house' => 'Moradia',
+            'car' => 'Transporte',
+            'smartphone' => 'Assinaturas / telecom',
+            'banknote' => 'Salário / receita',
+            'credit-card' => 'Cartão',
+            'utensils' => 'Alimentação / lazer',
+            'zap' => 'Energia / luz',
+            'droplets' => 'Água',
+            'tv' => 'TV / streaming',
+            'clapperboard' => 'Cinema',
+            'music' => 'Música',
+            'pill' => 'Farmácia',
+            'heart-pulse' => 'Saúde',
+            'plane' => 'Viagem',
+            'graduation-cap' => 'Educação',
+            'baby' => 'Família',
+            'paw-print' => 'Pets',
+            'shopping-bag' => 'Compras / beleza',
+            'wrench' => 'Serviços',
+            'clipboard-list' => 'Impostos / taxas',
+            'landmark' => 'Investimento / banco',
+            'briefcase' => 'Trabalho / tech',
+            'gift' => 'Extra / presente',
+            'wine' => 'Bebidas',
+            'coffee' => 'Café',
+            'bus' => 'Transporte público',
+            'shield' => 'Seguros',
+            'package' => 'Outros',
+            'star' => 'Favorito',
+            'pin' => 'Geral',
+            'dumbbell' => 'Exercícios / fitness',
         ];
 
         $out = [];

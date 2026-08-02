@@ -13,7 +13,7 @@ describe('donut-chart.util', () => {
 
   it('builds slices with paths and percentages', () => {
     const result = buildDonutSlices([
-      { label: 'Gastos', value: 70, color: '#EF4444', icon: '🛒' },
+      { label: 'Gastos', value: 70, color: '#EF4444', icon: 'shopping-cart' },
       { label: 'Receitas', value: 30, color: '#22C55E' },
     ]);
     expect(result).not.toBeNull();
@@ -21,7 +21,7 @@ describe('donut-chart.util', () => {
     expect(result!.slices.length).toBe(2);
     expect(result!.slices[0].pct).toBe(70);
     expect(result!.slices[0].path).toContain('M');
-    expect(result!.slices[0].icon).toBe('🛒');
+    expect(result!.slices[0].icon).toBe('shopping-cart');
   });
 
   it('skips tiny sweeps when minSweep is high', () => {
@@ -34,6 +34,13 @@ describe('donut-chart.util', () => {
     );
     expect(result).not.toBeNull();
     expect(result!.slices.every((s) => s.label === 'Big')).toBe(true);
+  });
+
+  it('builds large arc when single slice nearly full', () => {
+    const result = buildDonutSlices([{ label: 'All', value: 100, color: '#000' }], { gap: 2 });
+    expect(result).not.toBeNull();
+    expect(result!.slices[0].path).toContain('A80,80');
+    expect(result!.slices[0].path).toContain(' 1 1 ');
   });
 
   it('returns null when all slices filtered by minSweep', () => {

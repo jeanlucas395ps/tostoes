@@ -9,19 +9,15 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
+  <button class="planning-chip" type="button" (click)="showPlanningManager.set(true)">
+    <ion-icon name="people-outline"></ion-icon>
+    <span>{{ planning.active()?.name ?? 'Planejamento' }}</span>
+    <ion-icon name="chevron-forward-outline"></ion-icon>
+  </button>
+
   <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
 
   <div #sections>
-    <div class="hero-balance reveal">
-      <span class="label-caps">Saldo real do mês</span>
-      <div class="hero-value num" #balanceValue>R$ 0,00</div>
-      @if (showProjected() && selectedMonth(); as m) {
-        <span class="hero-projected">
-          previsto: <strong class="num">{{ m.balanceProjected | currencyBrl }}</strong>
-        </span>
-      }
-    </div>
-
     @if (selectedMonth(); as m) {
       <div class="kpi-row reveal">
         <div class="kpi-card">
@@ -38,6 +34,16 @@
         </div>
       </div>
     }
+
+    <div class="hero-balance reveal">
+      <span class="label-caps">Saldo real do mês</span>
+      <div class="hero-value num" #balanceValue>R$ 0,00</div>
+      @if (showProjected() && selectedMonth(); as m) {
+        <span class="hero-projected">
+          previsto: <strong class="num">{{ m.balanceProjected | currencyBrl }}</strong>
+        </span>
+      }
+    </div>
 
     @if (flowData(); as fd) {
       <div class="card chart-card reveal">
@@ -123,3 +129,7 @@
     }
   </div>
 </ion-content>
+
+@if (showPlanningManager()) {
+  <app-planning-manager (cancelled)="showPlanningManager.set(false)" />
+}

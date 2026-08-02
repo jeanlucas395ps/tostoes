@@ -1,0 +1,102 @@
+.form-card { padding: var(--sp-4); margin-bottom: var(--sp-4); }
+.form-card h3 { font-size: 0.9375rem; margin-bottom: var(--sp-3); }
+
+.field { display: block; margin-bottom: var(--sp-3); }
+.field-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+
+.field input,
+.add-row input {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+
+  &:focus { outline: none; border-color: var(--primary); }
+}
+
+.field-success {
+  color: var(--income-dark);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  margin: 0 0 var(--sp-3);
+}
+
+.btn-brand.full,
+.btn-soft.full { width: 100%; }
+
+.taxonomy-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.taxonomy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.taxonomy-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+
+  app-lucide-svg { color: var(--text-muted); }
+}
+
+.category-row { border-bottom: none; padding-bottom: 0; }
+
+.link-btn {
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0;
+  color: var(--primary);
+
+  &.danger { color: var(--danger-dark); }
+}
+
+.add-row {
+  display: flex;
+  gap: var(--sp-2);
+
+  input { flex: 1; }
+}
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--sp-4);
+}
+
+.icon-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  padding: 0;
+
+  &.selected {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+}

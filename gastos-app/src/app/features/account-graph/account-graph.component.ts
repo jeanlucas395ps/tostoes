@@ -9,6 +9,7 @@ import dagre from 'cytoscape-dagre';
 
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../shared/components/month-nav/month-nav.component';
+import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import {
   AccountFlowGraph,
@@ -16,11 +17,13 @@ import {
   MONTH_LABELS,
 } from '../../core/models/api.models';
 import { nodeDisplayName, nodeTypeLabel } from '../../core/utils/account-labels.util';
+import { categoryLucideNodes } from '../../core/utils/category-icon.util';
+import type { IconNode } from 'lucide';
 
 // Registra o layout dagre (hierárquico, como AWS)
 cytoscape.use(dagre);
 
-/** Modo estendido , 'current' é resolvido no frontend (confirmed + planned pendentes) */
+/** Modo estendido, 'current' é resolvido no frontend (confirmed + planned pendentes) */
 type ExtendedMode = AccountFlowGraphMode;
 
 // ── Paleta por tipo de nó ────────────────────────────────────────────────────
@@ -72,7 +75,7 @@ function hexRgba(hex: string, a: number): string {
 @Component({
   selector: 'app-account-graph',
   standalone: true,
-  imports: [CurrencyBrlPipe, MonthNavComponent],
+  imports: [CurrencyBrlPipe, MonthNavComponent, LucideSvgComponent],
   templateUrl: './account-graph.component.html',
   styleUrl: './account-graph.component.scss',
 })
@@ -147,8 +150,10 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   availableCategories = computed((): { id: string; name: string; icon: string }[] => {
     const opts = this.graph()?.filterOptions?.categories ?? [];
-    return opts.map(c => ({ id: String(c.id), name: c.name, icon: c.icon || '📌' }));
+    return opts.map(c => ({ id: String(c.id), name: c.name, icon: c.icon || 'pin' }));
   });
+
+  lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
 
   /** Abas personalizadas (ex. Brasil, Portugal) + Geral (sem aba). */
   availableTabs = computed((): { id: string; name: string }[] => {
@@ -213,7 +218,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.cyRef?.nativeElement) return;
 
     const dark = isDark();
-    // Sem variável edgeLabelBg , fundo dos labels removido (veja stylesheet abaixo)
+    // Sem variável edgeLabelBg, fundo dos labels removido (veja stylesheet abaixo)
 
     this.cy = cytoscape({
       container: this.cyRef.nativeElement,
@@ -284,13 +289,13 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             'font-size': 9,
             'font-weight': '700',
             'color': 'data(color)',
-            'text-background-opacity': 0,   /* sem fundo , funciona em light e dark */
+            'text-background-opacity': 0,   /* sem fundo, funciona em light e dark */
             'text-border-opacity': 0,
             'text-outline-width': 0,
             'z-index': 5,
           } as any,
         },
-        // Nó de saldo (nível 4 , sintético)
+        // Nó de saldo (nível 4, sintético)
         {
           selector: 'node.balance-node',
           style: {
@@ -372,7 +377,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       const n = ev.target;
       const d = n.data();
       if (d.isBalance) {
-        // Nó de saldo , mostra título e valor
+        // Nó de saldo, mostra título e valor
         this.tooltip.set({
           visible: true, ...this.cursorPos(ev, container),
           title: d.type === 'balance' ? 'Saldo' : 'Total',
@@ -516,7 +521,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // Arestas , metadados para filtragem
+    // Arestas, metadados para filtragem
     // Modo 'planned': itens variáveis já foram excluídos pelo backend
     // (WHERE recurring_item_id IS NOT NULL OR financial_goal_id IS NOT NULL)
     // Nenhum filtro adicional necessário no frontend.
@@ -573,7 +578,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Nível 4 , um nó de saldo por banco
+    // Nível 4, um nó de saldo por banco
     let totalBalance = 0;
     const balSaldoClr = (v: number) => v >= 0 ? '#22C55E' : '#FF5630';
     const balTextClr  = (v: number, d: boolean) =>
@@ -643,7 +648,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     const apiOutflow = g.totals?.outflowBrl ?? 0;
     const apiTotal   = apiInflow - apiOutflow;
 
-    // Nível 5 , saldo total (usa valor API, inclui órfãos)
+    // Nível 5, saldo total (usa valor API, inclui órfãos)
     const totalClr = balSaldoClr(apiTotal);
     elements.push({
       data: {
@@ -695,7 +700,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cy.elements().remove();
     this.cy.add(elements);
 
-    // Layout dagre , TB: receitas (topo) → bancos (meio) → gastos/invest/metas (baixo)
+    // Layout dagre, TB: receitas (topo) → bancos (meio) → gastos/invest/metas (baixo)
     const layout = this.cy.layout({
       name:              'dagre',
       rankDir:           'TB',   // Top → Bottom
@@ -783,7 +788,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Filtra edges (ignora balance-links , sempre invisíveis)
+    // Filtra edges (ignora balance-links, sempre invisíveis)
     cy.edges().forEach((e: any) => {
       if (e.hasClass('balance-link')) return;
       const d = e.data();

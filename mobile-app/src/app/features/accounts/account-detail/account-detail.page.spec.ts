@@ -11,6 +11,7 @@ describe('AccountDetailPage', () => {
   let component: AccountDetailPage;
   let http: HttpTestingController;
   let router: jasmine.SpyObj<Router>;
+  let alertCreate: jasmine.Spy;
   const base = environment.apiUrl;
 
   const bankAccount: FinancialAccount = {
@@ -29,6 +30,7 @@ describe('AccountDetailPage', () => {
     router = jasmine.createSpyObj('Router', ['navigateByUrl']);
     const alertSpy = jasmine.createSpyObj('AlertController', ['create']);
     alertSpy.create.and.resolveTo({ present: async () => {} });
+    alertCreate = alertSpy.create;
 
     await TestBed.configureTestingModule({
       imports: [AccountDetailPage, HttpClientTestingModule],
@@ -77,9 +79,9 @@ describe('AccountDetailPage', () => {
     component.kindFilter.set('expense');
     component.search.set('mercado');
     component.load();
-    const req = http.expectOne(
-      (r) => r.url === `${base}/accounts/7` && r.params.get('kind') === 'expense' && r.params.get('search') === 'mercado'
-    );
+    const req = http.expectOne((r) => r.url === `${base}/accounts/7`);
+    expect(req.request.params.get('kind')).toBe('expense');
+    expect(req.request.params.get('search')).toBe('mercado');
     req.flush({ item: bankAccount });
   });
 
@@ -94,9 +96,14 @@ describe('AccountDetailPage', () => {
     flush();
   });
 
-  it('navigates back to /contas after removing the account', () => {
+  it('navigates back to /contas after confirming removal', async () => {
     fixture.detectChanges();
     flush();
-    component.remove();
+    await component.remove();
+    const config = alertCreate.calls.mostRecent().args[0];
+    const destructive = config.buttons.find((b: { role?: string }) => b.role === 'destructive');
+    destructive.handler();
+    http.expectOne(`${base}/accounts/7`).flush({ ok: true });
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/contas');
   });
 });

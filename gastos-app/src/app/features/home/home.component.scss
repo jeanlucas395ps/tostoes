@@ -251,7 +251,7 @@
   }
 }
 
-/* icon , row 1 col 1 */
+/* icon, row 1 col 1 */
 .account-mini-icon {
   grid-column: 1;
   grid-row: 1;
@@ -273,7 +273,7 @@
   }
 }
 
-/* name , row 1 col 2 */
+/* name, row 1 col 2 */
 .account-mini-name {
   grid-column: 2;
   grid-row: 1;
@@ -286,7 +286,7 @@
   text-overflow: ellipsis;
 }
 
-/* balance , row 2 spanning both cols */
+/* balance, row 2 spanning both cols */
 .account-mini-balance {
   grid-column: 1 / -1;
   grid-row: 2;
@@ -315,7 +315,7 @@
   }
 }
 
-/* fx , row 3 spanning both cols */
+/* fx, row 3 spanning both cols */
 .account-mini-fx {
   grid-column: 1 / -1;
   grid-row: 3;
@@ -445,7 +445,7 @@
 
 /* ── Chart card container ─────────────────────────────────────────── */
 
-/* chart-card , ver ui-system.scss */
+/* chart-card, ver ui-system.scss */
 
 .chart-header {
   display: flex;
@@ -879,7 +879,7 @@
   font-size: 0.875rem;
 }
 
-/* Home: tabela mensal , scroll horizontal quando a tela é estreita */
+/* Home: tabela mensal, scroll horizontal quando a tela é estreita */
 .home .months-table-wrap {
   min-width: 0;
 
@@ -989,12 +989,12 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   HOME , Mobile fixes
+   HOME, Mobile fixes
    ═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
 
-  /* 1. Oculta totais anuais no mobile , já mostrado no calendário */
+  /* 1. Oculta totais anuais no mobile, já mostrado no calendário */
   .year-strip { display: none; }
 
   /* 2. Detalhe mensal: padding menor no mobile */

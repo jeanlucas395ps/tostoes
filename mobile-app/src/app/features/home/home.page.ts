@@ -1,10 +1,12 @@
 import { Component, inject, signal, computed, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
-import { IonContent, IonHeader, IonToolbar, IonTitle, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
+import { IonContent, IonHeader, IonToolbar, IonTitle, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import gsap from 'gsap';
 import { FinanceApiService } from '../../core/services/finance-api.service';
+import { PlanningService } from '../../core/services/planning.service';
 import { CurrencyBrlPipe } from '../../core/pipes/currency-brl.pipe';
 import { MonthNavComponent } from '../../shared/components/month-nav/month-nav.component';
 import { YearCalendarComponent } from '../../shared/components/year-calendar/year-calendar.component';
+import { PlanningManagerComponent } from '../../shared/components/planning-manager/planning-manager.component';
 import { AccountsSummary, DashboardSummary, FinancialGoal, MONTH_LABELS } from '../../core/models/api.models';
 import { isPastMonth } from '../../core/utils/month.util';
 import { clampMonthIndexForYear, isBeforePlanningUsageStart } from '../../core/utils/planning-usage.util';
@@ -19,10 +21,12 @@ const BAR_H = 96;
     CurrencyBrlPipe,
     MonthNavComponent,
     YearCalendarComponent,
+    PlanningManagerComponent,
     IonContent,
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonIcon,
     IonRefresher,
     IonRefresherContent,
   ],
@@ -31,6 +35,7 @@ const BAR_H = 96;
 })
 export class HomePage implements OnInit, AfterViewInit {
   private api = inject(FinanceApiService);
+  planning = inject(PlanningService);
 
   @ViewChild('balanceValue') balanceValueRef?: ElementRef<HTMLElement>;
   @ViewChild('sections') sectionsRef?: ElementRef<HTMLElement>;
@@ -43,6 +48,7 @@ export class HomePage implements OnInit, AfterViewInit {
   accountsSummary = signal<AccountsSummary | null>(null);
   goals = signal<FinancialGoal[]>([]);
   loading = signal(true);
+  showPlanningManager = signal(false);
 
   selectedMonth = computed(() => {
     const d = this.data();

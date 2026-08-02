@@ -1,0 +1,126 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 22, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.modal.sheet {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-lg);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: 0 auto var(--sp-4);
+}
+
+h3 { font-size: 1.125rem; margin-bottom: var(--sp-4); }
+
+.planning-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.planning-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+
+  &.active { border-color: var(--primary); background: var(--primary-soft); }
+}
+
+.planning-main { display: flex; flex-direction: column; gap: 2px; }
+.planning-name { font-weight: 700; font-size: 0.9375rem; }
+.planning-meta { font-size: 0.6875rem; color: var(--text-muted); }
+
+.planning-owner-actions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0;
+  color: var(--primary);
+
+  &.danger { color: var(--danger-dark); }
+}
+
+.close-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: var(--sp-4);
+  color: var(--text-muted);
+}
+
+.btn-soft.full { width: 100%; margin-bottom: var(--sp-2); }
+
+.field { display: block; margin-bottom: var(--sp-3); }
+.field-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+
+.field input,
+.select {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  appearance: none;
+
+  &:focus { outline: none; border-color: var(--primary); }
+}
+
+.field-error {
+  color: var(--danger-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-3);
+}
+
+.field-success {
+  color: var(--income-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-3);
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  button { flex: 1; }
+}

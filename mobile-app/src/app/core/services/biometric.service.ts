@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { NativeBiometric, BiometryType } from 'capacitor-native-biometric';
 import { StorageService, STORAGE_KEYS } from './storage.service';
 
-/** Gate biométrico local sobre a sessão JWT já emitida — não é um método de
+/** Gate biométrico local sobre a sessão JWT já emitida,  não é um método de
  * autenticação novo no servidor (a API só tem login usuário/senha). Face
  * ID/Touch ID/impressão digital apenas libera o token já guardado. */
 @Injectable({ providedIn: 'root' })

@@ -10,7 +10,7 @@
   gap: var(--sp-3);
 }
 
-.goal-card { padding: var(--sp-4); }
+.goal-card { padding: var(--sp-4); cursor: pointer; }
 
 .goal-card-top {
   display: flex;
@@ -32,6 +32,22 @@
 }
 
 .goal-pct { font-weight: 800; }
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+
+  &.small { width: 28px; height: 28px; font-size: 1rem; }
+}
 
 .goal-track {
   height: 8px;

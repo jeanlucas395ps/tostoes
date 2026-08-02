@@ -3,11 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonIcon, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
 import { BiometricService } from '../../core/services/biometric.service';
+import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [FormsModule, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonIcon],
+  imports: [
+    FormsModule,
+    IonContent,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonIcon,
+    UserAvatarComponent,
+  ],
   templateUrl: './profile.page.html',
   styleUrl: './profile.page.scss',
 })
@@ -46,13 +57,6 @@ export class ProfilePage implements OnInit {
     const available = await this.biometric.isAvailable();
     this.biometricAvailable.set(available);
     this.biometricLabel.set(this.biometric.labelFor(this.biometric.biometryType()));
-  }
-
-  initials(): string {
-    const n = this.auth.user()?.name?.trim();
-    if (!n) return '?';
-    const parts = n.split(/\s+/);
-    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   }
 
   saveProfile(): void {

@@ -26,6 +26,7 @@
     "chart.js": "^4.5.1",
     "cytoscape": "^3.34.0",
     "cytoscape-dagre": "^3.0.0",
+    "lucide": "^1.28.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

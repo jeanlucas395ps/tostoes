@@ -234,8 +234,17 @@
 }
 
 .cat-row-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 120px;
   font-weight: 700;
+
+  app-lucide-svg {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
 }
 
 .cat-row-icons {
@@ -262,19 +271,27 @@
 }
 
 .icon-opt-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 2rem;
   height: 2rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-elevated);
-  font-size: 1rem;
+  color: var(--text);
   cursor: pointer;
-  padding: 0;
+  padding: 4px;
   line-height: 1;
+
+  app-lucide-svg {
+    display: inline-flex;
+  }
 
   &.selected {
     border-color: var(--primary);
     background: var(--primary-soft);
+    color: var(--primary);
   }
 }
 

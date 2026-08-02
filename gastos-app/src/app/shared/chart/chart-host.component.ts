@@ -16,7 +16,7 @@ import {
 
 Chart.register(...registerables);
 
-/* ── Global Chart.js defaults , Minimal UI inspired ──────────── */
+/* ── Global Chart.js defaults, Minimal UI inspired ──────────── */
 
 defaults.font.family = "'Public Sans', system-ui, sans-serif";
 defaults.font.size   = 12;

@@ -159,7 +159,7 @@ export class HomeComponent implements OnInit {
     return formatMoney(a.balance, a.currency);
   }
 
-  /** Investimentos + metas , só para a tabela «Detalhe mensal». */
+  /** Investimentos + metas, só para a tabela «Detalhe mensal». */
   investMetasReal(row: { real: { investment?: number; goals?: number } }): number {
     return (row.real.investment ?? 0) + (row.real.goals ?? 0);
   }
@@ -169,14 +169,14 @@ export class HomeComponent implements OnInit {
   }
 
   formatBrlOrDash(value: number, inactive: boolean): string {
-    if (inactive) return '—';
+    if (inactive) return ', ';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
   }
 
-  /* ── Chart 1: Recebimentos vs Gastos , barras lado a lado ─────── */
+  /* ── Chart 1: Recebimentos vs Gastos, barras lado a lado ─────── */
 
   flowData = computed(() => {
     const d = this.data();
@@ -275,8 +275,8 @@ export class HomeComponent implements OnInit {
         name: g.name.length > 14 ? g.name.slice(0, 13) + '…' : g.name,
         fullName: g.name,
         color: g.color,
-        startDate: start ? this.fmtDate(start) : '—',
-        endDate: end ? this.fmtDate(end) : '—',
+        startDate: start ? this.fmtDate(start) : ', ',
+        endDate: end ? this.fmtDate(end) : ', ',
         plannedPct: g.plannedPct,
         confirmedBarPct: g.confirmedBarPct,
         currentAmountBrl: g.currentAmountBrl,

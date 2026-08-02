@@ -11,7 +11,7 @@ export const STORAGE_KEYS = {
 
 const ALL_KEYS = Object.values(STORAGE_KEYS);
 
-/** Cache síncrono em memória sobre o Preferences (async) do Capacitor — mesma
+/** Cache síncrono em memória sobre o Preferences (async) do Capacitor,  mesma
  * ergonomia do localStorage usado no gastos-app web, mas persistindo em disco
  * nativo. Chame `hydrate()` uma vez no bootstrap antes de ler qualquer chave. */
 @Injectable({ providedIn: 'root' })

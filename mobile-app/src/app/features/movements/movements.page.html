@@ -65,7 +65,7 @@
                   <span class="bill-item-status">{{ it.status === 'pending' ? 'a confirmar' : 'ok' }}</span>
                   @if (it.canCancel !== false) {
                     <button class="icon-btn small" type="button" (click)="cancelBillItem(it)">
-                      <ion-icon name="close-outline"></ion-icon>
+                      <ion-icon name="trash-outline"></ion-icon>
                     </button>
                   }
                 </div>
@@ -102,30 +102,30 @@
 
     <div class="entry-list">
       @for (e of sortedPending(); track e.id) {
-        <div class="entry-card" [class.busy]="busyId() === e.id">
-          <div class="entry-icon">{{ entryIcon(e) }}</div>
-          <div class="entry-main" (click)="isVariablePending(e) && openEditPending(e)">
-            <div class="entry-top">
-              <span class="entry-name">{{ e.name }}</span>
-              <span class="tag" [class]="'tag-' + entryTagClass(e)">{{ entryTagLabel(e) }}</span>
-            </div>
-            <div class="entry-sub">{{ entryCategoryLabel(e) }} · {{ responsibleLabel(e) }}</div>
+        <div class="entry-card" [class.busy]="busyId() === e.id" (click)="isVariablePending(e) && openEditPending(e)">
+          <div class="entry-row-top">
+            <div class="entry-icon"><app-lucide-svg [nodes]="lucideFor(entryIcon(e))" /></div>
+            <span class="entry-name">{{ e.name }}</span>
+            <span class="tag" [class]="'tag-' + entryTagClass(e)">{{ entryTagLabel(e) }}</span>
           </div>
-          <div class="entry-side">
-            <span class="entry-amount num">{{ pendingLabel(e) }}</span>
-            <div class="entry-actions">
-              @if (isVariablePending(e)) {
-                <button class="icon-btn" type="button" (click)="removePending(e)">
-                  <ion-icon name="close-outline"></ion-icon>
+          <div class="entry-row-bottom">
+            <span class="entry-sub">{{ entryCategoryLabel(e) }} · {{ responsibleLabel(e) }}</span>
+            <div class="entry-side">
+              <span class="entry-amount num">{{ pendingLabel(e) }}</span>
+              <div class="entry-actions">
+                @if (isVariablePending(e)) {
+                  <button class="icon-btn" type="button" (click)="removePending(e); $event.stopPropagation()">
+                    <ion-icon name="trash-outline"></ion-icon>
+                  </button>
+                } @else {
+                  <button class="icon-btn" type="button" (click)="skip(e); $event.stopPropagation()">
+                    <ion-icon name="ban-outline"></ion-icon>
+                  </button>
+                }
+                <button class="icon-btn confirm" type="button" (click)="confirm(e); $event.stopPropagation()">
+                  <ion-icon name="checkmark-outline"></ion-icon>
                 </button>
-              } @else {
-                <button class="icon-btn" type="button" (click)="skip(e)">
-                  <ion-icon name="ban-outline"></ion-icon>
-                </button>
-              }
-              <button class="icon-btn confirm" type="button" (click)="confirm(e)">
-                <ion-icon name="checkmark-outline"></ion-icon>
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -140,26 +140,26 @@
 
     <div class="entry-list">
       @for (t of sortedConfirmed(); track t.id) {
-        <div class="entry-card confirmed" [class.busy]="busyId() === t.id">
-          <div class="entry-main" (click)="isVariableTx(t) && openEditConfirmed(t)">
-            <div class="entry-top">
-              <span class="entry-name">{{ t.description }}</span>
-              <span class="tag" [class]="'tag-' + entryTagClass(t)">{{ entryTagLabel(t) }}</span>
-            </div>
-            <div class="entry-sub">
+        <div class="entry-card confirmed" [class.busy]="busyId() === t.id" (click)="isVariableTx(t) && openEditConfirmed(t)">
+          <div class="entry-row-top">
+            <span class="entry-name">{{ t.description }}</span>
+            <span class="tag" [class]="'tag-' + entryTagClass(t)">{{ entryTagLabel(t) }}</span>
+          </div>
+          <div class="entry-row-bottom">
+            <span class="entry-sub">
               {{ t.category }}
               @if (transferMeta(t); as meta) {
                 · {{ meta }}
               }
+            </span>
+            <div class="entry-side">
+              <span class="entry-amount num">{{ txLabel(t) }}</span>
+              @if (t.canUnconfirm || t.monthPlanEntryId) {
+                <button class="icon-btn" type="button" (click)="unconfirmConfirmed(t); $event.stopPropagation()">
+                  <ion-icon name="arrow-back-outline"></ion-icon>
+                </button>
+              }
             </div>
-          </div>
-          <div class="entry-side">
-            <span class="entry-amount num">{{ txLabel(t) }}</span>
-            @if (t.canUnconfirm || t.monthPlanEntryId) {
-              <button class="icon-btn" type="button" (click)="unconfirmConfirmed(t)">
-                <ion-icon name="arrow-back-outline"></ion-icon>
-              </button>
-            }
           </div>
         </div>
       }
@@ -251,7 +251,7 @@
           <span class="field-label">Categoria</span>
           <select class="select" [ngModel]="variableForm.itemCategoryId" (ngModelChange)="onCategorySelect($event)">
             @for (c of itemCategories(); track c.id) {
-              <option [ngValue]="c.id">{{ c.icon }} {{ c.name }}</option>
+              <option [ngValue]="c.id">{{ c.name }}</option>
             }
             <option [ngValue]="'__new__'">+ Nova categoria</option>
           </select>
@@ -265,12 +265,24 @@
               (ngModelChange)="onNewCategoryNameChange($event)"
             />
           </label>
+          <div class="icon-picker">
+            @for (opt of categoryIconOptions; track opt.icon) {
+              <button
+                type="button"
+                class="icon-opt"
+                [class.selected]="variableForm.newCategoryIcon === opt.icon"
+                [title]="opt.label"
+                (click)="variableForm.newCategoryIcon = opt.icon"
+              ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
+            }
+          </div>
+          <button class="link-btn" type="button" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
         }
         @if (variableUsesTabs()) {
           <label class="field">
             <span class="field-label">Aba</span>
             <select class="select" [(ngModel)]="variableForm.customTabId">
-              <option [ngValue]="null">—</option>
+              <option [ngValue]="null">, </option>
               @for (t of customTabs(); track t.id) {
                 <option [ngValue]="t.id">{{ t.name }}</option>
               }

@@ -11,31 +11,31 @@ final class CategoryIconTest extends TestCase
 {
     public function testSuggestForNameKnownKeywords(): void
     {
-        $this->assertSame('🛒', CategoryIcon::suggestForName('Mercado'));
-        $this->assertSame('💳', CategoryIcon::suggestForName('Cartão de crédito'));
-        $this->assertSame('🏠', CategoryIcon::suggestForName('Aluguel'));
-        $this->assertSame('💪', CategoryIcon::suggestForName('Exercícios'));
+        $this->assertSame('shopping-cart', CategoryIcon::suggestForName('Mercado'));
+        $this->assertSame('credit-card', CategoryIcon::suggestForName('Cartão de crédito'));
+        $this->assertSame('house', CategoryIcon::suggestForName('Aluguel'));
+        $this->assertSame('dumbbell', CategoryIcon::suggestForName('Exercícios'));
     }
 
     public function testSuggestForNameUnknownFallsBack(): void
     {
-        $this->assertSame('📌', CategoryIcon::suggestForName('xyzzy-unknown-cat-999'));
+        $this->assertSame('pin', CategoryIcon::suggestForName('xyzzy-unknown-cat-999'));
     }
 
     public function testNormalizeKeepsAllowed(): void
     {
-        $this->assertSame('🛒', CategoryIcon::normalize('🛒'));
+        $this->assertSame('shopping-cart', CategoryIcon::normalize('shopping-cart'));
     }
 
     public function testNormalizeInvalidSuggestsFromName(): void
     {
-        $this->assertSame('💳', CategoryIcon::normalize('🚫', 'Nubank cartão'));
+        $this->assertSame('credit-card', CategoryIcon::normalize('🚫', 'Nubank cartão'));
     }
 
     public function testResolveForItemUsesItemNameWhenCategoryGeneric(): void
     {
         $icon = CategoryIcon::resolveForItem('Geral', null, 'Netflix assinatura');
-        $this->assertSame('📱', $icon);
+        $this->assertSame('smartphone', $icon);
     }
 
     public function testCatalogNotEmpty(): void
@@ -44,5 +44,6 @@ final class CategoryIconTest extends TestCase
         $this->assertNotEmpty($opts);
         $this->assertArrayHasKey('icon', $opts[0]);
         $this->assertArrayHasKey('label', $opts[0]);
+        $this->assertSame('shopping-cart', $opts[0]['icon']);
     }
 }

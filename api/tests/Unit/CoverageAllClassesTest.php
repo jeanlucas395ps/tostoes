@@ -289,10 +289,10 @@ final class CoverageAllClassesTest extends TestCase
 
     public function testCategoryIconResolveForItemAndEmptyMatch(): void
     {
-        $this->assertSame('🛒', CategoryIcon::resolveForItem('Mercado', '🛒', 'ignored'));
-        $this->assertSame('🛒', CategoryIcon::resolveForItem('Outros', '📌', 'Supermercado Extra'));
-        $this->assertSame('📌', CategoryIcon::suggestForName(''));
-        $this->assertSame('📌', CategoryIcon::resolveForItem(null, '📌', 'xyzsemregra'));
+        $this->assertSame('shopping-cart', CategoryIcon::resolveForItem('Mercado', 'shopping-cart', 'ignored'));
+        $this->assertSame('shopping-cart', CategoryIcon::resolveForItem('Outros', 'pin', 'Supermercado Extra'));
+        $this->assertSame('pin', CategoryIcon::suggestForName(''));
+        $this->assertSame('pin', CategoryIcon::resolveForItem(null, 'pin', 'xyzsemregra'));
     }
 
     // ─── MoneyHelper ──────────────────────────────────────────────────
@@ -411,7 +411,7 @@ final class CoverageAllClassesTest extends TestCase
     {
         $bank = $this->stubStmt(fn ($s) => $s->method('fetch')->willReturn(['id' => 5, 'type' => 'bank']));
         $inv = $this->stubStmt(fn ($s) => $s->method('fetch')->willReturn(['id' => 5, 'type' => 'investment']));
-        // same id 5 for both validates — first call bank type, second investment type with same id
+        // same id 5 for both validates,  first call bank type, second investment type with same id
         $pdo = $this->createMock(PDO::class);
         $pdo->method('prepare')->willReturnOnConsecutiveCalls($bank, $inv);
         try {

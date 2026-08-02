@@ -52,6 +52,43 @@ final class CorsTest extends TestCase
         ]));
     }
 
+    public function testStarAllowsAnyOrigin(): void
+    {
+        $this->assertTrue($this->callPrivate('originAllowed', [
+            'https://evil.example',
+            ['*'],
+        ]));
+        $this->assertTrue($this->callPrivate('wildcardMatch', ['*', 'https://x.test']));
+    }
+
+    public function testApplyStarReflectsOrigin(): void
+    {
+        $ref = new \ReflectionClass(\Gastos\Api\Config::class);
+        $prop = $ref->getProperty('env');
+        $env = $prop->getValue() ?? [];
+        $prev = $_SERVER['HTTP_ORIGIN'] ?? null;
+        try {
+            $env['CORS_ORIGIN'] = '*';
+            $prop->setValue(null, $env);
+            $_SERVER['HTTP_ORIGIN'] = 'https://random.example';
+            Cors::apply();
+
+            unset($_SERVER['HTTP_ORIGIN']);
+            Cors::apply();
+
+            $env['CORS_ORIGIN'] = '  , , ';
+            $prop->setValue(null, $env);
+            Cors::apply();
+            $this->assertTrue(true);
+        } finally {
+            if ($prev === null) {
+                unset($_SERVER['HTTP_ORIGIN']);
+            } else {
+                $_SERVER['HTTP_ORIGIN'] = $prev;
+            }
+        }
+    }
+
     public function testApplySingleConfiguredOriginFallback(): void
     {
         $ref = new \ReflectionClass(\Gastos\Api\Config::class);

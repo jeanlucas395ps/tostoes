@@ -1,8 +1,11 @@
 .summary-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: var(--sp-2);
   margin-bottom: var(--sp-5);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .summary-item {
@@ -13,6 +16,9 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 0 0 auto;
+  min-width: 132px;
+  scroll-snap-align: start;
 
   strong { font-size: 0.9375rem; font-weight: 800; }
 }
@@ -57,8 +63,8 @@
 
 .entry-card {
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+  flex-direction: column;
+  gap: 6px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -66,42 +72,44 @@
   transition: opacity 0.15s;
 
   &.busy { opacity: 0.5; pointer-events: none; }
-  &.confirmed { padding-right: var(--sp-2); }
+}
+
+.entry-row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 .entry-icon {
-  font-size: 1.25rem;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
   background: var(--surface-elevated);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.entry-main {
+.entry-name {
   flex: 1;
   min-width: 0;
-}
-
-.entry-top {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: 2px;
-}
-
-.entry-name {
   font-size: 0.875rem;
   font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+}
+
+.entry-row-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 .entry-sub {
+  flex: 1;
+  min-width: 0;
   font-size: 0.75rem;
   color: var(--text-muted);
   overflow: hidden;
@@ -111,9 +119,8 @@
 
 .entry-side {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: var(--sp-2);
   flex-shrink: 0;
 }
 
@@ -169,6 +176,7 @@
 }
 
 .bill-card {
+  padding: var(--sp-4);
   border-left: 3px solid var(--bill-color, var(--warning-dark));
 }
 
@@ -177,13 +185,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-3);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
 .bill-header-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -192,6 +200,7 @@
 .bill-due {
   font-size: 0.75rem;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .pay-btn {
@@ -203,21 +212,21 @@
 .bill-stats {
   display: flex;
   justify-content: space-between;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   font-size: 0.6875rem;
   color: var(--text-muted);
-  padding: var(--sp-2) 0;
+  padding: var(--sp-3) 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
 
-  strong { display: block; font-size: 0.8125rem; color: var(--text); margin-top: 2px; }
+  strong { display: block; font-size: 0.8125rem; color: var(--text); margin-top: 4px; }
 }
 
 .bill-items {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
 }
 
 .bill-item {
@@ -225,6 +234,9 @@
   align-items: center;
   gap: var(--sp-2);
   font-size: 0.8125rem;
+  padding: var(--sp-2) 0;
+
+  &:not(:last-child) { border-bottom: 1px solid var(--border); }
 }
 
 .bill-item-name {
@@ -317,6 +329,42 @@ ion-segment {
 .pay-bill-amount {
   font-size: 0.9375rem;
   margin: var(--sp-2) 0 0;
+}
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--sp-3);
+}
+
+.icon-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  padding: 0;
+
+  &.selected {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: var(--sp-3);
 }
 
 .modal-actions {

@@ -197,7 +197,7 @@
                   </div>
                   <p class="item-name">
                     @if (!e.recurringItemId) {
-                      <span class="item-cat-icon" [title]="entryCategoryLabel(e)">{{ entryIcon(e) }}</span>
+                      <span class="item-cat-icon" [title]="entryCategoryLabel(e)"><app-lucide-svg [nodes]="lucideFor(entryIcon(e))" /></span>
                     }
                     {{ e.name }}
                   </p>
@@ -409,7 +409,7 @@
 @if (payBillPrompt(); as bill) {
   <div class="modal-backdrop" (click)="cancelPayBill()">
     <div class="modal" (click)="$event.stopPropagation()">
-      <h3>Pagar fatura , {{ bill.name }}</h3>
+      <h3>Pagar fatura, {{ bill.name }}</h3>
       <p class="modal-hint">
         Transfere do banco para o cartão e reduz a dívida / libera limite.
         Valor: <strong>{{ bill.remainingBrl | currencyBrl }}</strong>
@@ -418,7 +418,7 @@
       <label class="modal-field">
         <span>Conta bancária de saída</span>
         <select [ngModel]="payBillBankId()" (ngModelChange)="payBillBankId.set($event)">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of bankAccounts(); track a.id) {
             <option [ngValue]="a.id">{{ a.name }}</option>
           }
@@ -561,9 +561,9 @@
             [ngModel]="variableForm.itemCategoryId"
             (ngModelChange)="onCategorySelect($event)"
           >
-            <option [ngValue]="null">, Selecione —</option>
+            <option [ngValue]="null">, Selecione, </option>
             @for (cat of itemCategories(); track cat.id) {
-              <option [ngValue]="cat.id">{{ categoryIconFor(cat.name, cat.icon) }} {{ cat.name }}</option>
+              <option [ngValue]="cat.id">{{ cat.name }}</option>
             }
             <option value="__new__">+ Nova categoria…</option>
           </select>
@@ -582,7 +582,7 @@
                 [class.selected]="variableForm.newCategoryIcon === opt.icon"
                 [title]="opt.label"
                 (click)="variableForm.newCategoryIcon = opt.icon"
-              >{{ opt.icon }}</button>
+              ><app-lucide-svg [nodes]="lucideFor(opt.icon)" /></button>
             }
           </div>
           <button type="button" class="btn-link" (click)="newCategoryMode.set(false)">Usar categoria existente</button>
@@ -642,7 +642,7 @@
         <label class="modal-field">
           <span>Conta do lançamento</span>
           <select [(ngModel)]="variableForm.accountId" required>
-            <option [ngValue]="null">, Selecione —</option>
+            <option [ngValue]="null">, Selecione, </option>
             @for (a of accounts(); track a.id) {
               <option [ngValue]="a.id">
                 {{ accountTypeLabel(a.type) }} · {{ a.name }}

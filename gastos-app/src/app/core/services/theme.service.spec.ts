@@ -37,4 +37,24 @@ describe('ThemeService', () => {
     expect(theme.isDark()).toBe(false);
     expect(localStorage.getItem('tostoes-theme')).toBe('light');
   });
+
+  it('tolerates localStorage getItem throwing', () => {
+    spyOn(localStorage, 'getItem').and.throwError('denied');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [ThemeService] });
+    const theme = TestBed.inject(ThemeService);
+    TestBed.flushEffects();
+    expect(theme.isDark()).toBe(false);
+  });
+
+  it('tolerates localStorage setItem throwing on toggle', () => {
+    const theme = TestBed.inject(ThemeService);
+    TestBed.flushEffects();
+    spyOn(localStorage, 'setItem').and.throwError('quota');
+    expect(() => {
+      theme.toggle();
+      TestBed.flushEffects();
+    }).not.toThrow();
+    expect(theme.isDark()).toBe(true);
+  });
 });

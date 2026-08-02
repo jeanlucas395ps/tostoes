@@ -1,3 +1,20 @@
+.planning-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4375rem 0.875rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  margin-bottom: var(--sp-4);
+
+  ion-icon { font-size: 1rem; }
+  ion-icon:last-child { font-size: 0.75rem; }
+}
+
 .hero-balance {
   background: var(--gradient-hero);
   border-radius: var(--radius-2xl);
@@ -22,10 +39,13 @@
 }
 
 .kpi-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: var(--sp-2);
   margin-bottom: var(--sp-4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .kpi-card {
@@ -36,6 +56,9 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 0 0 auto;
+  min-width: 132px;
+  scroll-snap-align: start;
 
   strong { font-size: 0.9375rem; font-weight: 800; }
 }

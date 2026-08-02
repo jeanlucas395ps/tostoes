@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Layout Shell , Tostoes v2 · Minimals-aligned
+   Layout Shell, Tostoes v2 · Minimals-aligned
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .shell {
@@ -285,7 +285,7 @@
     .nav-icon { opacity: 1; }
   }
 
-  /* Active , green, aligned with Minimals */
+  /* Active, green, aligned with Minimals */
   &.active {
     background: var(--primary-soft);
     color: var(--primary-dark);
@@ -432,7 +432,7 @@
   gap: 0.05rem;
 }
 
-/* Logo da marca no topbar , oculto no desktop (fica na sidebar) */
+/* Logo da marca no topbar, oculto no desktop (fica na sidebar) */
 .topbar-brand-mobile {
   display: none;
   width: 32px;
@@ -647,7 +647,7 @@ button.topbar-user {
 /* Modais: estilos globais em ui-system.scss */
 
 /* ══════════════════════════════════════════════
-   MOBILE , bottom nav bar (≤768px)
+   MOBILE, bottom nav bar (≤768px)
    ══════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
@@ -803,7 +803,7 @@ button.topbar-user {
 }
 
 /* ══════════════════════════════════════════════
-   DESKTOP , garante sidebar lateral (≥769px)
+   DESKTOP, garante sidebar lateral (≥769px)
    ══════════════════════════════════════════════ */
 
 @media (min-width: 769px) {

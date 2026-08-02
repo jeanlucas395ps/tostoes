@@ -9,7 +9,7 @@
 }
 
 .movements-page {
-  /* full width , sem max-width */
+  /* full width, sem max-width */
 }
 
 /* ── Page header com mês e botão na mesma linha ──────────────── */
@@ -82,7 +82,7 @@
   margin-bottom: 1rem;
 
   @media (max-width: 768px) {
-    /* Flex row scrollável , cards com largura fixa não encolhem */
+    /* Flex row scrollável, cards com largura fixa não encolhem */
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -129,7 +129,7 @@
   }
 }
 
-/* stat-card , ver ui-system.scss */
+/* stat-card, ver ui-system.scss */
 
 /* ── Projected strip ─────────────────────────────────────────── */
 
@@ -353,7 +353,7 @@
 
 /* ── Column panels ───────────────────────────────────────────── */
 
-/* col-panel , ver ui-system.scss */
+/* col-panel, ver ui-system.scss */
 
 .col-header {
   display: flex;
@@ -439,7 +439,7 @@
   position: relative;
   overflow: hidden;
 
-  /* Indicator bar left , no gradients */
+  /* Indicator bar left, no gradients */
   &::before {
     content: '';
     position: absolute;
@@ -1069,7 +1069,7 @@
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-elevated);
-  font-size: 1.1rem;
+  color: var(--text);
   cursor: pointer;
   display: grid;
   place-items: center;

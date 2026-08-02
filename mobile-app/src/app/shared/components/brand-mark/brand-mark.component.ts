@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 
-/** Marca Tostoes — mesmo ícone de cifrão do frontend web. */
+/** Marca Tostoes,  mesmo ícone de cifrão do frontend web. */
 @Component({
   selector: 'app-brand-mark',
   standalone: true,

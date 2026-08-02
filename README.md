@@ -1,6 +1,6 @@
 # Tostoes
 
-**Planejamento financeiro compartilhado** para casais e famílias , previsto vs real, metas, contas e convites por e-mail.
+**Planejamento financeiro compartilhado** para casais e famílias, previsto vs real, metas, contas e convites por e-mail.
 
 [![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net/)

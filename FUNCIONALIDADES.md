@@ -1,6 +1,6 @@
 # Funcionalidades do sistema Gastos
 
-Documentação das funcionalidades do aplicativo **Tostoes** , controle financeiro compartilhado (planejamentos, casal ou família). O sistema separa **valores reais lançados** de **metas planejadas**, com foco em clareza mensal no estilo de apps como Mobills.
+Documentação das funcionalidades do aplicativo **Tostoes**, controle financeiro compartilhado (planejamentos, casal ou família). O sistema separa **valores reais lançados** de **metas planejadas**, com foco em clareza mensal no estilo de apps como Mobills.
 
 ---
 
@@ -142,7 +142,7 @@ Salário, Freela, Reembolso, Extra, Outros.
 
 ### Objetivo
 
-Registrar **gastos reais** , substitui a “Folha 2” da planilha: o que de fato saiu, não estimativas.
+Registrar **gastos reais**, substitui a “Folha 2” da planilha: o que de fato saiu, não estimativas.
 
 ### Funcionalidades
 
@@ -172,8 +172,8 @@ Separar **aporte/poupança** de **gasto do dia a dia**. Responde: “quanto inve
 
 ### Abas
 
-1. **Real** , lançamentos efetivos do mês.
-2. **Projeção** , metas mensais cadastradas em `monthly_projections` (planejado).
+1. **Real**, lançamentos efetivos do mês.
+2. **Projeção**, metas mensais cadastradas em `monthly_projections` (planejado).
 
 ### Cards por tipo
 
@@ -266,16 +266,16 @@ Armazenar **metas e estimativas** (equivalente conceitual à Folha 1 da planilha
 
 ### Região (`region`)
 
-- `BR` , Brasil  
-- `PT` , Portugal  
-- `geral` , Outros / geral  
+- `BR`, Brasil  
+- `PT`, Portugal  
+- `geral`, Outros / geral  
 
 Útil para filtrar e organizar gastos como na planilha (Brasil vs Portugal).
 
 ### Moeda
 
-- `BRL` , valor em reais (armazenado direto em `amount_brl`).
-- `EUR` , convertido na API com `eur_to_brl` das configurações.
+- `BRL`, valor em reais (armazenado direto em `amount_brl`).
+- `EUR`, convertido na API com `eur_to_brl` das configurações.
 
 ---
 
@@ -286,7 +286,7 @@ Armazenar **metas e estimativas** (equivalente conceitual à Folha 1 da planilha
 
 ---
 
-## API REST , resumo de endpoints
+## API REST, resumo de endpoints
 
 | Método | Rota | Autenticação | Função |
 |--------|------|--------------|--------|
@@ -348,7 +348,7 @@ Na subida, o container da API executa `migrate.php` (schema, usuários, tipos de
 
 ```bash
 cd gastos-app
-npm start   # http://localhost:4200 , proxy /api → :8090
+npm start   # http://localhost:4200, proxy /api → :8090
 ```
 
 Arquivo `.env` do app: `API_URL=/api`
@@ -373,5 +373,5 @@ Todas as rotas ativas usam a API REST (JWT + planejamentos compartilhados).
 
 ## Documentos relacionados
 
-- [README.md](README.md) , como subir o projeto  
-- [gastos-app/README.md](gastos-app/README.md) , detalhes do frontend
+- [README.md](README.md), como subir o projeto  
+- [gastos-app/README.md](gastos-app/README.md), detalhes do frontend

@@ -60,12 +60,19 @@ describe('PlanningService', () => {
   });
 
   it('update replaces item in list', () => {
-    svc.items.set([p1]);
+    svc.items.set([p1, p2]);
     svc.update(1, 'Casa 2').subscribe();
     http.expectOne(`${base}/plannings/1`).flush({
       item: { id: 1, name: 'Casa 2', role: 'owner', memberCount: 2 },
     });
     expect(svc.items()[0].name).toBe('Casa 2');
+    expect(svc.items()[1].name).toBe('Viagem');
+  });
+
+  it('active is null when selected id is not in list', () => {
+    svc.items.set([p1]);
+    svc.activeId.set(99);
+    expect(svc.active()).toBeNull();
   });
 
   it('delete refreshes list', () => {
@@ -103,9 +110,28 @@ describe('PlanningService', () => {
     expect(svc.getActiveId()).toBe(2);
   });
 
+  it('bootstrapFromAuth ignores unknown preferred id', () => {
+    svc.bootstrapFromAuth([p1, p2], 99);
+    expect(svc.getActiveId()).toBe(1);
+  });
+
   it('bootstrapFromAuth clears when empty', () => {
     svc.setActive(1);
     svc.bootstrapFromAuth([]);
+    expect(svc.getActiveId()).toBeNull();
+  });
+
+  it('load keeps stored planning when still valid', () => {
+    localStorage.setItem('gastos-planning-id', '2');
+    svc.load().subscribe();
+    http.expectOne(`${base}/plannings`).flush({ items: [p1, p2] });
+    expect(svc.getActiveId()).toBe(2);
+  });
+
+  it('load clears selection when list empty', () => {
+    svc.setActive(1);
+    svc.load().subscribe((items) => expect(items).toEqual([]));
+    http.expectOne(`${base}/plannings`).flush({ items: [] });
     expect(svc.getActiveId()).toBeNull();
   });
 

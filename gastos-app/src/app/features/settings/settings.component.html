@@ -7,7 +7,7 @@
   <h2>Parâmetros financeiros</h2>
   <p class="hint">
     Nos lançamentos em euro ou dólar, usamos a cotação do dia (API Frankfurter). Os valores abaixo só entram em ação
-    quando a API não responder — são o <strong>fallback</strong>, não a cotação diária.
+    quando a API não responder,  são o <strong>fallback</strong>, não a cotação diária.
   </p>
   <form (ngSubmit)="save()">
     <label>
@@ -58,7 +58,10 @@
   <ul class="taxonomy-list category-rows">
     @for (cat of itemCategories(); track cat.id) {
       <li>
-        <span class="cat-row-name">{{ cat.icon }} {{ cat.name }}</span>
+        <span class="cat-row-name">
+          <app-lucide-svg [nodes]="lucideFor(cat.icon)" />
+          {{ cat.name }}
+        </span>
         <div class="cat-row-icons">
           @for (opt of categoryIconOptions; track opt.icon) {
             <button
@@ -67,7 +70,9 @@
               [class.selected]="cat.icon === opt.icon"
               [title]="opt.label"
               (click)="updateCategoryIcon(cat, opt.icon)"
-            >{{ opt.icon }}</button>
+            >
+              <app-lucide-svg [nodes]="lucideFor(opt.icon)" />
+            </button>
           }
         </div>
         <button type="button" class="btn-remove" (click)="removeCategory(cat)">Remover</button>
@@ -91,7 +96,9 @@
           [class.selected]="newCategoryIcon === opt.icon"
           [title]="opt.label"
           (click)="newCategoryIcon = opt.icon"
-        >{{ opt.icon }}</button>
+        >
+          <app-lucide-svg [nodes]="lucideFor(opt.icon)" />
+        </button>
       }
     </div>
     <button type="button" class="btn-primary" (click)="addCategory()">Adicionar categoria</button>

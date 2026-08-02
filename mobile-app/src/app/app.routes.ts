@@ -62,6 +62,16 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'metas/novo',
+    canActivate: [authGuard, appLockGuard],
+    loadComponent: () => import('./features/goals/goal-form-page/goal-form.page').then((m) => m.GoalFormPage),
+  },
+  {
+    path: 'metas/:id/editar',
+    canActivate: [authGuard, appLockGuard],
+    loadComponent: () => import('./features/goals/goal-form-page/goal-form.page').then((m) => m.GoalFormPage),
+  },
+  {
     path: 'contas/:id',
     canActivate: [authGuard, appLockGuard],
     loadComponent: () =>
@@ -75,44 +85,65 @@ export const routes: Routes = [
   {
     path: 'configuracoes',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Configurações' },
+    loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage),
   },
   {
     path: 'grafo-contas',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Grafo de contas' },
+    loadComponent: () => import('./features/account-graph/account-graph.page').then((m) => m.AccountGraphPage),
   },
   {
     path: 'gastos-fixos',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Gastos fixos' },
+    loadComponent: () => import('./features/fixed-items/fixed-items.page').then((m) => m.FixedItemsPage),
+    data: {
+      kind: 'expense',
+      title: 'Gastos fixos',
+      subtitle: 'Despesas recorrentes,  confirme o pagamento em Movimentos',
+      accent: 'var(--danger)',
+      categoryDefault: 'Brasil',
+      userOverviewTabs: true,
+    },
   },
   {
     path: 'compras-parceladas',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Compras parceladas' },
+    loadComponent: () => import('./features/fixed-items/fixed-items.page').then((m) => m.FixedItemsPage),
+    data: {
+      kind: 'expense',
+      title: 'Compras parceladas',
+      subtitle: 'Parcelas de cartão ou compras a prazo,  entram em Movimentos até o mês da última parcela',
+      accent: 'var(--warning-dark)',
+      categoryDefault: 'Geral',
+      userOverviewTabs: true,
+      installmentMode: true,
+    },
   },
   {
     path: 'recebimentos-fixos',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Recebimentos fixos' },
+    loadComponent: () => import('./features/fixed-items/fixed-items.page').then((m) => m.FixedItemsPage),
+    data: {
+      kind: 'income',
+      title: 'Recebimentos fixos',
+      subtitle: 'Entradas recorrentes,  confirme o recebimento em Movimentos',
+      accent: 'var(--income)',
+      categoryDefault: 'Salário',
+      userOverviewTabs: true,
+    },
   },
   {
     path: 'investimentos-fixos',
     canActivate: [authGuard, appLockGuard],
-    loadComponent: () =>
-      import('./shared/components/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-    data: { title: 'Investimentos fixos' },
+    loadComponent: () => import('./features/fixed-items/fixed-items.page').then((m) => m.FixedItemsPage),
+    data: {
+      kind: 'investment',
+      title: 'Investimentos fixos',
+      subtitle: 'Aportes recorrentes,  confirme em Movimentos (banco → investimento)',
+      accent: 'var(--accent-invest)',
+      categoryDefault: 'Investimento',
+      userOverviewTabs: true,
+    },
   },
   { path: '**', redirectTo: '' },
 ];

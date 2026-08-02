@@ -10,10 +10,10 @@
 <ion-content class="page-content">
   <div class="avatar-block">
     <label class="avatar-wrap">
-      @if (auth.user()?.avatarUrl; as url) {
-        <img [src]="url" alt="" />
+      @if (auth.user(); as u) {
+        <app-user-avatar [user]="u" size="lg" class="hero-avatar" />
       } @else {
-        <span class="avatar-initials">{{ initials() }}</span>
+        <span class="avatar-initials">?</span>
       }
       <input type="file" accept="image/*" (change)="onAvatarSelected($event)" hidden />
       <span class="avatar-edit-badge">

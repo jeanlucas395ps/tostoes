@@ -1,0 +1,84 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/metas" text="" (click)="cancel()"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ isEditing() ? 'Editar meta' : 'Nova meta' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <label class="field">
+    <span class="field-label">Nome</span>
+    <input type="text" [(ngModel)]="form.name" />
+  </label>
+
+  <label class="field">
+    <span class="field-label">Descrição (opcional)</span>
+    <input type="text" [(ngModel)]="form.description" />
+  </label>
+
+  <label class="field">
+    <span class="field-label">Conta de investimento (destino)</span>
+    <select class="select" [(ngModel)]="form.targetFinancialAccountId">
+      <option [ngValue]="null">Selecione a conta</option>
+      @for (a of investmentAccounts(); track a.id) {
+        <option [ngValue]="a.id">{{ a.name }} · {{ a.balanceBrl }}</option>
+      }
+    </select>
+    @if (form.targetFinancialAccountId) {
+      <span class="fx-hint">Saldo atual: {{ accountBalanceBrl() }}</span>
+    }
+  </label>
+
+  <label class="field">
+    <span class="field-label">Valor final (BRL)</span>
+    <input class="num" type="number" inputmode="decimal" min="0" [(ngModel)]="form.targetAmountBrl" />
+  </label>
+
+  <div class="amount-row">
+    <label class="field grow">
+      <span class="field-label">Início</span>
+      <input type="date" [(ngModel)]="form.startDate" />
+    </label>
+    <label class="field grow">
+      <span class="field-label">Fim</span>
+      <input type="date" [(ngModel)]="form.endDate" />
+    </label>
+  </div>
+
+  <label class="field">
+    <span class="field-label">Dia de vencimento</span>
+    <input class="num" type="number" min="1" max="28" [(ngModel)]="form.dueDay" />
+  </label>
+
+  <label class="field">
+    <span class="field-label">Conta bancária de origem (opcional)</span>
+    <select class="select" [(ngModel)]="form.sourceFinancialAccountId">
+      <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+      @for (a of bankAccounts(); track a.id) {
+        <option [ngValue]="a.id">{{ a.name }}</option>
+      }
+    </select>
+  </label>
+
+  <label class="field">
+    <span class="field-label">Cor</span>
+    <input class="color-input" type="color" [(ngModel)]="form.color" />
+  </label>
+
+  @if (computedMonthly() > 0) {
+    <p class="fx-hint">Parcela mensal sugerida: {{ computedMonthly() }} BRL</p>
+  }
+
+  @if (error()) {
+    <p class="field-error">{{ error() }}</p>
+  }
+
+  <div class="page-actions">
+    <button class="btn-soft" type="button" (click)="cancel()">Cancelar</button>
+    <button class="btn-brand" type="button" [disabled]="saving()" (click)="save()">
+      {{ saving() ? 'Salvando…' : 'Salvar' }}
+    </button>
+  </div>
+</ion-content>

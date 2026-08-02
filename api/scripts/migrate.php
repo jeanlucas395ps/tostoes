@@ -86,7 +86,7 @@ foreach ($types as [$name, $slug, $color, $target, $order]) {
          VALUES (?, ?, ?, ?, ?, ?)'
     )->execute([$householdId, $name, $slug, $color, $target, $order]);
 }
-echo "→ Tipos de investimento OK (sem seed de valores , use reset-data ou inserts manuais)\n";
+echo "→ Tipos de investimento OK (sem seed de valores, use reset-data ou inserts manuais)\n";
 
 applyMigration006($pdo);
 applyMigration007($pdo);
@@ -108,6 +108,7 @@ applyMigration022($pdo);
 applyMigration023($pdo);
 applyMigration024($pdo);
 applyMigration025($pdo);
+applyMigration026($pdo);
 
 $pdo->exec(
     'UPDATE transactions SET registered_by_user_id = user_id
@@ -958,7 +959,7 @@ function applyMigration011(PDO $pdo): void
 {
     if (!columnExists($pdo, 'planning_item_categories', 'icon')) {
         $pdo->exec(
-            "ALTER TABLE planning_item_categories ADD COLUMN icon VARCHAR(16) NOT NULL DEFAULT '📌' AFTER name"
+            "ALTER TABLE planning_item_categories ADD COLUMN icon VARCHAR(32) NOT NULL DEFAULT 'pin' AFTER name"
         );
         echo "→ Coluna icon em planning_item_categories\n";
     }
@@ -1122,6 +1123,74 @@ function applyMigration025(PDO $pdo): void
     echo "→ Moeda USD + nomes duplicados em fixos OK\n";
 }
 
+function applyMigration026(PDO $pdo): void
+{
+    if (!tableExists($pdo, 'planning_item_categories') || !columnExists($pdo, 'planning_item_categories', 'icon')) {
+        return;
+    }
+
+    $pdo->exec(
+        "ALTER TABLE planning_item_categories
+         MODIFY COLUMN icon VARCHAR(32) NOT NULL DEFAULT 'pin'"
+    );
+
+    $map = [
+        '🛒' => 'shopping-cart',
+        '🥩' => 'beef',
+        '🏠' => 'house',
+        '🚗' => 'car',
+        '📱' => 'smartphone',
+        '💰' => 'banknote',
+        '💳' => 'credit-card',
+        '🍽️' => 'utensils',
+        '🍽' => 'utensils',
+        '⚡' => 'zap',
+        '💡' => 'droplets',
+        '📺' => 'tv',
+        '🎬' => 'clapperboard',
+        '🎵' => 'music',
+        '💊' => 'pill',
+        '🏥' => 'heart-pulse',
+        '✈️' => 'plane',
+        '🎓' => 'graduation-cap',
+        '👶' => 'baby',
+        '🐾' => 'paw-print',
+        '🛍️' => 'shopping-bag',
+        '🛍' => 'shopping-bag',
+        '🔧' => 'wrench',
+        '📋' => 'clipboard-list',
+        '🏦' => 'landmark',
+        '💼' => 'briefcase',
+        '🎁' => 'gift',
+        '🍷' => 'wine',
+        '☕' => 'coffee',
+        '🚌' => 'bus',
+        '🛡️' => 'shield',
+        '🛡' => 'shield',
+        '📦' => 'package',
+        '⭐' => 'star',
+        '📌' => 'pin',
+        '💪' => 'dumbbell',
+    ];
+
+    $upd = $pdo->prepare('UPDATE planning_item_categories SET icon = ? WHERE icon = ?');
+    foreach ($map as $emoji => $key) {
+        $upd->execute([$key, $emoji]);
+    }
+
+    // Qualquer residual inválido → normaliza pelo nome.
+    $rows = $pdo->query('SELECT id, name, icon FROM planning_item_categories')->fetchAll(PDO::FETCH_ASSOC);
+    $fix = $pdo->prepare('UPDATE planning_item_categories SET icon = ? WHERE id = ?');
+    foreach ($rows as $row) {
+        $normalized = \Gastos\Api\CategoryIcon::normalize($row['icon'] ?? null, $row['name'] ?? '');
+        if ($normalized !== ($row['icon'] ?? '')) {
+            $fix->execute([$normalized, (int) $row['id']]);
+        }
+    }
+
+    echo "→ Ícones de categoria migrados para Lucide (chaves)\n";
+}
+
 function applyMigration009(PDO $pdo): void
 {
     if (!columnExists($pdo, 'users', 'email')) {
@@ -1186,7 +1255,7 @@ function isIgnorableMigrationError(PDOException $e): bool
         || str_contains($msg, 'already exists');
 }
 
-/** Usuário padrão local (Docker): admin / admin , só insere se ainda não existir. */
+/** Usuário padrão local (Docker): admin / admin, só insere se ainda não existir. */
 function ensureAdminUser(PDO $pdo): void
 {
     $username = 'admin';

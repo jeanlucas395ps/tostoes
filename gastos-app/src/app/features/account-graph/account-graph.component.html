@@ -136,7 +136,7 @@
                 <button type="button" class="filter-chip"
                   [class.active]="isCategoryActive(cat.id)"
                   (click)="toggleCategory(cat.id)">
-                  <span class="chip-icon" aria-hidden="true">{{ cat.icon }}</span>
+                  <span class="chip-icon" aria-hidden="true"><app-lucide-svg [nodes]="lucideFor(cat.icon)" /></span>
                   {{ cat.name }}
                 </button>
               }

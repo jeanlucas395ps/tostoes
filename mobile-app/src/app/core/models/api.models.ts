@@ -547,7 +547,7 @@ export interface MonthSummary {
   projected: MonthFlowTotals;
   balanceReal: number;
   balanceProjected: number;
-  /** Mês anterior à criação do planejamento , sem dados. */
+  /** Mês anterior à criação do planejamento, sem dados. */
   beforePlanningStart?: boolean;
 }
 

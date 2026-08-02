@@ -104,9 +104,9 @@
       </label>
 
       <label>
-        <span>Conta de investimento , destino</span>
+        <span>Conta de investimento, destino</span>
         <select [(ngModel)]="form.targetFinancialAccountId" required>
-          <option [ngValue]="null">, Selecione a conta —</option>
+          <option [ngValue]="null">, Selecione a conta, </option>
           @for (a of investmentAccounts(); track a.id) {
             <option [ngValue]="a.id">{{ a.name }} · {{ a.balanceBrl | currencyBrl }}</option>
           }

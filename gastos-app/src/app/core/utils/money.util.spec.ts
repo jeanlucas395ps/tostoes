@@ -1,11 +1,28 @@
 import {
+  currencySymbol,
   entryAmount,
   formatMoney,
   formatMoneyWithBrl,
+  isForeignCurrency,
   previewBrl,
 } from './money.util';
 
 describe('money.util', () => {
+  describe('currencySymbol', () => {
+    it('returns symbols for EUR USD BRL', () => {
+      expect(currencySymbol('EUR')).toBe('€');
+      expect(currencySymbol('USD')).toBe('US$');
+      expect(currencySymbol('BRL')).toBe('R$');
+    });
+  });
+
+  describe('isForeignCurrency', () => {
+    it('detects foreign currencies', () => {
+      expect(isForeignCurrency('EUR')).toBe(true);
+      expect(isForeignCurrency('USD')).toBe(true);
+      expect(isForeignCurrency('BRL')).toBe(false);
+    });
+  });
   describe('formatMoney', () => {
     it('formats BRL by default', () => {
       expect(formatMoney(10)).toContain('10,00');

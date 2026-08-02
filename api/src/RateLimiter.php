@@ -6,7 +6,7 @@ namespace Gastos\Api;
 
 /**
  * Rate limit por IP (arquivo em storage/rate-limit).
- * Janelas: minuto / hora / dia — configuráveis via RATE_LIMIT_*.
+ * Janelas: minuto / hora / dia,  configuráveis via RATE_LIMIT_*.
  */
 final class RateLimiter
 {

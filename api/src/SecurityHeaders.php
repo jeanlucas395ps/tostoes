@@ -13,7 +13,7 @@ final class SecurityHeaders
         header('X-Frame-Options: DENY');
         header('Referrer-Policy: no-referrer');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-        header('Cross-Origin-Resource-Policy: same-site');
+        header('Cross-Origin-Resource-Policy: cross-origin');
         // API JSON: sem HTML embutido; CSP restritiva reduz risco se algum endpoint servir markup.
         header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
 

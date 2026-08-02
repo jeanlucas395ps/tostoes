@@ -17,14 +17,14 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
 
   ngOnInit(): void {
-    // Deep links (redefinir-senha?token=..., convite/:token) — universal
+    // Deep links (redefinir-senha?token=..., convite/:token),  universal
     // link ou custom scheme caem aqui e viram navegação normal do Router.
     App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
       try {
         const url = new URL(event.url);
         this.router.navigateByUrl(url.pathname + url.search);
       } catch {
-        /* URL malformada — ignora */
+        /* URL malformada,  ignora */
       }
     });
   }

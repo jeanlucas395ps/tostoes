@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IonContent, IonHeader, IonToolbar, IonTitle, IonIcon, AlertController } from '@ionic/angular/standalone';
+import { IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonIcon, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
 import { PlanningService } from '../../core/services/planning.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { PlanningManagerComponent } from '../../shared/components/planning-manager/planning-manager.component';
 
 interface Shortcut {
   label: string;
@@ -15,7 +16,7 @@ interface Shortcut {
 @Component({
   selector: 'app-more',
   standalone: true,
-  imports: [RouterLink, IonContent, IonHeader, IonToolbar, IonTitle, IonIcon],
+  imports: [RouterLink, PlanningManagerComponent, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonIcon],
   templateUrl: './more.page.html',
   styleUrl: './more.page.scss',
 })
@@ -24,6 +25,7 @@ export class MorePage {
   auth = inject(AuthService);
   planning = inject(PlanningService);
   theme = inject(ThemeService);
+  showPlanningManager = signal(false);
 
   readonly shortcuts: Shortcut[] = [
     { label: 'Grafo de contas', icon: 'git-network-outline', route: '/grafo-contas', accent: 'var(--primary)' },

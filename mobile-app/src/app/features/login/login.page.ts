@@ -61,7 +61,7 @@ export class LoginPage implements OnInit, AfterViewInit, OnDestroy {
         '-=0.5'
       )
       .from(fields, { y: 14, opacity: 0, duration: 0.45, stagger: 0.06 }, '-=0.35');
-    // Botão Entrar fica sempre visível (não anima opacity — sumia no emulador).
+    // Botão Entrar fica sempre visível (não anima opacity,  sumia no emulador).
   }
 
   ngOnDestroy(): void {

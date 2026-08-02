@@ -28,9 +28,12 @@ import {
 import {
   CATEGORY_ICON_OPTIONS,
   categoryIcon,
+  categoryLucideNodes,
   resolveItemIcon,
   suggestCategoryIcon,
 } from '../../core/utils/category-icon.util';
+import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
+import type { IconNode } from 'lucide';
 import { responsibleLabel } from '../../core/utils/responsible.util';
 import { isPastMonth } from '../../core/utils/month.util';
 import {
@@ -58,6 +61,7 @@ import {
     SlicePipe,
     ConfirmAccountDialogComponent,
     RouterLink,
+    LucideSvgComponent,
   ],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
@@ -108,7 +112,7 @@ export class MovementsComponent implements OnInit {
     itemCategoryId: null as number | null,
     customTabId: null as number | null,
     newCategoryName: '',
-    newCategoryIcon: '📦',
+    newCategoryIcon: 'package',
     responsibleUserId: null as number | null,
     transactionDate: '',
     accountId: null as number | null,
@@ -259,6 +263,7 @@ export class MovementsComponent implements OnInit {
   }
 
   categoryIconFor = categoryIcon;
+  lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
 
   entryIcon(e: MonthPlanEntry): string {
     return resolveItemIcon(
@@ -300,7 +305,7 @@ export class MovementsComponent implements OnInit {
       itemCategoryId: catId,
       customTabId: this.variableUsesTabs() ? this.defaultTabId() : null,
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: null,
       transactionDate: this.defaultTxDate(),
       accountId: null,
@@ -351,7 +356,7 @@ export class MovementsComponent implements OnInit {
       itemCategoryId: e.itemCategoryId ?? this.defaultCategoryId(),
       customTabId: e.customTabId ?? this.defaultTabId(),
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: e.responsibleUserId ?? null,
       transactionDate: this.defaultTxDate(),
       accountId: null,
@@ -378,7 +383,7 @@ export class MovementsComponent implements OnInit {
       itemCategoryId: this.categoryIdFromName(catName) ?? this.defaultCategoryId(),
       customTabId: this.defaultTabId(),
       newCategoryName: '',
-      newCategoryIcon: '📦',
+      newCategoryIcon: 'package',
       responsibleUserId: t.responsibleUserId ?? null,
       transactionDate: t.transactionDate,
       accountId: t.accountId ?? null,
@@ -758,7 +763,7 @@ export class MovementsComponent implements OnInit {
         year: this.year(),
         month: this.month() + 1,
         kind: 'transfer',
-        name: `Pagamento fatura , ${bill.name}`,
+        name: `Pagamento fatura, ${bill.name}`,
         amount: bill.remainingBrl,
         currency: 'BRL',
         sourceFinancialAccountId: bankId,
@@ -938,7 +943,7 @@ export class MovementsComponent implements OnInit {
 
   transferInLabel(t: Transaction): string {
     if (t.transferInAmount == null) {
-      return '—';
+      return ', ';
     }
     return formatMoneyWithBrl(
       t.transferInAmount,

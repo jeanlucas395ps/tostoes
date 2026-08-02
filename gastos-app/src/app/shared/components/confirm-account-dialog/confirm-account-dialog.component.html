@@ -46,14 +46,14 @@
       </p>
     } @else if (isTransfer()) {
       <p class="transfer-hint">
-        Define a saída e a entrada , use banco → cartão para pagar a fatura.
+        Define a saída e a entrada, use banco → cartão para pagar a fatura.
         Valores e moedas podem ser diferentes (ex.: € → R$).
       </p>
 
       <label class="field">
         <span>Conta de saída</span>
         <select [(ngModel)]="sourceAccountId">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of allAccounts(); track a.id) {
             <option [ngValue]="a.id">
               {{ accountTypeShort(a.type) }} · {{ a.name }}
@@ -87,7 +87,7 @@
       <label class="field">
         <span>Conta de entrada</span>
         <select [(ngModel)]="targetAccountId">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of allAccounts(); track a.id) {
             <option [ngValue]="a.id">
               {{ accountTypeShort(a.type) }} · {{ a.name }}
@@ -117,7 +117,7 @@
       <label class="field">
         <span>Conta bancária (origem)</span>
         <select [(ngModel)]="bankAccountId">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of bankAccounts(); track a.id) {
             <option [ngValue]="a.id">
               {{ a.name }} ({{ accountBalanceLabel(a) }})
@@ -132,7 +132,7 @@
           <small class="preset">Fixo vinculado: {{ accountName }}</small>
         }
         <select [(ngModel)]="investmentAccountId">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of investmentAccounts(); track a.id) {
             <option [ngValue]="a.id">
               {{ a.name }} ({{ accountBalanceLabel(a) }})
@@ -150,7 +150,7 @@
           }
         </span>
         <select [(ngModel)]="bankAccountId">
-          <option [ngValue]="null">, Selecione —</option>
+          <option [ngValue]="null">, Selecione, </option>
           @for (a of (editKind() === 'income' ? bankAccounts() : paymentAccounts()); track a.id) {
             <option [ngValue]="a.id">
               {{ accountTypeShort(a.type) }} · {{ a.name }}

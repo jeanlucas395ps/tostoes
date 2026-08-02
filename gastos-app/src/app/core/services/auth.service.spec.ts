@@ -126,6 +126,26 @@ describe('AuthService', () => {
     });
   });
 
+  it('loadMe defaults missing plannings to empty', (done) => {
+    localStorage.setItem('gastos-token', 't');
+    auth.loadMe().subscribe((u) => {
+      expect(u?.id).toBe(1);
+      done();
+    });
+    http.expectOne(`${base}/auth/me`).flush({
+      user: { id: 1, username: 'a', name: 'A' },
+    });
+  });
+
+  it('loginAsync defaults missing plannings', async () => {
+    const p = auth.loginAsync('ana', 'secret');
+    http.expectOne(`${base}/auth/login`).flush({
+      token: 't3',
+      user: { id: 1, username: 'ana', name: 'Ana' },
+    });
+    expect((await p).ok).toBe(true);
+  });
+
   it('loadMe logs out on error', (done) => {
     localStorage.setItem('gastos-token', 't');
     auth.loadMe().subscribe((u) => {
@@ -146,6 +166,40 @@ describe('AuthService', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
   });
 
+  it('registerAsync status 0', async () => {
+    const p = auth.registerAsync({
+      username: 'bob',
+      password: 'x',
+      name: 'Bob',
+      email: 'b@b.com',
+    });
+    http.expectOne(`${base}/auth/register`).flush(null, { status: 0, statusText: 'Unknown' });
+    const res = await p;
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('API indisponível');
+  });
+
+  it('loginAsync fallback message without error body', async () => {
+    const p = auth.loginAsync('ana', 'x');
+    http.expectOne(`${base}/auth/login`).flush(null, { status: 503, statusText: 'Unavailable' });
+    const res = await p;
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('503');
+  });
+
+  it('registerAsync fallback message without error body', async () => {
+    const p = auth.registerAsync({
+      username: 'bob',
+      password: 'x',
+      name: 'Bob',
+      email: 'b@b.com',
+    });
+    http.expectOne(`${base}/auth/register`).flush(null, { status: 500, statusText: 'Err' });
+    const res = await p;
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('500');
+  });
+
   it('forgotPasswordAsync and resetPasswordAsync', async () => {
     const f = auth.forgotPasswordAsync('a@a.com');
     http.expectOne(`${base}/auth/forgot-password`).flush({ message: 'ok' });
@@ -163,6 +217,22 @@ describe('AuthService', () => {
       { status: 400, statusText: 'Bad' }
     );
     expect((await f).ok).toBe(false);
+  });
+
+  it('forgotPasswordAsync fallback message', async () => {
+    const f = auth.forgotPasswordAsync('a@a.com');
+    http.expectOne(`${base}/auth/forgot-password`).flush(null, { status: 500, statusText: 'Err' });
+    const res = await f;
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('e-mail');
+  });
+
+  it('resetPasswordAsync error fallback', async () => {
+    const r = auth.resetPasswordAsync('tok', 'newpass');
+    http.expectOne(`${base}/auth/reset-password`).flush(null, { status: 400, statusText: 'Bad' });
+    const res = await r;
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('redefinir');
   });
 
   it('updateProfile, changePassword, uploadAvatar', () => {

@@ -1,0 +1,96 @@
+<div class="modal-backdrop" (click)="cancelled.emit()">
+  <div class="modal sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
+
+    @if (mode() === 'list') {
+      <h3>Planejamentos</h3>
+      <div class="planning-list">
+        @for (p of planning.items(); track p.id) {
+          <div class="planning-row" [class.active]="p.id === planning.getActiveId()" (click)="select(p.id)">
+            <div class="planning-main">
+              <span class="planning-name">{{ p.name }}</span>
+              <span class="planning-meta">{{ p.memberCount }} membro(s)</span>
+            </div>
+            @if (p.role === 'owner') {
+              <div class="planning-owner-actions">
+                <button class="link-btn" type="button" (click)="openRename(p); $event.stopPropagation()">Renomear</button>
+                <button class="link-btn danger" type="button" (click)="confirmDelete(p); $event.stopPropagation()">Apagar</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <button class="btn-soft full" type="button" (click)="openCreate()">+ Novo planejamento</button>
+      @if (planning.items().length) {
+        <button class="btn-soft full" type="button" (click)="openInvite()">Convidar por e-mail</button>
+      }
+      <button class="link-btn close-btn" type="button" (click)="cancelled.emit()">Fechar</button>
+    }
+
+    @if (mode() === 'create' || mode() === 'rename') {
+      <h3>{{ mode() === 'create' ? 'Novo planejamento' : 'Renomear planejamento' }}</h3>
+      <label class="field">
+        <span class="field-label">Nome</span>
+        <input
+          type="text"
+          [ngModel]="nameInput()"
+          (ngModelChange)="nameInput.set($event)"
+          (keyup.enter)="mode() === 'create' ? submitCreate() : submitRename()"
+        />
+      </label>
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="backToList()">Cancelar</button>
+        <button
+          class="btn-brand"
+          type="button"
+          [disabled]="saving()"
+          (click)="mode() === 'create' ? submitCreate() : submitRename()"
+        >
+          {{ saving() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    }
+
+    @if (mode() === 'invite') {
+      <h3>Convidar por e-mail</h3>
+      <label class="field">
+        <span class="field-label">Planejamento</span>
+        <select class="select" [ngModel]="invitePlanningId()" (ngModelChange)="invitePlanningId.set($event)">
+          @for (p of planning.items(); track p.id) {
+            <option [ngValue]="p.id">{{ p.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">E-mail</span>
+        <input
+          type="email"
+          placeholder="pessoa@email.com"
+          [ngModel]="inviteEmail()"
+          (ngModelChange)="inviteEmail.set($event)"
+          (keyup.enter)="submitInvite()"
+        />
+      </label>
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+      @if (successMessage()) {
+        <p class="field-success">{{ successMessage() }}</p>
+      }
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="backToList()">Voltar</button>
+        @if (successMessage()) {
+          <button class="btn-brand" type="button" (click)="cancelled.emit()">Fechar</button>
+        } @else {
+          <button class="btn-brand" type="button" [disabled]="saving()" (click)="submitInvite()">
+            {{ saving() ? 'Enviando…' : 'Enviar convite' }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

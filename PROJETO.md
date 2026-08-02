@@ -1,4 +1,4 @@
-# Tostoes , Documentação do Projeto
+# Tostoes, Documentação do Projeto
 
 Aplicação web de **planejamento e controle financeiro familiar** (inspirada em fluxos tipo Mobills), com foco em separar **recebimentos**, **gastos**, **investimentos** e **metas**, por mês e por planejamento compartilhado. O produto na interface chama-se **Tostoes**.
 
@@ -158,7 +158,7 @@ npm start   # gera environment e sobe em http://localhost:4200
 | `JWT_SECRET` | Assinatura do token |
 | `CORS_ORIGIN` | Origem permitida (ex.: `http://localhost:4200`) |
 | `APP_TIMEZONE` | Fuso (ex.: `America/Sao_Paulo`) |
-| , | Usuário **admin** / **admin** criado no migrate se não existir |
+|, | Usuário **admin** / **admin** criado no migrate se não existir |
 
 ---
 
@@ -199,15 +199,15 @@ Itens podem ter `responsible_user_id` (membro do planejamento). Nas telas de fix
 
 ### Rotas públicas (sem login)
 
-- `/login` , usuário + senha (username normalizado para minúsculas).
-- `/cadastro` , registro de nova conta.
-- `/recuperar-senha` , solicita e-mail de redefinição.
-- `/redefinir-senha` , token da URL.
-- `/convite/:token` , aceitar convite ao planejamento.
+- `/login`, usuário + senha (username normalizado para minúsculas).
+- `/cadastro`, registro de nova conta.
+- `/recuperar-senha`, solicita e-mail de redefinição.
+- `/redefinir-senha`, token da URL.
+- `/convite/:token`, aceitar convite ao planejamento.
 
 ### Rotas autenticadas
 
-- `/perfil` , nome, e-mail, avatar, alteração de senha.
+- `/perfil`, nome, e-mail, avatar, alteração de senha.
 - Restante do app atrás de `authGuard`.
 
 ### API de autenticação
@@ -215,10 +215,10 @@ Itens podem ter `responsible_user_id` (membro do planejamento). Nas telas de fix
 - `POST /auth/login` → JWT + usuário.
 - `POST /auth/register`
 - `GET /auth/me`
-- `GET /auth/users` , membros do planejamento (household).
+- `GET /auth/users`, membros do planejamento (household).
 - `POST /auth/forgot-password`, `POST /auth/reset-password`
 - `PATCH /auth/profile`, `POST /auth/change-password`, `POST /auth/avatar`
-- `GET /auth/avatars/{id}` , imagem pública do avatar.
+- `GET /auth/avatars/{id}`, imagem pública do avatar.
 
 ### Perfil
 
@@ -270,7 +270,7 @@ Itens podem ter `responsible_user_id` (membro do planejamento). Nas telas de fix
 ### API
 
 - `GET /accounts`, `POST /accounts`, `GET|PUT|DELETE /accounts/{id}`
-- `GET /accounts/summary` , totais agregados para o painel de patrimônio.
+- `GET /accounts/summary`, totais agregados para o painel de patrimônio.
 
 ### Conta origem / destino (migração 019)
 
@@ -325,20 +325,20 @@ Coração operacional do sistema.
 - Faixa de estatísticas: recebimentos, gastos, saldo confirmado, contagem de pendentes.
 - Faixa **Previsto** (quando aplicável): totais projetados do mês.
 - Duas colunas:
-  - **Pendentes** , itens `status = pending`.
-  - **Confirmados** , itens já confirmados no mês (somente leitura visual; ações limitadas).
+  - **Pendentes**, itens `status = pending`.
+  - **Confirmados**, itens já confirmados no mês (somente leitura visual; ações limitadas).
 
 #### Ações por item pendente
 
-- **Confirmar** , abre diálogo (`ConfirmAccountDialogComponent`): valor, data, conta(s). Gera transação(ões) e marca entrada como confirmada.
+- **Confirmar**, abre diálogo (`ConfirmAccountDialogComponent`): valor, data, conta(s). Gera transação(ões) e marca entrada como confirmada.
 - **Investimento**: valida par banco → investimento; cria débito no banco e espelho `income` na conta investimento com notas “Aporte”.
-- **Pular** (`POST /month-plan/{id}/skip`) , fixos; equivale a ignorar no mês.
-- **Remover** , só **variáveis** pendentes (`DELETE /month-plan/{id}`).
-- **Editar** , altera nome, valor, categoria, contas, responsável (variáveis têm mais liberdade).
+- **Pular** (`POST /month-plan/{id}/skip`), fixos; equivale a ignorar no mês.
+- **Remover**, só **variáveis** pendentes (`DELETE /month-plan/{id}`).
+- **Editar**, altera nome, valor, categoria, contas, responsável (variáveis têm mais liberdade).
 
 #### Ações em confirmados
 
-- **Desfazer** (`POST /month-plan/{id}/unconfirm`) , volta para pendente, remove transações ligadas e espelhos de aporte; recalcula saldos e parcelas de metas.
+- **Desfazer** (`POST /month-plan/{id}/unconfirm`), volta para pendente, remove transações ligadas e espelhos de aporte; recalcula saldos e parcelas de metas.
 - Transações avulsas confirmadas sem plano: `POST /transactions/{id}/unconfirm`.
 
 #### Lançamento variável
@@ -352,11 +352,11 @@ Coração operacional do sistema.
 
 ### Regenerar plano
 
-`POST /month-plan/regenerate` , recria entradas de fixos para o mês (cuidado em produção; uso administrativo).
+`POST /month-plan/regenerate`, recria entradas de fixos para o mês (cuidado em produção; uso administrativo).
 
 ### Spawn manual
 
-`POST /month-plan/spawn` , cria entrada para um `recurringItemId` específico naquele mês.
+`POST /month-plan/spawn`, cria entrada para um `recurringItemId` específico naquele mês.
 
 ---
 
@@ -366,7 +366,7 @@ Coração operacional do sistema.
 
 - CRUD de metas: nome, cor, valor alvo, **data início/fim**, dia de vencimento, conta origem (banco) e **conta destino** (obrigatória para progresso dinâmico).
 - **Sem “valor inicial” fixo no formulário**: progresso usa o **saldo atual da conta destino** (dinâmico).
-- Parcela mensal **uniforme** em todos os meses do período (`GoalPlanService::uniformMonthlyInstallment`) , evita parcela maior no último mês do calendário.
+- Parcela mensal **uniforme** em todos os meses do período (`GoalPlanService::uniformMonthlyInstallment`), evita parcela maior no último mês do calendário.
 - Cada meta gera entradas pendentes no plano (`financial_goal_id`) em meses dentro do período; confirmar em Movimentos como investimento/meta.
 
 ### API
@@ -403,13 +403,13 @@ Rota: `/home`. Dados: `GET /dashboard/summary?year=`.
 
 ### Blocos
 
-1. **Patrimônio** , cards de contas + totais banco/investimento (`/accounts/summary`).
-2. **Calendário anual** , `YearCalendarComponent`; meses antes do `planningUsageStart` inativos; clique troca mês.
-3. **KPIs do mês** , recebimentos, gastos, investimentos (real + linha previsto).
-4. **Gráfico Recebimentos vs Gastos** , barras mês a mês; barras tracejadas = previsto.
-5. **Distribuição do mês** , donut SVG (recebimentos, gastos, investimentos, metas, saldo).
-6. **Metas** , progresso anual conforme descrito acima.
-7. **Detalhe mensal** , tabela com colunas alternadas previsto/real: recebimentos, gastos, invest./metas, saldos operacional e total; toggle “Ver tudo / Só real / Só previsto”.
+1. **Patrimônio**, cards de contas + totais banco/investimento (`/accounts/summary`).
+2. **Calendário anual**, `YearCalendarComponent`; meses antes do `planningUsageStart` inativos; clique troca mês.
+3. **KPIs do mês**, recebimentos, gastos, investimentos (real + linha previsto).
+4. **Gráfico Recebimentos vs Gastos**, barras mês a mês; barras tracejadas = previsto.
+5. **Distribuição do mês**, donut SVG (recebimentos, gastos, investimentos, metas, saldo).
+6. **Metas**, progresso anual conforme descrito acima.
+7. **Detalhe mensal**, tabela com colunas alternadas previsto/real: recebimentos, gastos, invest./metas, saldos operacional e total; toggle “Ver tudo / Só real / Só previsto”.
 
 ### Separação metas vs investimentos nos totais
 
@@ -426,7 +426,7 @@ Rota: `/grafo-contas`. Biblioteca: **Cytoscape** + layout dagre.
 | Modo | O que mostra |
 |------|----------------|
 | **`confirmed` (Real)** | Fluxos das **transações confirmadas** no mês: bancos, investimentos, nós de recebimento/despesa/aporte. |
-| **`planned` (Previsto)** | Apenas pendências de **fixos ativos** (`is_fixed = 1`) e **metas** , **sem variáveis** do mês. |
+| **`planned` (Previsto)** | Apenas pendências de **fixos ativos** (`is_fixed = 1`) e **metas**, **sem variáveis** do mês. |
 | **`current` (Mês atual)** | Previsto **+** variáveis pendentes (`recurring_item_id` e `financial_goal_id` nulos). |
 
 ### Visual
@@ -448,8 +448,8 @@ Rota: `/configuracoes`.
 
 ### Parâmetros financeiros (`planning_settings`)
 
-- **EUR → BRL (fallback)** , usado quando API Frankfurter falha.
-- **Taxa CDI mensal** , parâmetro de projeção patrimonial (legado/planejamento).
+- **EUR → BRL (fallback)**, usado quando API Frankfurter falha.
+- **Taxa CDI mensal**, parâmetro de projeção patrimonial (legado/planejamento).
 
 ### Abas personalizadas (`planning_custom_tabs`)
 
@@ -468,8 +468,8 @@ Tipo de gasto/recebimento (Mercado, Moradia, Salário…), com ícone emoji. Usa
 
 ## Câmbio EUR/BRL
 
-- `GET /fx/eur-brl?date=YYYY-MM-DD` , cotação do dia (Frankfurter) ou fallback das configurações.
-- `MoneyHelper::parseInput` , ao confirmar em EUR, grava valor original + `amount_brl` + `eur_to_brl` na transação.
+- `GET /fx/eur-brl?date=YYYY-MM-DD`, cotação do dia (Frankfurter) ou fallback das configurações.
+- `MoneyHelper::parseInput`, ao confirmar em EUR, grava valor original + `amount_brl` + `eur_to_brl` na transação.
 - Data de referência do mês para projeção: dia atual no mês corrente, dia 1 nos demais (`ProjectionService::fxReferenceDate`).
 
 ---
@@ -630,10 +630,10 @@ Tabela `monthly_projections` ainda existe no schema antigo; o fluxo principal pa
 
 ### Componentes compartilhados
 
-- `MonthNavComponent` , setas ano/mês.
-- `UserAvatarComponent` , foto ou iniciais.
-- `ConfirmAccountDialogComponent` , confirmação com seleção de conta.
-- `YearCalendarComponent` , calendário anual do dashboard.
+- `MonthNavComponent`, setas ano/mês.
+- `UserAvatarComponent`, foto ou iniciais.
+- `ConfirmAccountDialogComponent`, confirmação com seleção de conta.
+- `YearCalendarComponent`, calendário anual do dashboard.
 - Pipes: `CurrencyBrlPipe`, `SafeHtmlPipe`.
 
 ### Mapa rota → funcionalidade

@@ -1,0 +1,56 @@
+.field { display: block; margin-bottom: var(--sp-4); }
+.field-label { display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+
+.select,
+input[type='text'],
+input[type='number'],
+input[type='date'] {
+  width: 100%;
+  padding: 0.875rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  appearance: none;
+
+  &:focus { outline: none; border-color: var(--primary); }
+}
+
+.color-input {
+  width: 64px;
+  height: 44px;
+  padding: 2px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-elevated);
+}
+
+.amount-row {
+  display: flex;
+  gap: var(--sp-3);
+  .grow { flex: 1; }
+}
+
+.fx-hint {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 6px 0 var(--sp-2);
+}
+
+.field-error {
+  color: var(--danger-dark);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-4);
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+  margin-bottom: var(--sp-8);
+  button { flex: 1; padding: 0.9375rem; }
+}

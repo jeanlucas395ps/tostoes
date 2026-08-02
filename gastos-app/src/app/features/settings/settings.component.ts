@@ -1,5 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import type { IconNode } from 'lucide';
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import {
   AppSettings,
@@ -8,13 +9,15 @@ import {
 } from '../../core/models/api.models';
 import {
   CATEGORY_ICON_OPTIONS,
+  categoryLucideNodes,
   suggestCategoryIcon,
 } from '../../core/utils/category-icon.util';
+import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, LucideSvgComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
@@ -38,6 +41,10 @@ export class SettingsComponent implements OnInit {
   newCategoryName = '';
   newCategoryIcon = suggestCategoryIcon('');
   categoryIconOptions = CATEGORY_ICON_OPTIONS;
+
+  lucideFor(icon: string | null | undefined): IconNode {
+    return categoryLucideNodes(icon);
+  }
 
   ngOnInit(): void {
     this.api.getSettings().subscribe((s) => {

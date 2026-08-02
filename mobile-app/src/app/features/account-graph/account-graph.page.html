@@ -1,0 +1,143 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/mais" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Grafo de contas</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <app-month-nav [year]="year()" [month]="month()" (yearChange)="onYearChange($event)" (monthChange)="onMonthChange($event)" />
+
+  <div class="mode-tabs" role="tablist">
+    @for (opt of modeOptions; track opt.value) {
+      <button class="mode-tab" type="button" role="tab" [class.active]="mode() === opt.value" (click)="setMode(opt.value)">
+        {{ opt.label }}
+      </button>
+    }
+  </div>
+
+  <div class="totals-row">
+    <span class="total-chip out">
+      <ion-icon name="arrow-back-outline"></ion-icon>
+      Saídas <strong class="num">{{ totals().outflowBrl | currencyBrl }}</strong>
+    </span>
+    <span class="total-chip in">
+      <ion-icon name="arrow-forward-outline"></ion-icon>
+      Entradas <strong class="num">{{ totals().inflowBrl | currencyBrl }}</strong>
+    </span>
+    @if (showUnassignedWarning()) {
+      <span class="total-chip warn">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        {{ unassignedCount() }} sem conta
+      </span>
+    }
+  </div>
+
+  <div class="filter-toolbar">
+    <button class="filter-toggle" type="button" (click)="showFilters.set(!showFilters())">
+      Filtros
+      @if (activeFilterCount()) {
+        <span class="filter-badge">{{ activeFilterCount() }}</span>
+      }
+    </button>
+    <div class="zoom-controls">
+      <button class="icon-btn" type="button" (click)="zoomOut()">
+        <ion-icon name="close-outline" style="transform: rotate(45deg);"></ion-icon>
+      </button>
+      <span class="zoom-pct num">{{ zoomPct() }}%</span>
+      <button class="icon-btn" type="button" (click)="zoomIn()">
+        <ion-icon name="add-outline"></ion-icon>
+      </button>
+      <button class="icon-btn" type="button" (click)="fitToCanvas()">
+        <ion-icon name="ellipse-outline"></ion-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (showFilters()) {
+    <div class="filter-panel">
+      @if (availableTypes().length) {
+        <div class="filter-group">
+          <span class="filter-group-label">Tipo</span>
+          <div class="chip-row">
+            @for (t of availableTypes(); track t) {
+              <button class="chip" type="button" [class.active]="isFilterActive('types', t)" (click)="toggleFilter('types', t)">{{ t }}</button>
+            }
+          </div>
+        </div>
+      }
+      @if (availableAccounts().length) {
+        <div class="filter-group">
+          <span class="filter-group-label">Contas</span>
+          <div class="chip-row">
+            @for (a of availableAccounts(); track a.id) {
+              <button class="chip" type="button" [class.active]="isFilterActive('accounts', a.nodeId)" (click)="toggleFilter('accounts', a.nodeId)">{{ a.name }}</button>
+            }
+          </div>
+        </div>
+      }
+      @if (availableCategories().length) {
+        <div class="filter-group">
+          <span class="filter-group-label">Categorias</span>
+          <div class="chip-row wrap">
+            @for (c of availableCategories(); track c.id) {
+              <button class="chip" type="button" [class.active]="isFilterActive('categories', c.id + '')" (click)="toggleFilter('categories', c.id + '')">
+                <app-lucide-svg [nodes]="lucideFor(c.icon)" />
+                {{ c.name }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (availableTabs().length) {
+        <div class="filter-group">
+          <span class="filter-group-label">Abas</span>
+          <div class="chip-row">
+            @for (t of availableTabs(); track t.id) {
+              <button class="chip" type="button" [class.active]="isFilterActive('tabs', t.id + '')" (click)="toggleFilter('tabs', t.id + '')">{{ t.name }}</button>
+            }
+          </div>
+        </div>
+      }
+      @if (activeFilterCount()) {
+        <button class="link-btn" type="button" (click)="clearFilters()">Limpar filtros</button>
+      }
+    </div>
+  }
+
+  <div class="legend">
+    <span class="legend-item"><span class="dot" style="background:#6B4EE6"></span> Banco</span>
+    <span class="legend-item"><span class="dot" style="background:#B76E00"></span> Cartão</span>
+    <span class="legend-item"><span class="dot" style="background:#2065D1"></span> Investimento</span>
+    <span class="legend-item"><span class="dot" style="background:#FF5630"></span> Gasto</span>
+    <span class="legend-item"><span class="dot" style="background:#22C55E"></span> Recebimento</span>
+    <span class="legend-item"><span class="dot" style="background:#B76E00"></span> Meta</span>
+    <span class="legend-hint">·  ·  · conta a definir · toque num nó para realçar conexões</span>
+  </div>
+
+  <div class="graph-canvas-card">
+    @if (loading()) {
+      <div class="canvas-overlay">
+        <span>Carregando…</span>
+      </div>
+    } @else if (!graph()?.nodes?.length) {
+      <div class="canvas-overlay">
+        <span>Nada para mostrar neste período.</span>
+      </div>
+    }
+    <div #cyContainer class="cy-container" [class.hidden]="loading() || !graph()?.nodes?.length"></div>
+
+    @if (tooltip(); as tt) {
+      <div class="cy-tooltip" [style.left.px]="tt.x" [style.top.px]="tt.y">
+        <strong>{{ tt.title }}</strong>
+        @for (line of tt.lines; track line) {
+          <span>{{ line }}</span>
+        }
+      </div>
+    }
+  </div>
+
+  <p class="canvas-hint">Toque em um nó para realçar · dois dedos para zoom · arraste para navegar</p>
+</ion-content>

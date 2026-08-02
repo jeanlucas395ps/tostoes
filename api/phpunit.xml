@@ -26,7 +26,7 @@
       <file>src/Services/AccountFlowGraphService.php</file>
       <!-- SMTP/socket: unit testa driver log; SMTP fica para smoke de integração -->
       <file>src/Services/MailService.php</file>
-      <!-- Convites: e-mail + tokens — cobertos por fluxo de integração / E2E -->
+      <!-- Convites: e-mail + tokens,  cobertos por fluxo de integração / E2E -->
       <file>src/Services/PlanningInviteService.php</file>
     </exclude>
   </source>

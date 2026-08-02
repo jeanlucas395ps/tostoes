@@ -80,7 +80,7 @@ export class ConfirmAccountDialogComponent {
     this.accounts().filter((a) => a.type === 'bank').sort((a, b) => a.name.localeCompare(b.name))
   );
 
-  /** Banco ou cartão , origem de gastos / lazer. */
+  /** Banco ou cartão, origem de gastos / lazer. */
   paymentAccounts = computed(() =>
     this.accounts()
       .filter((a) => a.type === 'bank' || a.type === 'credit')

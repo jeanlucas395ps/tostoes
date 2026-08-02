@@ -703,7 +703,7 @@ final class AccountFlowGraphService
                 ? (int) $acc['due_day'] : null;
             $payLabel = $dueDay
                 ? 'Pagar fatura (vence dia ' . $dueDay . ')'
-                : 'Pagar fatura , ' . $acc['name'];
+                : 'Pagar fatura, ' . $acc['name'];
 
             // Compras do cartão já ligam credit → expense; a fatura é o que o banco precisa pagar.
             if (!$alreadyPaidEdge) {
@@ -1016,7 +1016,7 @@ final class AccountFlowGraphService
             $categories[] = [
                 'id' => (int) $row['id'],
                 'name' => $row['name'],
-                'icon' => $row['icon'] ?? '📌',
+                'icon' => \Gastos\Api\CategoryIcon::normalize($row['icon'] ?? null, $row['name'] ?? ''),
             ];
         }
 

@@ -88,7 +88,7 @@ export class UserAvatarComponent implements OnDestroy {
       const u = this.user();
       const path = u && 'avatarUrl' in u ? u.avatarUrl : null;
 
-      // Não ler photoUrl() aqui , senão cada set re-dispara o effect em loop.
+      // Não ler photoUrl() aqui, senão cada set re-dispara o effect em loop.
       let objectUrl: string | null = null;
       this.photoUrl.set(null);
 

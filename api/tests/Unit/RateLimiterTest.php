@@ -10,6 +10,7 @@ use Gastos\Api\Response;
 use Gastos\Api\ResponseExitException;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionMethod;
 
 final class RateLimiterTest extends TestCase
 {
@@ -104,6 +105,86 @@ final class RateLimiterTest extends TestCase
 
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.20, 10.0.0.1';
         $this->assertSame('198.51.100.20', RateLimiter::clientIp());
+    }
+
+    public function testTrustProxyFallsBackToXRealIp(): void
+    {
+        RateLimiter::$clientIpOverride = null;
+        $ref = new ReflectionClass(Config::class);
+        $prop = $ref->getProperty('env');
+        $env = $prop->getValue() ?? [];
+        $env['RATE_LIMIT_TRUST_PROXY'] = 'true';
+        $prop->setValue(null, $env);
+        unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+        $_SERVER['HTTP_X_REAL_IP'] = '198.51.100.33';
+        $this->assertSame('198.51.100.33', RateLimiter::clientIp());
+    }
+
+    public function testTrustProxyInvalidXffUsesRemote(): void
+    {
+        RateLimiter::$clientIpOverride = null;
+        $ref = new ReflectionClass(Config::class);
+        $prop = $ref->getProperty('env');
+        $env = $prop->getValue() ?? [];
+        $env['RATE_LIMIT_TRUST_PROXY'] = 'true';
+        $prop->setValue(null, $env);
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = 'not-an-ip';
+        unset($_SERVER['HTTP_X_REAL_IP']);
+        $_SERVER['REMOTE_ADDR'] = '198.51.100.9';
+        $this->assertSame('198.51.100.9', RateLimiter::clientIp());
+    }
+
+    public function testInvalidRemoteAddrFallback(): void
+    {
+        RateLimiter::$clientIpOverride = null;
+        unset($_SERVER['HTTP_X_FORWARDED_FOR'], $_SERVER['HTTP_X_REAL_IP']);
+        $_SERVER['REMOTE_ADDR'] = 'not-valid';
+        $this->assertSame('0.0.0.0', RateLimiter::clientIp());
+    }
+
+    public function testIntConfigInvalidUsesDefault(): void
+    {
+        $ref = new ReflectionClass(Config::class);
+        $prop = $ref->getProperty('env');
+        $env = $prop->getValue() ?? [];
+        $env['RATE_LIMIT_API_PER_MINUTE'] = '0';
+        $prop->setValue(null, $env);
+        $limits = RateLimiter::limitsFor('api');
+        $this->assertSame(120, $limits['minute']);
+    }
+
+    public function testStorageDirFallbackWhenMkdirFails(): void
+    {
+        $blocker = $this->dir . '/not-a-dir';
+        file_put_contents($blocker, 'x');
+        RateLimiter::$storageDirOverride = $blocker . '/child';
+        $m = new ReflectionMethod(RateLimiter::class, 'storageDir');
+        $dir = $m->invoke(null);
+        $this->assertStringContainsString('tostoes-rate-limit', $dir);
+    }
+
+    public function testStorageDirDefaultAndReadCorruptState(): void
+    {
+        RateLimiter::$storageDirOverride = null;
+        $m = new ReflectionMethod(RateLimiter::class, 'storageDir');
+        $dir = $m->invoke(null);
+        $this->assertNotSame('', $dir);
+
+        $path = $this->dir . '/corrupt.json';
+        file_put_contents($path, '{not-json');
+        $read = new ReflectionMethod(RateLimiter::class, 'readState');
+        $this->assertSame([], $read->invoke(null, $path));
+        file_put_contents($path, '');
+        $this->assertSame([], $read->invoke(null, $path));
+    }
+
+    public function testWriteStateCreatesMissingDir(): void
+    {
+        $nested = $this->dir . '/nested/deep';
+        $path = $nested . '/state.json';
+        $write = new ReflectionMethod(RateLimiter::class, 'writeState');
+        $write->invoke(null, $path, ['ok' => true]);
+        $this->assertFileExists($path);
     }
 
     public function testLimitsForDefaults(): void

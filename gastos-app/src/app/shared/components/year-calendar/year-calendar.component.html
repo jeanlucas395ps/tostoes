@@ -29,7 +29,7 @@
         <span class="cell-month">{{ cell.shortLabel }}</span>
 
         @if (cell.isEmpty) {
-          <span class="cell-empty">—</span>
+          <span class="cell-empty">, </span>
         } @else if (compact()) {
           @if (cell.showPreview) {
             <div class="cell-preview cell-preview--compact">

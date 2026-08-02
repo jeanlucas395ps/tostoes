@@ -1,6 +1,11 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
     <ion-title>Metas</ion-title>
+    <ion-buttons slot="end">
+      <button class="icon-btn" type="button" (click)="openNew()">
+        <ion-icon name="add-outline"></ion-icon>
+      </button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -10,16 +15,19 @@
   </ion-refresher>
 
   @if (!loading() && !goals().length) {
-    <p class="empty-state">Nenhuma meta cadastrada em {{ year }}.</p>
+    <p class="empty-state">Nenhuma meta cadastrada em {{ year }}. Toque em + para criar a primeira.</p>
   }
 
   <div class="goal-cards">
     @for (g of goals(); track g.id) {
-      <div class="card goal-card">
+      <div class="card goal-card" (click)="openEdit(g)">
         <div class="goal-card-top">
           <span class="goal-dot" [style.background]="g.color"></span>
           <span class="goal-name">{{ g.name }}</span>
           <span class="goal-pct num">{{ g.pct }}%</span>
+          <button class="icon-btn small" type="button" (click)="remove(g); $event.stopPropagation()">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
         </div>
         <div class="goal-track">
           <div class="goal-fill" [style.width.%]="g.pct" [style.background]="g.color"></div>

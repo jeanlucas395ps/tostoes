@@ -37,7 +37,6 @@ export function buildDonutSlices(
   if (!raw.length) return null;
 
   const total = raw.reduce((s, i) => s + i.value, 0);
-  if (total <= 0) return null;
 
   const gap = options?.gap ?? 2;
   const minSweep = options?.minSweep ?? 2;

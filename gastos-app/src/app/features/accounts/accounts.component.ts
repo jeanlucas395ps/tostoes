@@ -103,7 +103,7 @@ export class AccountsComponent implements OnInit {
   }
 
   availableLabel(a: FinancialAccount): string {
-    if (a.availableLimit == null) return '—';
+    if (a.availableLimit == null) return ', ';
     return formatMoneyWithBrl(
       a.availableLimit,
       a.currency,
@@ -112,7 +112,7 @@ export class AccountsComponent implements OnInit {
   }
 
   limitLabel(a: FinancialAccount): string {
-    if (a.creditLimit == null) return '—';
+    if (a.creditLimit == null) return ', ';
     return formatMoneyWithBrl(
       a.creditLimit,
       a.currency,
@@ -136,7 +136,7 @@ export class AccountsComponent implements OnInit {
       const sign = line.signedAmount > 0 ? '+' : '−';
       return `${sign}${formatMoneyWithBrl(absNative, account.currency, absBrl)}`;
     }
-    if (line.signedAmount === 0) return '—';
+    if (line.signedAmount === 0) return ', ';
     const sign = line.signedAmount > 0 ? '+' : '−';
     return `${sign}${formatMoney(absNative, 'BRL')}`;
   }

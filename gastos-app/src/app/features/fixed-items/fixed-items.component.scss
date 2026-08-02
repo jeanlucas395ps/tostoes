@@ -92,7 +92,7 @@
   &:hover { opacity: 0.9; transform: scale(1.08); }
 }
 
-/* tabs , ver ui-system.scss */
+/* tabs, ver ui-system.scss */
 
 .user-overview-tabs {
   display: grid;
@@ -101,7 +101,7 @@
   margin-bottom: 0.75rem;
 
   @media (max-width: 600px) {
-    /* Scroll horizontal , evita quebra de linha */
+    /* Scroll horizontal, evita quebra de linha */
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -122,14 +122,14 @@
   }
 }
 
-/* Remove gradient do card selecionado , bordas são suficientes */
+/* Remove gradient do card selecionado, bordas são suficientes */
 .user-tab-card.active {
   border-color: var(--primary);
   box-shadow: 0 0 0 1px var(--primary-lighter);
   background: var(--surface);
 }
 
-/* user-tab-card, user-overview-banner , ver ui-system.scss */
+/* user-tab-card, user-overview-banner, ver ui-system.scss */
 
 .custom-tabs button {
   display: inline-flex;
@@ -207,7 +207,7 @@
   }
 }
 
-/* ── Legend , row per category ───────────────────────────────── */
+/* ── Legend, row per category ───────────────────────────────── */
 .donut-legend {
   flex: 1;
   min-width: 180px;
@@ -479,7 +479,7 @@
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-elevated);
-  font-size: 1.1rem;
+  color: var(--text);
   cursor: pointer;
   display: grid;
   place-items: center;

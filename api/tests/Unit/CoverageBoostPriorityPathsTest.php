@@ -511,7 +511,7 @@ final class CoverageBoostPriorityPathsTest extends TestCase
             }
             if (str_contains($sql, 'SELECT id, year, month FROM month_plan_entries')
                 && str_contains($sql, 'financial_goal_id')) {
-                // orphan select then pending select in recalculate — both similar
+                // orphan select then pending select in recalculate,  both similar
                 static $n = 0;
                 $n++;
                 return $n === 1 ? $orphans : $pending;
@@ -653,6 +653,11 @@ final class CoverageBoostPriorityPathsTest extends TestCase
             $env['CORS_ORIGIN'] = 'http://a.com, http://b.com';
             $prop->setValue(null, $env);
             $_SERVER['HTTP_ORIGIN'] = 'http://evil.com';
+            Cors::apply();
+
+            $env['CORS_ORIGIN'] = '*';
+            $prop->setValue(null, $env);
+            $_SERVER['HTTP_ORIGIN'] = 'https://any.random.test';
             Cors::apply();
 
             $this->assertTrue(true);
