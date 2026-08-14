@@ -87,6 +87,7 @@ export class AccountGraphPage implements OnInit, AfterViewInit, OnDestroy {
   filterTabs = signal<Set<string>>(new Set());
 
   private cy?: Core;
+  private fitTimeout?: ReturnType<typeof setTimeout>;
 
   totals = computed(() => this.graph()?.totals ?? { inflowBrl: 0, outflowBrl: 0 });
   unassignedCount = computed(() => this.graph()?.unassigned?.length ?? 0);
@@ -121,6 +122,7 @@ export class AccountGraphPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.fitTimeout);
     this.cy?.destroy();
   }
 
@@ -250,7 +252,8 @@ export class AccountGraphPage implements OnInit, AfterViewInit, OnDestroy {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     layout.run();
-    setTimeout(() => {
+    clearTimeout(this.fitTimeout);
+    this.fitTimeout = setTimeout(() => {
       this.cy?.fit(undefined, 36);
       this.applyFilters();
     }, 560);

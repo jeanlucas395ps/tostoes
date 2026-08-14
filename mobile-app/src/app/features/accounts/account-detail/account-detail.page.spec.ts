@@ -106,4 +106,56 @@ describe('AccountDetailPage', () => {
     http.expectOne(`${base}/accounts/7`).flush({ ok: true });
     expect(router.navigateByUrl).toHaveBeenCalledWith('/contas');
   });
+
+  it('remove() is a no-op without a loaded account', async () => {
+    fixture.detectChanges();
+    await component.remove();
+    expect(alertCreate).not.toHaveBeenCalled();
+    flush();
+  });
+
+  it('labels the confirmation "cartão" for credit accounts', async () => {
+    fixture.detectChanges();
+    flush({ type: 'credit' });
+    await component.remove();
+    const config = alertCreate.calls.mostRecent().args[0];
+    expect(config.message).toContain('cartão');
+  });
+
+  it('reloads when the year or month changes', () => {
+    fixture.detectChanges();
+    flush();
+    component.onYearChange(2027);
+    expect(component.year()).toBe(2027);
+    flush();
+    component.onMonthChange(3);
+    expect(component.month()).toBe(3);
+    flush();
+  });
+
+  it('hasActiveFilters reflects the kind and search signals', () => {
+    fixture.detectChanges();
+    flush();
+    expect(component.hasActiveFilters()).toBeFalse();
+    component.kindFilter.set('expense');
+    expect(component.hasActiveFilters()).toBeTrue();
+    component.kindFilter.set('');
+    component.search.set('  x  ');
+    expect(component.hasActiveFilters()).toBeTrue();
+  });
+
+  it('onSaved closes the form and reloads', () => {
+    fixture.detectChanges();
+    flush();
+    component.showForm.set(true);
+    component.onSaved();
+    expect(component.showForm()).toBeFalse();
+    flush();
+  });
+
+  it('clears loading on a load error', () => {
+    fixture.detectChanges();
+    http.expectOne((r) => r.url === `${base}/accounts/7`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(component.loading()).toBeFalse();
+  });
 });

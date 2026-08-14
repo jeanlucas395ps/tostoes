@@ -99,10 +99,7 @@
               "src/app/app.config.ts",
               "src/app/app.routes.ts",
               "src/app/app.component.ts",
-              "src/app/features/**",
               "src/app/shared/three/**",
-              "src/app/shared/components/confirm-account-dialog/**",
-              "src/app/shared/components/year-calendar/**",
               "src/app/shared/components/coming-soon/**"
             ],
             "assets": [

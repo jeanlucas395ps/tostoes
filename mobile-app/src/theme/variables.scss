@@ -6,60 +6,66 @@
 
 :root,
 [data-theme="light"] {
-  --bg:               #F4F6F8;
+  --bg:               #F8F7F4;
   --surface:          #FFFFFF;
-  --surface-elevated: #F9FAFB;
-  --surface-hover:    rgba(145, 158, 171, 0.08);
+  --surface-elevated: #FCFBF8;
+  --surface-hover:    rgba(35, 32, 27, 0.05);
 
-  --border:        rgba(145, 158, 171, 0.20);
-  --border-strong: #DFE3E8;
+  --border:        rgba(35, 32, 27, 0.12);
+  --border-strong: #E7E4DD;
 
-  --text:       #1C252E;
-  --text-muted: #637381;
-  --text-faint: #919EAB;
+  --text:       #14151A;
+  --text-muted: #5B5E6B;
+  --text-faint: #8B8E9B;
 
-  --primary:            #6B4EE6;
-  --primary-dark:       #5538D1;
-  --primary-light:      #9B85F5;
-  --primary-soft:       rgba(107, 78, 230, 0.08);
-  --primary-soft-hover: rgba(107, 78, 230, 0.16);
-  --primary-lighter:    rgba(107, 78, 230, 0.12);
-  --gradient-brand:     linear-gradient(135deg, #4527A0 0%, #6B4EE6 100%);
-  --gradient-hero:      linear-gradient(135deg, #2E1065 0%, #5538D1 50%, #6B4EE6 100%);
+  --primary:            #0057FF;
+  --primary-dark:       #0041C4;
+  --primary-light:      #6690FF;
+  --primary-soft:       rgba(0, 87, 255, 0.08);
+  --primary-soft-hover: rgba(0, 87, 255, 0.16);
+  --primary-lighter:    rgba(0, 87, 255, 0.12);
+  --gradient-brand:     linear-gradient(135deg, #0041C4 0%, #0057FF 100%);
+  --gradient-hero:      linear-gradient(135deg, #001A66 0%, #0041C4 55%, #2979FF 100%);
+  /* Texto sobre fundos --primary / --gradient-brand (alto contraste em cada tema). */
+  --on-primary:         #FFFFFF;
 
-  --income:             #22C55E;
-  --income-dark:        #16A34A;
+  --income:             #1BAA5C;
+  --income-dark:        #0E8245;
   --income-light:       #4ADE80;
-  --income-soft:        rgba(34, 197, 94, 0.08);
-  --income-soft-hover:  rgba(34, 197, 94, 0.16);
-  --income-lighter:     rgba(34, 197, 94, 0.12);
-  --income-fill-border: rgba(34, 197, 94, 0.24);
+  --income-soft:        rgba(27, 170, 92, 0.08);
+  --income-soft-hover:  rgba(27, 170, 92, 0.16);
+  --income-lighter:     rgba(27, 170, 92, 0.12);
+  --income-fill-border: rgba(27, 170, 92, 0.24);
 
   --accent:             var(--primary);
   --accent-dark:        var(--primary-dark);
   --accent-soft:        var(--primary-soft);
   --accent-soft-hover:  var(--primary-soft-hover);
 
-  --danger:             #FF5630;
-  --danger-dark:        #B71D18;
-  --danger-soft:        rgba(255, 86, 48, 0.08);
-  --danger-soft-hover:  rgba(255, 86, 48, 0.16);
-  --danger-fill:        rgba(255, 86, 48, 0.08);
-  --danger-fill-border: rgba(255, 86, 48, 0.24);
+  --danger:             #E5342B;
+  --danger-dark:        #A8241D;
+  --danger-soft:        rgba(229, 52, 43, 0.08);
+  --danger-soft-hover:  rgba(229, 52, 43, 0.16);
+  --danger-fill:        rgba(229, 52, 43, 0.08);
+  --danger-fill-border: rgba(229, 52, 43, 0.24);
 
-  --warning:      #FFAB00;
-  --warning-dark: #B76E00;
-  --warning-soft: rgba(255, 171, 0, 0.12);
+  --neutral:      #6B6E7A;
+  --neutral-dark: #4B4E5A;
+  --neutral-soft: rgba(107, 110, 122, 0.10);
 
-  --info:      #00B8D9;
-  --info-soft: rgba(0, 184, 217, 0.08);
+  --warning:      #F5A524;
+  --warning-dark: #B5760A;
+  --warning-soft: rgba(245, 165, 36, 0.12);
 
-  --accent-invest:             #2065D1;
-  --accent-invest-dark:        #103996;
-  --accent-invest-soft:        rgba(32, 101, 209, 0.08);
-  --accent-invest-soft-hover:  rgba(32, 101, 209, 0.16);
-  --accent-invest-fill:        rgba(32, 101, 209, 0.06);
-  --accent-invest-fill-border: rgba(32, 101, 209, 0.20);
+  --info:      #00A8CC;
+  --info-soft: rgba(0, 168, 204, 0.08);
+
+  --accent-invest:             #7C5CFC;
+  --accent-invest-dark:        #5A3FD1;
+  --accent-invest-soft:        rgba(124, 92, 252, 0.08);
+  --accent-invest-soft-hover:  rgba(124, 92, 252, 0.16);
+  --accent-invest-fill:        rgba(124, 92, 252, 0.06);
+  --accent-invest-fill-border: rgba(124, 92, 252, 0.20);
 
   --brand:            #D97706;
   --brand-dark:       #92400E;
@@ -77,64 +83,80 @@
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
 
-  --shadow-xs:         0 1px 2px 0 rgba(145, 158, 171, 0.16);
-  --shadow-sm:         0 0 2px 0 rgba(145, 158, 171, 0.08), 0 4px 8px -4px rgba(145, 158, 171, 0.12);
-  --shadow-card:       0 0 2px 0 rgba(145, 158, 171, 0.08), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
-  --shadow-card-hover: 0 0 2px 0 rgba(145, 158, 171, 0.08), 0 16px 32px -4px rgba(145, 158, 171, 0.24);
-  --shadow-lg:         0 0 2px 0 rgba(145, 158, 171, 0.08), 0 24px 48px -8px rgba(145, 158, 171, 0.24);
-  --shadow-primary:    0 8px 16px 0 rgba(107, 78, 230, 0.28);
+  --shadow-xs:         0 1px 2px 0 rgba(35, 32, 27, 0.14);
+  --shadow-sm:         0 0 2px 0 rgba(35, 32, 27, 0.07), 0 4px 8px -4px rgba(35, 32, 27, 0.10);
+  --shadow-card:       0 0 2px 0 rgba(35, 32, 27, 0.07), 0 12px 24px -4px rgba(35, 32, 27, 0.10);
+  --shadow-card-hover: 0 0 2px 0 rgba(35, 32, 27, 0.07), 0 16px 32px -4px rgba(35, 32, 27, 0.20);
+  --shadow-lg:         0 0 2px 0 rgba(35, 32, 27, 0.07), 0 24px 48px -8px rgba(35, 32, 27, 0.20);
+  --shadow-primary:    0 8px 16px 0 rgba(0, 87, 255, 0.28);
+  --shadow-income:     0 8px 16px 0 rgba(27, 170, 92, 0.18);
+  --shadow-danger:     0 8px 16px 0 rgba(229, 52, 43, 0.24);
+  --shadow-invest:     0 8px 16px 0 rgba(124, 92, 252, 0.18);
 
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --bg:               #141A21;
-  --surface:          #1C252E;
-  --surface-elevated: #28343F;
-  --surface-hover:    rgba(145, 158, 171, 0.08);
+  --bg:               #23262F;
+  --surface:          #2B2E38;
+  --surface-elevated: #333644;
+  --surface-hover:    rgba(255, 255, 255, 0.06);
 
-  --border:        rgba(145, 158, 171, 0.12);
-  --border-strong: #2E3A45;
+  --border:        rgba(255, 255, 255, 0.10);
+  --border-strong: #3A3D4C;
 
-  --text:       #FFFFFF;
-  --text-muted: #919EAB;
-  --text-faint: #637381;
+  --text:       #F6F7F3;
+  --text-muted: #9A9DAC;
+  --text-faint: #6D707F;
 
-  --primary:            #A78BFA;
-  --primary-dark:       #6B4EE6;
-  --primary-light:      #C4B5FD;
-  --primary-soft:       rgba(167, 139, 250, 0.14);
-  --primary-soft-hover: rgba(167, 139, 250, 0.22);
-  --primary-lighter:    rgba(107, 78, 230, 0.18);
-  --gradient-brand:     linear-gradient(135deg, #5538D1 0%, #6B4EE6 100%);
-  --gradient-hero:      linear-gradient(135deg, #1e1040 0%, #5538D1 50%, #6B4EE6 100%);
+  --primary:            #B6FF2E;
+  --primary-dark:       #8FDB00;
+  --primary-light:      #D6FF85;
+  --primary-soft:       rgba(182, 255, 46, 0.14);
+  --primary-soft-hover: rgba(182, 255, 46, 0.22);
+  --primary-lighter:    rgba(182, 255, 46, 0.18);
+  --gradient-brand:     linear-gradient(135deg, #8FDB00 0%, #B6FF2E 100%);
+  --gradient-hero:      linear-gradient(135deg, #16210A 0%, #4C6B00 55%, #B6FF2E 100%);
+  /* Lima é claro demais para texto branco: usa quase-preto. */
+  --on-primary:         #14210A;
 
-  --income:             #4ADE80;
-  --income-dark:        #22C55E;
-  --income-light:       #86EFAC;
-  --income-soft:        rgba(74, 222, 128, 0.12);
-  --income-soft-hover:  rgba(74, 222, 128, 0.20);
-  --income-lighter:     rgba(34, 197, 94, 0.16);
-  --income-fill-border: rgba(74, 222, 128, 0.28);
+  --income:             #34D399;
+  --income-dark:        #10B981;
+  --income-light:       #6EE7B7;
+  --income-soft:        rgba(52, 211, 153, 0.14);
+  --income-soft-hover:  rgba(52, 211, 153, 0.22);
+  --income-lighter:     rgba(52, 211, 153, 0.18);
+  --income-fill-border: rgba(52, 211, 153, 0.28);
 
   --accent:             var(--primary);
   --accent-dark:        var(--primary-dark);
-  --accent-soft:        var(--income-soft);
-  --accent-soft-hover:  var(--income-soft-hover);
+  --accent-soft:        var(--primary-soft);
+  --accent-soft-hover:  var(--primary-soft-hover);
 
-  --danger:             #FFAC82;
-  --danger-dark:        #FF5630;
-  --danger-soft:        rgba(255, 86, 48, 0.14);
-  --danger-soft-hover:  rgba(255, 86, 48, 0.22);
-  --danger-fill:        rgba(255, 86, 48, 0.10);
-  --danger-fill-border: rgba(255, 86, 48, 0.28);
+  --danger:             #FF6B5E;
+  --danger-dark:        #FF3B2F;
+  --danger-soft:        rgba(255, 107, 94, 0.14);
+  --danger-soft-hover:  rgba(255, 107, 94, 0.22);
+  --danger-fill:        rgba(255, 107, 94, 0.10);
+  --danger-fill-border: rgba(255, 107, 94, 0.28);
 
-  --accent-invest:             #76B0F1;
-  --accent-invest-dark:        #2065D1;
-  --accent-invest-soft:        rgba(118, 176, 241, 0.12);
-  --accent-invest-soft-hover:  rgba(118, 176, 241, 0.20);
-  --accent-invest-fill:        rgba(118, 176, 241, 0.10);
-  --accent-invest-fill-border: rgba(118, 176, 241, 0.28);
+  --neutral:      #9A9DAC;
+  --neutral-dark: #C3C6D2;
+  --neutral-soft: rgba(154, 157, 172, 0.14);
+
+  --warning:      #FBBF24;
+  --warning-dark: #F59E0B;
+  --warning-soft: rgba(251, 191, 36, 0.16);
+
+  --info:      #22D3EE;
+  --info-soft: rgba(34, 211, 238, 0.10);
+
+  --accent-invest:             #A78BFA;
+  --accent-invest-dark:        #7C5CFC;
+  --accent-invest-soft:        rgba(167, 139, 250, 0.14);
+  --accent-invest-soft-hover:  rgba(167, 139, 250, 0.22);
+  --accent-invest-fill:        rgba(167, 139, 250, 0.10);
+  --accent-invest-fill-border: rgba(167, 139, 250, 0.28);
 
   --brand:      #F59E0B;
   --brand-dark: #D97706;
@@ -147,7 +169,10 @@
   --shadow-card:       0 0 2px 0 rgba(0, 0, 0, 0.24), 0 12px 24px -4px rgba(0, 0, 0, 0.24);
   --shadow-card-hover: 0 0 2px 0 rgba(0, 0, 0, 0.24), 0 16px 32px -4px rgba(0, 0, 0, 0.32);
   --shadow-lg:         0 24px 48px rgba(0, 0, 0, 0.48);
-  --shadow-primary:    0 8px 24px rgba(107, 78, 230, 0.32);
+  --shadow-primary:    0 8px 24px rgba(182, 255, 46, 0.22);
+  --shadow-income:     0 8px 20px rgba(52, 211, 153, 0.16);
+  --shadow-danger:     0 8px 20px rgba(255, 107, 94, 0.20);
+  --shadow-invest:     0 8px 20px rgba(167, 139, 250, 0.16);
 
   color-scheme: dark;
 }
@@ -157,39 +182,39 @@
   --ion-font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
 
   --ion-color-primary: var(--primary);
-  --ion-color-primary-rgb: 107, 78, 230;
+  --ion-color-primary-rgb: 0, 87, 255;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #5538D1;
-  --ion-color-primary-tint: #9B85F5;
+  --ion-color-primary-shade: #0041C4;
+  --ion-color-primary-tint: #6690FF;
 
   --ion-color-success: var(--income);
-  --ion-color-success-rgb: 34, 197, 94;
+  --ion-color-success-rgb: 27, 170, 92;
   --ion-color-success-contrast: #ffffff;
   --ion-color-success-contrast-rgb: 255, 255, 255;
-  --ion-color-success-shade: #16A34A;
+  --ion-color-success-shade: #0E8245;
   --ion-color-success-tint: #4ADE80;
 
   --ion-color-danger: var(--danger);
-  --ion-color-danger-rgb: 255, 86, 48;
+  --ion-color-danger-rgb: 229, 52, 43;
   --ion-color-danger-contrast: #ffffff;
   --ion-color-danger-contrast-rgb: 255, 255, 255;
-  --ion-color-danger-shade: #B71D18;
-  --ion-color-danger-tint: #FF7A5C;
+  --ion-color-danger-shade: #A8241D;
+  --ion-color-danger-tint: #EA5850;
 
   --ion-color-warning: var(--warning);
-  --ion-color-warning-rgb: 255, 171, 0;
-  --ion-color-warning-contrast: #1C252E;
-  --ion-color-warning-contrast-rgb: 28, 37, 46;
-  --ion-color-warning-shade: #B76E00;
-  --ion-color-warning-tint: #FFC233;
+  --ion-color-warning-rgb: 245, 165, 36;
+  --ion-color-warning-contrast: #14151A;
+  --ion-color-warning-contrast-rgb: 20, 21, 26;
+  --ion-color-warning-shade: #B5760A;
+  --ion-color-warning-tint: #F7B54D;
 
   --ion-color-medium: var(--text-muted);
-  --ion-color-medium-rgb: 99, 115, 129;
+  --ion-color-medium-rgb: 91, 94, 107;
   --ion-color-medium-contrast: #ffffff;
   --ion-color-medium-contrast-rgb: 255, 255, 255;
-  --ion-color-medium-shade: #57626B;
-  --ion-color-medium-tint: #919EAB;
+  --ion-color-medium-shade: #4A4D59;
+  --ion-color-medium-tint: #8B8E9B;
 
   --ion-background-color: var(--bg);
   --ion-text-color: var(--text);
@@ -201,4 +226,29 @@
   --ion-item-background: var(--surface);
   --ion-border-color: var(--border);
   --ion-card-background: var(--surface);
+}
+
+/* Dark mode precisa de texto escuro sobre o lima brilhante (contraste). */
+[data-theme="dark"] {
+  --ion-color-primary-rgb: 182, 255, 46;
+  --ion-color-primary-contrast: #14210A;
+  --ion-color-primary-contrast-rgb: 20, 33, 10;
+  --ion-color-primary-shade: #8FDB00;
+  --ion-color-primary-tint: #D6FF85;
+
+  --ion-color-success-rgb: 52, 211, 153;
+  --ion-color-success-shade: #10B981;
+  --ion-color-success-tint: #6EE7B7;
+
+  --ion-color-danger-rgb: 255, 107, 94;
+  --ion-color-danger-shade: #FF3B2F;
+  --ion-color-danger-tint: #FF9086;
+
+  --ion-color-warning-rgb: 251, 191, 36;
+  --ion-color-warning-shade: #F59E0B;
+  --ion-color-warning-tint: #FCD34D;
+
+  --ion-color-medium-rgb: 154, 157, 172;
+  --ion-color-medium-shade: #82859B;
+  --ion-color-medium-tint: #C3C6D2;
 }

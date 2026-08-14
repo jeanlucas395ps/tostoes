@@ -27,7 +27,7 @@ export class GoalsComponent implements OnInit {
   form = {
     name: '',
     description: '',
-    color: '#6B4EE6',
+    color: '#0057FF',
     targetAmountBrl: 0,
     startDate: '',
     endDate: '',
@@ -89,7 +89,7 @@ export class GoalsComponent implements OnInit {
     this.form = {
       name: '',
       description: '',
-      color: '#6B4EE6',
+      color: '#0057FF',
       targetAmountBrl: 0,
       startDate: today.toISOString().slice(0, 10),
       endDate: end.toISOString().slice(0, 10),

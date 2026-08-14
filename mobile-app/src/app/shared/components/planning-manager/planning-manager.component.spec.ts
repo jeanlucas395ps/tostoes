@@ -12,6 +12,7 @@ describe('PlanningManagerComponent', () => {
   let component: PlanningManagerComponent;
   let http: HttpTestingController;
   let alertCreate: jasmine.Spy;
+  let toastCreate: jasmine.Spy;
   const base = environment.apiUrl;
 
   const owned: Planning = { id: 1, name: 'Casa', role: 'owner', memberCount: 2 };
@@ -25,6 +26,7 @@ describe('PlanningManagerComponent', () => {
     alertCreate = alertSpy.create;
     const toastSpy = jasmine.createSpyObj('ToastController', ['create']);
     toastSpy.create.and.resolveTo({ present: async () => {} });
+    toastCreate = toastSpy.create;
 
     await TestBed.configureTestingModule({
       imports: [PlanningManagerComponent, HttpClientTestingModule],
@@ -116,5 +118,102 @@ describe('PlanningManagerComponent', () => {
     destructive.handler();
     http.expectOne(`${base}/plannings/1`).flush({ ok: true, items: [] });
     expect(component.mode()).toBe('create');
+  });
+
+  it('reloads when deleting the active planning and others remain', async () => {
+    const reload = spyOn<any>(component, 'reload');
+    await component.confirmDelete(owned);
+    const config = alertCreate.calls.mostRecent().args[0];
+    const destructive = config.buttons.find((b: { role?: string }) => b.role === 'destructive');
+    destructive.handler();
+    http.expectOne(`${base}/plannings/1`).flush({ ok: true, items: [member] });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it('does not reload when deleting a non-active planning that leaves others', async () => {
+    const reload = spyOn<any>(component, 'reload');
+    await component.confirmDelete(member);
+    const config = alertCreate.calls.mostRecent().args[0];
+    const destructive = config.buttons.find((b: { role?: string }) => b.role === 'destructive');
+    destructive.handler();
+    http.expectOne(`${base}/plannings/2`).flush({ ok: true, items: [owned] });
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('shows a toast when deleting fails', async () => {
+    await component.confirmDelete(owned);
+    const config = alertCreate.calls.mostRecent().args[0];
+    const destructive = config.buttons.find((b: { role?: string }) => b.role === 'destructive');
+    destructive.handler();
+    http.expectOne(`${base}/plannings/1`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(toastCreate).toHaveBeenCalled();
+  });
+
+  it('surfaces the server error when creating fails', () => {
+    component.openCreate();
+    component.nameInput.set('Trabalho');
+    component.submitCreate();
+    http.expectOne(`${base}/plannings`).flush({ error: 'Nome duplicado.' }, { status: 400, statusText: 'Bad Request' });
+    expect(component.error()).toBe('Nome duplicado.');
+    expect(component.saving()).toBeFalse();
+  });
+
+  it('does nothing when renaming without a target id', () => {
+    component.renamingId.set(null);
+    component.submitRename();
+    http.expectNone(() => true);
+  });
+
+  it('requires a name before renaming', () => {
+    component.openRename(owned);
+    component.nameInput.set('   ');
+    component.submitRename();
+    expect(component.error()).toContain('nome');
+  });
+
+  it('surfaces the server error when renaming fails', () => {
+    component.openRename(owned);
+    component.nameInput.set('Casa Nova');
+    component.submitRename();
+    http.expectOne(`${base}/plannings/1`).flush({ error: 'Falha ao renomear.' }, { status: 400, statusText: 'Bad Request' });
+    expect(component.error()).toBe('Falha ao renomear.');
+  });
+
+  it('surfaces the server error when inviting fails', () => {
+    component.openInvite();
+    component.invitePlanningId.set(1);
+    component.inviteEmail.set('a@b.com');
+    component.submitInvite();
+    http.expectOne(`${base}/plannings/1/invites`).flush({ error: 'E-mail inválido.' }, { status: 400, statusText: 'Bad Request' });
+    expect(component.error()).toBe('E-mail inválido.');
+    expect(component.saving()).toBeFalse();
+  });
+
+  it('shows the success message without a dev link when absent', () => {
+    component.openInvite();
+    component.invitePlanningId.set(1);
+    component.inviteEmail.set('a@b.com');
+    component.submitInvite();
+    http.expectOne(`${base}/plannings/1/invites`).flush({ message: 'Convite enviado.', email: 'a@b.com' });
+    expect(component.successMessage()).toBe('Convite enviado.');
+  });
+
+  it('openInvite resets the form to the active planning', () => {
+    component.inviteEmail.set('stale@example.com');
+    component.openInvite();
+    expect(component.mode()).toBe('invite');
+    expect(component.invitePlanningId()).toBe(1);
+    expect(component.inviteEmail()).toBe('');
+    expect(component.successMessage()).toBe('');
+  });
+
+  it('backToList resets the mode and clears errors', () => {
+    component.openCreate();
+    component.nameInput.set('   ');
+    component.submitCreate();
+    expect(component.error()).not.toBe('');
+    component.backToList();
+    expect(component.mode()).toBe('list');
+    expect(component.error()).toBe('');
   });
 });

@@ -55,6 +55,16 @@ describe('AccountFormComponent', () => {
     expect(component.form.creditLimit).toBe(3000);
   });
 
+  it('fills in defaults when editing a credit account missing optional fields', () => {
+    const bare: FinancialAccount = { ...existing, color: undefined, creditLimit: undefined, closingDay: undefined, dueDay: undefined };
+    fixture.componentRef.setInput('account', bare);
+    fixture.detectChanges();
+    expect(component.form.color).toBe('#f59e0b');
+    expect(component.form.creditLimit).toBe(5000);
+    expect(component.form.closingDay).toBe(1);
+    expect(component.form.dueDay).toBe(10);
+  });
+
   it('updates the default color on type change only when creating', () => {
     fixture.detectChanges();
     component.form.type = 'investment';
@@ -105,5 +115,13 @@ describe('AccountFormComponent', () => {
     http.expectOne(`${base}/accounts`).flush({ error: 'Nome duplicado.' }, { status: 400, statusText: 'Bad Request' });
     expect(component.error()).toBe('Nome duplicado.');
     expect(component.saving()).toBeFalse();
+  });
+
+  it('falls back to a default error message on failure', () => {
+    fixture.detectChanges();
+    component.form.name = 'Carteira';
+    component.save();
+    http.expectOne(`${base}/accounts`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(component.error()).toBe('Não foi possível salvar a conta.');
   });
 });

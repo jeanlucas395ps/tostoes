@@ -14,7 +14,7 @@
   font-size: 0.8125rem;
   font-weight: 700;
 
-  &.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  &.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 }
 
 .totals-row {
@@ -66,7 +66,7 @@
 
 .filter-badge {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   border-radius: var(--radius-full);
   font-size: 0.625rem;
   padding: 1px 6px;

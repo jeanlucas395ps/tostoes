@@ -152,7 +152,7 @@
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 
   &:disabled {
     opacity: 0.5;

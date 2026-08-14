@@ -12,19 +12,32 @@ function setup(data: Record<string, unknown>): {
   fixture: ComponentFixture<FixedItemsPage>;
   component: FixedItemsPage;
   http: HttpTestingController;
+  alertCreate: jasmine.Spy;
+  toastCreate: jasmine.Spy;
 } {
+  const alertSpy = jasmine.createSpyObj('AlertController', ['create']);
+  alertSpy.create.and.resolveTo({ present: async () => {} });
+  const toastSpy = jasmine.createSpyObj('ToastController', ['create']);
+  toastSpy.create.and.resolveTo({ present: async () => {} });
+
   TestBed.configureTestingModule({
     imports: [FixedItemsPage, HttpClientTestingModule],
     providers: [
       { provide: ActivatedRoute, useValue: { snapshot: { data } } },
-      { provide: AlertController, useValue: jasmine.createSpyObj('AlertController', ['create']) },
-      { provide: ToastController, useValue: jasmine.createSpyObj('ToastController', ['create']) },
+      { provide: AlertController, useValue: alertSpy },
+      { provide: ToastController, useValue: toastSpy },
     ],
   })
     .overrideComponent(FixedItemsPage, { set: { template: '<div></div>', imports: [] } })
     .compileComponents();
   const fixture = TestBed.createComponent(FixedItemsPage);
-  return { fixture, component: fixture.componentInstance, http: TestBed.inject(HttpTestingController) };
+  return {
+    fixture,
+    component: fixture.componentInstance,
+    http: TestBed.inject(HttpTestingController),
+    alertCreate: alertSpy.create,
+    toastCreate: toastSpy.create,
+  };
 }
 
 function flushBoot(http: HttpTestingController, hasInvestment = false): void {
@@ -52,9 +65,11 @@ describe('FixedItemsPage (expense)', () => {
   let fixture: ComponentFixture<FixedItemsPage>;
   let component: FixedItemsPage;
   let http: HttpTestingController;
+  let alertCreate: jasmine.Spy;
+  let toastCreate: jasmine.Spy;
 
   beforeEach(() => {
-    ({ fixture, component, http } = setup(expenseData));
+    ({ fixture, component, http, alertCreate, toastCreate } = setup(expenseData));
     fixture.detectChanges();
     flushBoot(http);
   });
@@ -111,6 +126,146 @@ describe('FixedItemsPage (expense)', () => {
     req.flush({ item: {} as RecurringItem });
     http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
     expect(component.showForm()).toBeFalse();
+  });
+
+  it('shows a toast with the server error when saving fails', async () => {
+    component.form.name = 'Aluguel';
+    await component.save();
+    http.expectOne(`${base}/recurring-items`).flush({ error: 'Categoria inválida.' }, { status: 400, statusText: 'Bad Request' });
+    expect(toastCreate).toHaveBeenCalled();
+    expect(component.saving()).toBeFalse();
+  });
+
+  it('reloads on refresh and completes the refresher', () => {
+    const refresher = { complete: jasmine.createSpy('complete') } as unknown as HTMLIonRefresherElement;
+    component.onRefresh({ target: refresher } as unknown as CustomEvent);
+    http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
+    expect(refresher.complete).toHaveBeenCalled();
+  });
+
+  it('clears loading and completes the refresher on a load error', () => {
+    const refresher = { complete: jasmine.createSpy('complete') } as unknown as HTMLIonRefresherElement;
+    component.load(refresher);
+    http.expectOne((r) => r.url === `${base}/recurring-items`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(component.loading()).toBeFalse();
+    expect(refresher.complete).toHaveBeenCalled();
+  });
+
+  it('opens the new-item form, defaulting the custom tab', () => {
+    component.openNew();
+    expect(component.showForm()).toBeTrue();
+    expect(component.editingId()).toBeNull();
+    expect(component.form.customTabId).toBe(1);
+  });
+
+  it('toggles the edit form closed when tapping the same item twice', () => {
+    const item = { id: 9, name: 'Luz', dueDay: 5 } as RecurringItem;
+    component.openEdit(item);
+    expect(component.showForm()).toBeTrue();
+    expect(component.editingId()).toBe(9);
+    component.openEdit(item);
+    expect(component.showForm()).toBeFalse();
+    expect(component.editingId()).toBeNull();
+  });
+
+  it('opens a different item for editing while one is already open', () => {
+    component.openEdit({ id: 1, name: 'A' } as RecurringItem);
+    component.openEdit({ id: 2, name: 'B', startDate: '2026-03-15' } as RecurringItem);
+    expect(component.editingId()).toBe(2);
+    expect(component.form.name).toBe('B');
+    expect(component.form.startMonth).toBe('2026-03');
+  });
+
+  it('closeForm resets the edit state', () => {
+    component.openEdit({ id: 1, name: 'A' } as RecurringItem);
+    component.newCategoryMode.set(true);
+    component.closeForm();
+    expect(component.showForm()).toBeFalse();
+    expect(component.editingId()).toBeNull();
+    expect(component.newCategoryMode()).toBeFalse();
+  });
+
+  it('builds the category donut only for expense items', () => {
+    component.items.set([
+      { id: 1, category: 'Mercado', amount: 100 } as RecurringItem,
+      { id: 2, itemCategoryName: 'Moradia', amount: 200 } as RecurringItem,
+      { id: 3, category: 'Mercado', defaultAmountBrl: 50 } as RecurringItem,
+    ]);
+    const donut = component.categoryDonut();
+    expect(donut).not.toBeNull();
+    const labels = donut?.slices.map((s) => s.label).sort();
+    expect(labels).toEqual(['Mercado', 'Moradia']);
+  });
+
+  it('endMonthFromStart is empty without a start month', () => {
+    component.form.startMonth = '';
+    expect(component.endMonthFromStart()).toBe('');
+  });
+
+  it('shows no account label when the entry has no source account', () => {
+    expect(component.itemAccountLabel({ id: 1 } as RecurringItem)).toBeNull();
+  });
+
+  it('labels the payment account for an expense entry', () => {
+    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    expect(label).toBe('Pagamento: Nubank');
+  });
+
+  it('falls back to defaultAmountBrl when amount is absent', () => {
+    expect(component.itemLabel({ id: 1, defaultAmountBrl: 250 } as RecurringItem)).toContain('250');
+  });
+
+  it('computes the BRL preview for a foreign-currency amount', () => {
+    component.form.currency = 'EUR';
+    component.form.amount = 10;
+    expect(component.formPreviewBrl()).toBe(10 * component.eurToBrl());
+    component.form.currency = 'USD';
+    expect(component.formPreviewBrl()).toBe(10 * component.usdToBrl());
+  });
+
+  describe('remove', () => {
+    it('deletes the item and reloads after confirming', async () => {
+      const item = { id: 7, name: 'Netflix' } as RecurringItem;
+      await component.remove(item);
+      const config = alertCreate.calls.mostRecent().args[0];
+      const destructive = config.buttons.find((b: { role?: string }) => b.role === 'destructive');
+      destructive.handler();
+      http.expectOne(`${base}/recurring-items/7`).flush({ ok: true });
+      http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
+    });
+  });
+});
+
+describe('FixedItemsPage (income)', () => {
+  let fixture: ComponentFixture<FixedItemsPage>;
+  let component: FixedItemsPage;
+  let http: HttpTestingController;
+
+  const incomeData = {
+    kind: 'income',
+    title: 'Recebimentos fixos',
+    subtitle: '',
+    accent: 'green',
+    categoryDefault: 'Geral',
+    userOverviewTabs: true,
+  };
+
+  beforeEach(() => {
+    ({ fixture, component, http } = setup(incomeData));
+    fixture.detectChanges();
+    flushBoot(http);
+  });
+
+  afterEach(() => http.verify());
+
+  it('labels the destination account for an income entry', () => {
+    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    expect(label).toBe('Conta: Nubank (destino)');
+  });
+
+  it('does not build a category donut for income items', () => {
+    component.items.set([{ id: 1, category: 'Salário', amount: 5000 } as RecurringItem]);
+    expect(component.categoryDonut()).toBeNull();
   });
 });
 
@@ -194,5 +349,32 @@ describe('FixedItemsPage (investment)', () => {
     expect(req.request.body.itemCategoryId).toBeNull();
     req.flush({ item: {} as RecurringItem });
     http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
+  });
+
+  it('does not use custom tabs for investments', () => {
+    expect(component.usesCustomTabs()).toBeFalse();
+  });
+
+  it('labels source and destination when both are present', () => {
+    const label = component.itemAccountLabel({
+      id: 1,
+      sourceFinancialAccountName: 'Nubank',
+      financialAccountName: 'NuInvest',
+    } as RecurringItem);
+    expect(label).toBe('Nubank → NuInvest');
+  });
+
+  it('labels only the destination when there is no source', () => {
+    const label = component.itemAccountLabel({ id: 1, financialAccountName: 'NuInvest' } as RecurringItem);
+    expect(label).toBe('Entrada: NuInvest');
+  });
+
+  it('labels only the source when there is no destination', () => {
+    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    expect(label).toBe('Saída: Nubank');
+  });
+
+  it('returns no label when investments have neither account', () => {
+    expect(component.itemAccountLabel({ id: 1 } as RecurringItem)).toBeNull();
   });
 });

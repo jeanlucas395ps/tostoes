@@ -13,38 +13,40 @@
 [data-theme="light"] {
 
   /* ── Backgrounds ──────────────────────────────────────────────────────── */
-  --bg:               #F4F6F8;
+  --bg:               #F8F7F4;
   --surface:          #FFFFFF;
-  --surface-elevated: #F9FAFB;
-  --surface-hover:    rgba(145, 158, 171, 0.08);
+  --surface-elevated: #FCFBF8;
+  --surface-hover:    rgba(35, 32, 27, 0.05);
 
   /* ── Borders ──────────────────────────────────────────────────────────── */
-  --border:           rgba(145, 158, 171, 0.20);
-  --border-strong:    #DFE3E8;
+  --border:           rgba(35, 32, 27, 0.12);
+  --border-strong:    #E7E4DD;
 
   /* ── Typography ───────────────────────────────────────────────────────── */
-  --text:        #1C252E;
-  --text-muted:  #637381;
-  --text-faint:  #919EAB;
+  --text:        #14151A;
+  --text-muted:  #5B5E6B;
+  --text-faint:  #8B8E9B;
 
-  /* ── Primary, Mobills-like violet (marca, CTAs, nav) ───────────────── */
-  --primary:             #6B4EE6;
-  --primary-dark:        #5538D1;
-  --primary-light:       #9B85F5;
-  --primary-soft:        rgba(107, 78, 230, 0.08);
-  --primary-soft-hover:  rgba(107, 78, 230, 0.16);
-  --primary-lighter:     rgba(107, 78, 230, 0.12);
-  --gradient-brand:      linear-gradient(135deg, #4527A0 0%, #6B4EE6 100%);
-  --gradient-hero:       linear-gradient(135deg, #2E1065 0%, #5538D1 50%, #6B4EE6 100%);
+  /* ── Primary, azul elétrico (marca, CTAs, nav) ───────────────────────── */
+  --primary:             #0057FF;
+  --primary-dark:        #0041C4;
+  --primary-light:       #6690FF;
+  --primary-soft:        rgba(0, 87, 255, 0.08);
+  --primary-soft-hover:  rgba(0, 87, 255, 0.16);
+  --primary-lighter:     rgba(0, 87, 255, 0.12);
+  --gradient-brand:      linear-gradient(135deg, #0041C4 0%, #0057FF 100%);
+  --gradient-hero:       linear-gradient(135deg, #001A66 0%, #0041C4 55%, #2979FF 100%);
+  /* Texto sobre fundos --primary / --gradient-brand (alto contraste em cada tema). */
+  --on-primary:          #FFFFFF;
 
   /* ── Income, receitas (verde, separado da marca) ───────────────────── */
-  --income:             #22C55E;
-  --income-dark:        #16A34A;
+  --income:             #1BAA5C;
+  --income-dark:        #0E8245;
   --income-light:       #4ADE80;
-  --income-soft:        rgba(34, 197, 94, 0.08);
-  --income-soft-hover:  rgba(34, 197, 94, 0.16);
-  --income-lighter:     rgba(34, 197, 94, 0.12);
-  --income-fill-border: rgba(34, 197, 94, 0.24);
+  --income-soft:        rgba(27, 170, 92, 0.08);
+  --income-soft-hover:  rgba(27, 170, 92, 0.16);
+  --income-lighter:     rgba(27, 170, 92, 0.12);
+  --income-fill-border: rgba(27, 170, 92, 0.24);
 
   /* ── Semantic aliases ─────────────────────────────────────────────────── */
   --accent:             var(--primary);
@@ -55,29 +57,34 @@
   --accent-fill-border: var(--income-fill-border);
 
   /* ── Danger / expense ─────────────────────────────────────────────────── */
-  --danger:             #FF5630;
-  --danger-dark:        #B71D18;
-  --danger-soft:        rgba(255, 86, 48, 0.08);
-  --danger-soft-hover:  rgba(255, 86, 48, 0.16);
-  --danger-fill:        rgba(255, 86, 48, 0.08);
-  --danger-fill-border: rgba(255, 86, 48, 0.24);
+  --danger:             #E5342B;
+  --danger-dark:        #A8241D;
+  --danger-soft:        rgba(229, 52, 43, 0.08);
+  --danger-soft-hover:  rgba(229, 52, 43, 0.16);
+  --danger-fill:        rgba(229, 52, 43, 0.08);
+  --danger-fill-border: rgba(229, 52, 43, 0.24);
+
+  /* ── Neutro (zero / sem variação) ─────────────────────────────────────── */
+  --neutral:      #6B6E7A;
+  --neutral-dark: #4B4E5A;
+  --neutral-soft: rgba(107, 110, 122, 0.10);
 
   /* ── Warning ──────────────────────────────────────────────────────────── */
-  --warning:      #FFAB00;
-  --warning-dark: #B76E00;
-  --warning-soft: rgba(255, 171, 0, 0.12);
+  --warning:      #F5A524;
+  --warning-dark: #B5760A;
+  --warning-soft: rgba(245, 165, 36, 0.12);
 
   /* ── Info ─────────────────────────────────────────────────────────────── */
-  --info:      #00B8D9;
-  --info-soft: rgba(0, 184, 217, 0.08);
+  --info:      #00A8CC;
+  --info-soft: rgba(0, 168, 204, 0.08);
 
-  /* ── Investments ──────────────────────────────────────────────────────── */
-  --accent-invest:             #2065D1;
-  --accent-invest-dark:        #103996;
-  --accent-invest-soft:        rgba(32, 101, 209, 0.08);
-  --accent-invest-soft-hover:  rgba(32, 101, 209, 0.16);
-  --accent-invest-fill:        rgba(32, 101, 209, 0.06);
-  --accent-invest-fill-border: rgba(32, 101, 209, 0.20);
+  /* ── Investments (violeta, herdeira da marca antiga) ─────────────────── */
+  --accent-invest:             #7C5CFC;
+  --accent-invest-dark:        #5A3FD1;
+  --accent-invest-soft:        rgba(124, 92, 252, 0.08);
+  --accent-invest-soft-hover:  rgba(124, 92, 252, 0.16);
+  --accent-invest-fill:        rgba(124, 92, 252, 0.06);
+  --accent-invest-fill-border: rgba(124, 92, 252, 0.20);
 
   /* ── Brand amber, SOMENTE para o logo / marca visual ────────────────── */
   --brand:                    #D97706;
@@ -87,7 +94,7 @@
   --brand-soft-hover:         rgba(217, 119, 6, 0.16);
   --brand-lighter:            rgba(217, 119, 6, 0.12);
   --brand-glow:               0 4px 14px rgba(217, 119, 6, 0.35);
-  --gradient-brand-identity:  linear-gradient(135deg, #4527A0 0%, #6B4EE6 100%);
+  --gradient-brand-identity:  linear-gradient(135deg, #0041C4 0%, #0057FF 100%);
 
   /* ── Border Radius ────────────────────────────────────────────────────── */
   --radius:     8px;
@@ -110,26 +117,26 @@
 
   /* ── Cards ────────────────────────────────────────────────────────────── */
   --card-padding:    1.5rem;
-  --shadow-card:     0 0 2px 0 rgba(145, 158, 171, 0.08),
-                     0 12px 24px -4px rgba(145, 158, 171, 0.12);
-  --shadow-card-hover: 0 0 2px 0 rgba(145, 158, 171, 0.08),
-                       0 16px 32px -4px rgba(145, 158, 171, 0.24);
+  --shadow-card:     0 0 2px 0 rgba(35, 32, 27, 0.07),
+                     0 12px 24px -4px rgba(35, 32, 27, 0.10);
+  --shadow-card-hover: 0 0 2px 0 rgba(35, 32, 27, 0.07),
+                       0 16px 32px -4px rgba(35, 32, 27, 0.20);
 
   /* ── Shadow scale ─────────────────────────────────────────────────────── */
-  --shadow-xs:      0 1px 2px 0 rgba(145, 158, 171, 0.16);
-  --shadow-sm:      0 0 2px 0 rgba(145, 158, 171, 0.08),
-                    0 4px 8px -4px rgba(145, 158, 171, 0.12);
+  --shadow-xs:      0 1px 2px 0 rgba(35, 32, 27, 0.14);
+  --shadow-sm:      0 0 2px 0 rgba(35, 32, 27, 0.07),
+                    0 4px 8px -4px rgba(35, 32, 27, 0.10);
   --shadow:         var(--shadow-card);
-  --shadow-lg:      0 0 2px 0 rgba(145, 158, 171, 0.08),
-                    0 24px 48px -8px rgba(145, 158, 171, 0.24);
-  --shadow-primary: 0 8px 16px 0 rgba(107, 78, 230, 0.28);
-  --shadow-income:  0 8px 16px 0 rgba(34, 197, 94, 0.18);
-  --shadow-danger:  0 8px 16px 0 rgba(255, 86, 48, 0.24);
-  --shadow-invest:  0 8px 16px 0 rgba(32, 101, 209, 0.18);
+  --shadow-lg:      0 0 2px 0 rgba(35, 32, 27, 0.07),
+                    0 24px 48px -8px rgba(35, 32, 27, 0.20);
+  --shadow-primary: 0 8px 16px 0 rgba(0, 87, 255, 0.28);
+  --shadow-income:  0 8px 16px 0 rgba(27, 170, 92, 0.18);
+  --shadow-danger:  0 8px 16px 0 rgba(229, 52, 43, 0.24);
+  --shadow-invest:  0 8px 16px 0 rgba(124, 92, 252, 0.18);
 
   --topbar-bg:     rgba(255, 255, 255, 0.88);
   --mobile-nav-bg: rgba(255, 255, 255, 0.97);
-  --logo-glow:     0 4px 14px rgba(107, 78, 230, 0.35);
+  --logo-glow:     0 4px 14px rgba(217, 119, 6, 0.35);
 
   --sidebar-width: 280px;
 }
@@ -137,17 +144,17 @@
 /* ── Dark Mode ─────────────────────────────────────────────────────────── */
 
 [data-theme="dark"] {
-  --bg:               #141A21;
-  --surface:          #1C252E;
-  --surface-elevated: #28343F;
-  --surface-hover:    rgba(145, 158, 171, 0.08);
+  --bg:               #23262F;
+  --surface:          #2B2E38;
+  --surface-elevated: #333644;
+  --surface-hover:    rgba(255, 255, 255, 0.06);
 
-  --border:        rgba(145, 158, 171, 0.12);
-  --border-strong: #2E3A45;
+  --border:        rgba(255, 255, 255, 0.10);
+  --border-strong: #3A3D4C;
 
-  --text:       #FFFFFF;
-  --text-muted: #919EAB;
-  --text-faint: #637381;
+  --text:       #F6F7F3;
+  --text-muted: #9A9DAC;
+  --text-faint: #6D707F;
 
   /* Brand amber dark */
   --brand:                   #F59E0B;
@@ -157,49 +164,62 @@
   --brand-soft-hover:        rgba(245, 158, 11, 0.20);
   --brand-lighter:           rgba(245, 158, 11, 0.16);
   --brand-glow:              0 4px 14px rgba(245, 158, 11, 0.30);
-  --gradient-brand-identity: linear-gradient(135deg, #5538D1 0%, #6B4EE6 100%);
+  --gradient-brand-identity: linear-gradient(135deg, #8FDB00 0%, #B6FF2E 100%);
 
-  --topbar-bg: rgba(20, 26, 33, 0.94);
-  --mobile-nav-bg: rgba(22, 28, 36, 0.97);
+  --topbar-bg: rgba(26, 29, 36, 0.94);
+  --mobile-nav-bg: rgba(28, 31, 39, 0.97);
 
-  /* Primary violet dark */
-  --primary:            #A78BFA;
-  --primary-dark:       #6B4EE6;
-  --primary-light:      #C4B5FD;
-  --primary-soft:       rgba(167, 139, 250, 0.14);
-  --primary-soft-hover: rgba(167, 139, 250, 0.22);
-  --primary-lighter:    rgba(107, 78, 230, 0.18);
-  --gradient-brand:     linear-gradient(135deg, #5538D1 0%, #6B4EE6 100%);
-  --gradient-hero:      linear-gradient(135deg, #1e1040 0%, #5538D1 50%, #6B4EE6 100%);
+  /* Primary lima, neon sobre o carvão */
+  --primary:            #B6FF2E;
+  --primary-dark:       #8FDB00;
+  --primary-light:      #D6FF85;
+  --primary-soft:       rgba(182, 255, 46, 0.14);
+  --primary-soft-hover: rgba(182, 255, 46, 0.22);
+  --primary-lighter:    rgba(182, 255, 46, 0.18);
+  --gradient-brand:     linear-gradient(135deg, #8FDB00 0%, #B6FF2E 100%);
+  --gradient-hero:      linear-gradient(135deg, #16210A 0%, #4C6B00 55%, #B6FF2E 100%);
+  /* Lima é claro demais para texto branco: usa quase-preto. */
+  --on-primary:         #14210A;
 
-  --income:             #4ADE80;
-  --income-dark:        #22C55E;
-  --income-light:       #86EFAC;
-  --income-soft:        rgba(74, 222, 128, 0.12);
-  --income-soft-hover:  rgba(74, 222, 128, 0.20);
-  --income-lighter:     rgba(34, 197, 94, 0.16);
-  --income-fill-border: rgba(74, 222, 128, 0.28);
+  --income:             #34D399;
+  --income-dark:        #10B981;
+  --income-light:       #6EE7B7;
+  --income-soft:        rgba(52, 211, 153, 0.14);
+  --income-soft-hover:  rgba(52, 211, 153, 0.22);
+  --income-lighter:     rgba(52, 211, 153, 0.18);
+  --income-fill-border: rgba(52, 211, 153, 0.28);
 
   --accent:             var(--primary);
   --accent-dark:        var(--primary-dark);
-  --accent-soft:        var(--income-soft);
-  --accent-soft-hover:  var(--income-soft-hover);
-  --accent-fill:        var(--income-soft);
-  --accent-fill-border: var(--income-fill-border);
+  --accent-soft:        var(--primary-soft);
+  --accent-soft-hover:  var(--primary-soft-hover);
+  --accent-fill:        var(--primary-soft);
+  --accent-fill-border: var(--primary-lighter);
 
-  --danger:            #FFAC82;
-  --danger-dark:       #FF5630;
-  --danger-soft:       rgba(255, 86, 48, 0.14);
-  --danger-soft-hover: rgba(255, 86, 48, 0.22);
-  --danger-fill:       rgba(255, 86, 48, 0.10);
-  --danger-fill-border: rgba(255, 86, 48, 0.28);
+  --neutral:      #9A9DAC;
+  --neutral-dark: #C3C6D2;
+  --neutral-soft: rgba(154, 157, 172, 0.14);
 
-  --accent-invest:             #76B0F1;
-  --accent-invest-dark:        #2065D1;
-  --accent-invest-soft:        rgba(118, 176, 241, 0.12);
-  --accent-invest-soft-hover:  rgba(118, 176, 241, 0.20);
-  --accent-invest-fill:        rgba(118, 176, 241, 0.10);
-  --accent-invest-fill-border: rgba(118, 176, 241, 0.28);
+  --warning:      #FBBF24;
+  --warning-dark: #F59E0B;
+  --warning-soft: rgba(251, 191, 36, 0.16);
+
+  --info:      #22D3EE;
+  --info-soft: rgba(34, 211, 238, 0.10);
+
+  --danger:            #FF6B5E;
+  --danger-dark:       #FF3B2F;
+  --danger-soft:       rgba(255, 107, 94, 0.14);
+  --danger-soft-hover: rgba(255, 107, 94, 0.22);
+  --danger-fill:       rgba(255, 107, 94, 0.10);
+  --danger-fill-border: rgba(255, 107, 94, 0.28);
+
+  --accent-invest:             #A78BFA;
+  --accent-invest-dark:        #7C5CFC;
+  --accent-invest-soft:        rgba(167, 139, 250, 0.14);
+  --accent-invest-soft-hover:  rgba(167, 139, 250, 0.22);
+  --accent-invest-fill:        rgba(167, 139, 250, 0.10);
+  --accent-invest-fill-border: rgba(167, 139, 250, 0.28);
 
   --shadow-xs:      0 0 2px 0 rgba(0, 0, 0, 0.36);
   --shadow-sm:      0 4px 8px rgba(0, 0, 0, 0.32);
@@ -207,10 +227,10 @@
   --shadow-card-hover: 0 0 2px 0 rgba(0, 0, 0, 0.24), 0 16px 32px -4px rgba(0, 0, 0, 0.32);
   --shadow:         var(--shadow-card);
   --shadow-lg:      0 24px 48px rgba(0, 0, 0, 0.48);
-  --shadow-primary: 0 8px 24px rgba(107, 78, 230, 0.32);
-  --shadow-income:  0 8px 20px rgba(74, 222, 128, 0.14);
-  --shadow-danger:  0 8px 20px rgba(255, 86, 48, 0.20);
-  --shadow-invest:  0 8px 20px rgba(118, 176, 241, 0.14);
+  --shadow-primary: 0 8px 24px rgba(182, 255, 46, 0.22);
+  --shadow-income:  0 8px 20px rgba(52, 211, 153, 0.16);
+  --shadow-danger:  0 8px 20px rgba(255, 107, 94, 0.20);
+  --shadow-invest:  0 8px 20px rgba(167, 139, 250, 0.16);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -313,7 +333,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none;
   border-radius: var(--radius);
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-weight: 700;
   font-size: 0.875rem;
   cursor: pointer;

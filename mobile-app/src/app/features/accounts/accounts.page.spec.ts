@@ -74,4 +74,27 @@ describe('AccountsPage', () => {
     expect(component.showForm()).toBeFalse();
     http.expectOne(`${base}/accounts/summary`).flush(summary);
   });
+
+  it('defaults card usage to 0 when unset', () => {
+    expect(component.cardUsagePct(bank)).toBe(0);
+  });
+
+  it('returns empty groups before the summary has loaded', () => {
+    component.summary.set(null);
+    expect(component.banks()).toEqual([]);
+    expect(component.cards()).toEqual([]);
+  });
+
+  it('onRefresh reloads and completes the refresher', () => {
+    const refresher = { complete: jasmine.createSpy('complete') } as unknown as HTMLIonRefresherElement;
+    component.onRefresh({ target: refresher } as unknown as CustomEvent);
+    http.expectOne(`${base}/accounts/summary`).flush(summary);
+    expect(refresher.complete).toHaveBeenCalled();
+  });
+
+  it('clears loading on a load error', () => {
+    component.load();
+    http.expectOne(`${base}/accounts/summary`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(component.loading()).toBeFalse();
+  });
 });

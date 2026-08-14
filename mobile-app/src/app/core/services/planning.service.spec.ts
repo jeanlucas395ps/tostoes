@@ -76,4 +76,48 @@ describe('PlanningService', () => {
     svc.bootstrapFromAuth([]);
     expect(svc.getActiveId()).toBeNull();
   });
+
+  it('active resolves the current planning or null', () => {
+    svc.items.set([p1, p2]);
+    svc.activeId.set(2);
+    expect(svc.active()).toEqual(p2);
+    svc.activeId.set(99);
+    expect(svc.active()).toBeNull();
+  });
+
+  it('keeps the previously stored planning selected when it is still present', () => {
+    storage.get.and.returnValue('2');
+    svc.load().subscribe();
+    http.expectOne(`${base}/plannings`).flush({ items: [p1, p2] });
+    expect(svc.activeId()).toBe(2);
+  });
+
+  it('falls back to the first planning when preferredId is not among them', () => {
+    svc.bootstrapFromAuth([p1, p2], 999);
+    expect(svc.getActiveId()).toBe(1);
+  });
+
+  it('initializes the active id from a valid stored value', () => {
+    storage.get.and.returnValue('7');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [PlanningService, { provide: StorageService, useValue: storage }],
+    });
+    const fresh = TestBed.inject(PlanningService);
+    expect(fresh.getActiveId()).toBe(7);
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('ignores an invalid stored id on construction', () => {
+    storage.get.and.returnValue('not-a-number');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [PlanningService, { provide: StorageService, useValue: storage }],
+    });
+    const fresh = TestBed.inject(PlanningService);
+    expect(fresh.getActiveId()).toBeNull();
+    TestBed.inject(HttpTestingController).verify();
+  });
 });

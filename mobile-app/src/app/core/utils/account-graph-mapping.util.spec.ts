@@ -20,7 +20,7 @@ describe('account-graph-mapping.util', () => {
 
   it('returns the palette entry for a known type', () => {
     const colors = nodeColors('income', 'light');
-    expect(colors.borderColor).toBe('#22C55E');
+    expect(colors.borderColor).toBe('#1BAA5C');
   });
 
   it('falls back to the unassigned palette for an unknown type', () => {

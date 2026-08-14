@@ -30,34 +30,37 @@ type ExtendedMode = AccountFlowGraphMode;
 // ── Paleta por tipo de nó ────────────────────────────────────────────────────
 interface NodeStyle { border: string; bg: string; text: string; }
 
-// Azul canônico de investimentos (= --accent-invest do design system)
-const INV_L = '#2065D1';
-const INV_D = '#76B0F1';
+// Azul/lima canônico da marca (= --primary do design system)
+const PRIMARY_L = '#0057FF';
+const PRIMARY_D = '#B6FF2E';
+// Violeta canônico de investimentos (= --accent-invest do design system)
+const INV_L = '#5A3FD1';
+const INV_D = '#A78BFA';
 
 const LIGHT: Record<string, NodeStyle> = {
-  bank:       { border: INV_L,     bg: 'rgba(32,101,209,0.08)',   text: '#103996' },
-  credit:     { border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',   text: '#b45309' },
-  bill:       { border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',   text: '#b45309' },
-  investment: { border: INV_L,     bg: 'rgba(32,101,209,0.08)',   text: '#103996' },
-  expense:    { border: '#FF5630', bg: 'rgba(255,86,48,0.08)',    text: '#B71D18' },
-  income:     { border: '#22C55E', bg: 'rgba(34,197,94,0.08)',    text: '#16A34A' },
+  bank:       { border: PRIMARY_L, bg: 'rgba(0,87,255,0.08)',     text: '#0041C4' },
+  credit:     { border: '#B5760A', bg: 'rgba(245,165,36,0.12)',   text: '#8A5808' },
+  bill:       { border: '#B5760A', bg: 'rgba(245,165,36,0.12)',   text: '#8A5808' },
+  investment: { border: INV_L,     bg: 'rgba(124,92,252,0.08)',   text: '#5A3FD1' },
+  expense:    { border: '#E5342B', bg: 'rgba(229,52,43,0.08)',    text: '#A8241D' },
+  income:     { border: '#1BAA5C', bg: 'rgba(27,170,92,0.08)',    text: '#0E8245' },
   goal:       { border: '#D97706', bg: 'rgba(217,119,6,0.08)',    text: '#92400E' },
-  transfer:   { border: '#0ea5e9', bg: 'rgba(14,165,233,0.10)',   text: '#0369a1' },
-  installment:{ border: '#f59e0b', bg: 'rgba(245,158,11,0.10)',  text: '#b45309' },
-  unassigned: { border: '#919EAB', bg: 'rgba(145,158,171,0.06)', text: '#637381' },
+  transfer:   { border: '#5B5E6B', bg: 'rgba(107,110,122,0.12)',  text: '#4B4E5A' },
+  installment:{ border: '#B5760A', bg: 'rgba(245,165,36,0.12)',  text: '#8A5808' },
+  unassigned: { border: '#8B8E9B', bg: 'rgba(107,110,122,0.06)', text: '#5B5E6B' },
 };
 
 const DARK: Record<string, NodeStyle> = {
-  bank:       { border: INV_D,     bg: 'rgba(118,176,241,0.14)',  text: '#B2D2F7' },
+  bank:       { border: PRIMARY_D, bg: 'rgba(182,255,46,0.14)',   text: '#D6FF85' },
   credit:     { border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
   bill:       { border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
-  investment: { border: INV_D,     bg: 'rgba(118,176,241,0.14)',  text: '#B2D2F7' },
-  expense:    { border: '#FF5630', bg: 'rgba(255,86,48,0.14)',    text: '#FF8A6A' }, // vermelho mesmo no dark
-  income:     { border: '#4ADE80', bg: 'rgba(74,222,128,0.14)',   text: '#86EFAC' },
+  investment: { border: INV_D,     bg: 'rgba(167,139,250,0.14)',  text: '#C4B5FD' },
+  expense:    { border: '#FF6B5E', bg: 'rgba(255,107,94,0.14)',   text: '#FF9086' },
+  income:     { border: '#34D399', bg: 'rgba(52,211,153,0.14)',   text: '#6EE7B7' },
   goal:       { border: '#FCD34D', bg: 'rgba(252,211,77,0.14)',   text: '#FDE68A' },
-  transfer:   { border: '#38bdf8', bg: 'rgba(56,189,248,0.14)',   text: '#7dd3fc' },
+  transfer:   { border: '#9A9DAC', bg: 'rgba(154,157,172,0.14)',  text: '#C3C6D2' },
   installment:{ border: '#FBBF24', bg: 'rgba(251,191,36,0.14)',   text: '#FCD34D' },
-  unassigned: { border: '#637381', bg: 'rgba(99,115,129,0.10)',  text: '#919EAB' },
+  unassigned: { border: '#6D707F', bg: 'rgba(154,157,172,0.10)', text: '#9A9DAC' },
 };
 
 function isDark(): boolean {
@@ -66,11 +69,11 @@ function isDark(): boolean {
 }
 
 function hexRgba(hex: string, a: number): string {
-  if (!hex || hex.length < 7) return `rgba(145,158,171,${a})`;
+  if (!hex || hex.length < 7) return `rgba(107,110,122,${a})`;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return isNaN(r) ? `rgba(145,158,171,${a})` : `rgba(${r},${g},${b},${a})`;
+  return isNaN(r) ? `rgba(107,110,122,${a})` : `rgba(${r},${g},${b},${a})`;
 }
 
 @Component({
@@ -101,7 +104,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     title: string;
     rows: { label: string; value: string; color?: string }[];
     color: string;
-  }>({ visible: false, x: 0, y: 0, title: '', rows: [], color: '#637381' });
+  }>({ visible: false, x: 0, y: 0, title: '', rows: [], color: '#6B6E7A' });
 
   monthLabel    = computed(() => MONTH_LABELS[this.month()] ?? '');
   totals        = computed(() => this.graph()?.totals ?? null);
@@ -145,7 +148,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     return opts.map(a => ({
       id: a.nodeId,
       label: a.name,
-      color: a.color || '#637381',
+      color: a.color || '#6B6E7A',
     }));
   });
 
@@ -247,7 +250,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             'text-max-width': '136px',
             'line-height': 1.3,
             'shadow-blur': 10,
-            'shadow-color': dark ? 'rgba(0,0,0,0.45)' : 'rgba(145,158,171,0.22)',
+            'shadow-color': dark ? 'rgba(0,0,0,0.45)' : 'rgba(35,32,27,0.18)',
             'shadow-offset-x': 0,
             'shadow-offset-y': 4,
             'shadow-opacity': 0.7,
@@ -476,7 +479,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     const dark   = isDark();
     const palette = dark ? DARK : LIGHT;
     const alpha   = dark ? 0.14 : 0.08;
-    const textClr = dark ? '#E8ECEF' : '#1C252E';
+    const textClr = dark ? '#F6F7F3' : '#14151A';
 
     const elements: cytoscape.ElementDefinition[] = [];
 
@@ -534,7 +537,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
           id: `e_${e.refId}_${e.from}_${e.to}`,
           source: e.from,
           target: e.to,
-          color: e.color || '#637381',
+          color: e.color || '#6B6E7A',
           amountLabel: this.fmtAmt(e.amountBrl),
           kind: e.kind || '',
           subKind: e.subKind || '',
@@ -558,7 +561,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     const bankBal = new Map<string, BankBal>();
     for (const n of g.nodes.filter(n => n.type === 'bank')) {
-      bankBal.set(n.id, { label: n.label, color: n.color || INV_L,
+      bankBal.set(n.id, { label: n.label, color: n.color || PRIMARY_L,
         inflow: 0, outflow: 0, destIds: new Set() });
     }
 
@@ -581,9 +584,9 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Nível 4, um nó de saldo por banco
     let totalBalance = 0;
-    const balSaldoClr = (v: number) => v >= 0 ? '#22C55E' : '#FF5630';
+    const balSaldoClr = (v: number) => v >= 0 ? '#1BAA5C' : '#E5342B';
     const balTextClr  = (v: number, d: boolean) =>
-      v >= 0 ? (d ? '#86EFAC' : '#16A34A') : (d ? '#FFAC82' : '#B71D18');
+      v >= 0 ? (d ? '#6EE7B7' : '#0E8245') : (d ? '#FF9086' : '#A8241D');
 
     for (const [bankId, b] of bankBal.entries()) {
       const bal = b.inflow - b.outflow;
@@ -610,8 +613,8 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
           const destType = destNode?.type ?? 'expense';
           const edgeClr = destType === 'investment' ? (dark ? INV_D : INV_L)
                         : destType === 'goal'       ? (destNode?.color || '#D97706')
-                        : destType === 'installment'? '#f59e0b'
-                        : '#FF5630'; // expense default
+                        : destType === 'installment'? '#B5760A'
+                        : '#E5342B'; // expense default
 
           elements.push({
             data: { id: `__bl_${bankId}_${destId}`, source: destId,
@@ -685,7 +688,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       const oType = orphan.type;
       const oClr  = oType === 'investment' ? (dark ? INV_D : INV_L)
                   : oType === 'goal'       ? (orphan.color || '#D97706')
-                  : '#FF5630';
+                  : '#E5342B';
       elements.push({
         data: {
           id: `__orph_${orphan.id}`,

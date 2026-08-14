@@ -117,4 +117,69 @@ describe('AuthService', () => {
       user: { id: 1, username: 'a', name: 'A', gender: 'male' },
     });
   });
+
+  it('bootstrap with a token loads the current user', async () => {
+    storage.get.and.returnValue('tok');
+    const p = auth.bootstrap();
+    http.expectOne(`${base}/auth/me`).flush({
+      user: { id: 1, username: 'a', name: 'A', gender: 'male' },
+      plannings: [],
+    });
+    await p;
+    expect(auth.ready()).toBeTrue();
+    expect(auth.user()?.id).toBe(1);
+  });
+
+  it('loadMe clears the session when the request fails', () => {
+    storage.get.and.returnValue('tok');
+    auth.loadMe().subscribe((u) => expect(u).toBeNull());
+    http.expectOne(`${base}/auth/me`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(storage.remove).toHaveBeenCalledWith(STORAGE_KEYS.token);
+  });
+
+  it('loadMe resolves to null without a token, skipping the request', () => {
+    storage.get.and.returnValue(null);
+    auth.loadMe().subscribe((u) => expect(u).toBeNull());
+    http.expectNone(`${base}/auth/me`);
+  });
+
+  it('loginAsync reports an offline message for network errors', async () => {
+    const p = auth.loginAsync('a', 'b');
+    http.expectOne(`${base}/auth/login`).error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+    const res = await p;
+    expect(res.message).toContain('indisponível');
+  });
+
+  it('loginAsync falls back to a generic message without a server error body', async () => {
+    const p = auth.loginAsync('a', 'b');
+    http.expectOne(`${base}/auth/login`).flush({}, { status: 500, statusText: 'Server Error' });
+    const res = await p;
+    expect(res.message).toContain('Erro 500');
+  });
+
+  it('registerAsync surfaces the offline and generic error messages', async () => {
+    const offline = auth.registerAsync({ username: 'b', password: 'x', name: 'B', email: 'b@b.com' });
+    http.expectOne(`${base}/auth/register`).error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+    expect((await offline).message).toBe('API indisponível.');
+
+    const generic = auth.registerAsync({ username: 'b', password: 'x', name: 'B', email: 'b@b.com' });
+    http.expectOne(`${base}/auth/register`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect((await generic).message).toContain('Erro 500');
+  });
+
+  it('forgotPasswordAsync falls back to a default error message', async () => {
+    const p = auth.forgotPasswordAsync('a@a.com');
+    http.expectOne(`${base}/auth/forgot-password`).flush({}, { status: 500, statusText: 'Server Error' });
+    const res = await p;
+    expect(res.ok).toBeFalse();
+    expect(res.message).toBe('Não foi possível enviar o e-mail.');
+  });
+
+  it('resetPasswordAsync falls back to a default error message', async () => {
+    const p = auth.resetPasswordAsync('tok', 'passpass');
+    http.expectOne(`${base}/auth/reset-password`).flush({}, { status: 500, statusText: 'Server Error' });
+    const res = await p;
+    expect(res.ok).toBeFalse();
+    expect(res.message).toBe('Não foi possível redefinir a senha.');
+  });
 });

@@ -24,4 +24,16 @@ describe('SafeHtmlPipe', () => {
     pipe.transform('<b onclick="alert(1)">x</b>');
     expect(spy).toHaveBeenCalledWith('');
   });
+
+  it('treats a null/undefined value as an empty string', () => {
+    const spy = spyOn(sanitizer, 'bypassSecurityTrustHtml').and.callThrough();
+    pipe.transform(undefined as unknown as string);
+    expect(spy).toHaveBeenCalledWith('');
+  });
+
+  it('blocks a disallowed tag nested inside the svg', () => {
+    const spy = spyOn(sanitizer, 'bypassSecurityTrustHtml').and.callThrough();
+    pipe.transform('<svg><foreignObject>x</foreignObject></svg>');
+    expect(spy).toHaveBeenCalledWith('');
+  });
 });

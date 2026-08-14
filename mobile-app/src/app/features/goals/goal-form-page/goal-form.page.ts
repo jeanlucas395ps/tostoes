@@ -69,7 +69,7 @@ export class GoalFormPage implements OnInit {
       endDate: addYears(today(), 1),
       dueDay: Math.min(28, new Date().getDate()),
       sourceFinancialAccountId: null,
-      color: '#6B4EE6',
+      color: '#0057FF',
     };
   }
 

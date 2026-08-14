@@ -227,9 +227,9 @@ export class HomeComponent implements OnInit {
     const surplus  = Math.max(0, income - expense - invest - goals);
 
     const raw = [
-      { label: 'Gastos',        value: expense, color: '#EF4444' },
-      { label: 'Investimentos', value: invest,  color: '#2065D1' },
-      { label: 'Sobra',         value: surplus, color: '#10B981' },
+      { label: 'Gastos',        value: expense, color: '#E5342B' },
+      { label: 'Investimentos', value: invest,  color: '#7C5CFC' },
+      { label: 'Sobra',         value: surplus, color: '#1BAA5C' },
     ].filter(s => s.value > 0);
 
     const total = raw.reduce((s, i) => s + i.value, 0) || 1;

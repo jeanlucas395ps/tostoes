@@ -60,7 +60,7 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 0.85rem;
   font-weight: 800;
   font-family: inherit;
@@ -571,7 +571,7 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 0.8rem;
   font-weight: 800;
   font-family: inherit;
@@ -1013,7 +1013,7 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 0.875rem;
   font-weight: 800;
   font-family: inherit;

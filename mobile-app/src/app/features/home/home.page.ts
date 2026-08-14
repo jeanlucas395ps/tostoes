@@ -111,9 +111,9 @@ export class HomePage implements OnInit, AfterViewInit {
 
     const result = buildDonutSlices(
       [
-        { label: 'Gastos', value: expense, color: '#EF4444' },
-        { label: 'Investimentos', value: invest, color: '#2065D1' },
-        { label: 'Sobra', value: surplus, color: '#10B981' },
+        { label: 'Gastos', value: expense, color: '#E5342B' },
+        { label: 'Investimentos', value: invest, color: '#7C5CFC' },
+        { label: 'Sobra', value: surplus, color: '#1BAA5C' },
       ],
       { gap: 3, minSweep: 2 }
     );

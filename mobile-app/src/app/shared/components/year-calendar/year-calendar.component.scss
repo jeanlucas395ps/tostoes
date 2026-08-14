@@ -54,7 +54,7 @@
   &.selected {
     background: var(--primary);
     border-color: var(--primary);
-    .cell-label, .cell-balance, .cell-tag { color: #fff; }
+    .cell-label, .cell-balance, .cell-tag { color: var(--on-primary); }
   }
   &.negative:not(.selected) .cell-balance { color: var(--danger-dark); }
 }

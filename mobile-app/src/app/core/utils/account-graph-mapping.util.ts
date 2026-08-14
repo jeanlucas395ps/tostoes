@@ -15,31 +15,31 @@ interface PaletteEntry {
 }
 
 const LIGHT_PALETTE: Record<string, PaletteEntry> = {
-  bank: { border: '#6B4EE6', bg: 'rgba(107, 78, 230, 0.08)', text: '#1C252E' },
-  credit: { border: '#B76E00', bg: 'rgba(255, 171, 0, 0.12)', text: '#1C252E' },
-  bill: { border: '#B76E00', bg: 'rgba(255, 171, 0, 0.12)', text: '#1C252E' },
-  investment: { border: '#2065D1', bg: 'rgba(32, 101, 209, 0.08)', text: '#1C252E' },
-  expense: { border: '#FF5630', bg: 'rgba(255, 86, 48, 0.08)', text: '#1C252E' },
-  income: { border: '#22C55E', bg: 'rgba(34, 197, 94, 0.08)', text: '#1C252E' },
-  goal: { border: '#B76E00', bg: 'rgba(255, 171, 0, 0.12)', text: '#1C252E' },
-  transfer: { border: '#637381', bg: 'rgba(145, 158, 171, 0.12)', text: '#1C252E' },
-  installment: { border: '#B76E00', bg: 'rgba(255, 171, 0, 0.12)', text: '#1C252E' },
-  balance: { border: '#1C252E', bg: '#F4F6F8', text: '#1C252E' },
-  unassigned: { border: '#919EAB', bg: 'rgba(145, 158, 171, 0.10)', text: '#637381' },
+  bank: { border: '#0057FF', bg: 'rgba(0, 87, 255, 0.08)', text: '#14151A' },
+  credit: { border: '#B5760A', bg: 'rgba(245, 165, 36, 0.12)', text: '#14151A' },
+  bill: { border: '#B5760A', bg: 'rgba(245, 165, 36, 0.12)', text: '#14151A' },
+  investment: { border: '#5A3FD1', bg: 'rgba(124, 92, 252, 0.08)', text: '#14151A' },
+  expense: { border: '#E5342B', bg: 'rgba(229, 52, 43, 0.08)', text: '#14151A' },
+  income: { border: '#1BAA5C', bg: 'rgba(27, 170, 92, 0.08)', text: '#14151A' },
+  goal: { border: '#B5760A', bg: 'rgba(245, 165, 36, 0.12)', text: '#14151A' },
+  transfer: { border: '#5B5E6B', bg: 'rgba(107, 110, 122, 0.12)', text: '#14151A' },
+  installment: { border: '#B5760A', bg: 'rgba(245, 165, 36, 0.12)', text: '#14151A' },
+  balance: { border: '#14151A', bg: '#F8F7F4', text: '#14151A' },
+  unassigned: { border: '#8B8E9B', bg: 'rgba(107, 110, 122, 0.10)', text: '#5B5E6B' },
 };
 
 const DARK_PALETTE: Record<string, PaletteEntry> = {
-  bank: { border: '#A78BFA', bg: 'rgba(167, 139, 250, 0.14)', text: '#FFFFFF' },
-  credit: { border: '#FFAB00', bg: 'rgba(255, 171, 0, 0.16)', text: '#FFFFFF' },
-  bill: { border: '#FFAB00', bg: 'rgba(255, 171, 0, 0.16)', text: '#FFFFFF' },
-  investment: { border: '#76B0F1', bg: 'rgba(118, 176, 241, 0.12)', text: '#FFFFFF' },
-  expense: { border: '#FFAC82', bg: 'rgba(255, 86, 48, 0.14)', text: '#FFFFFF' },
-  income: { border: '#4ADE80', bg: 'rgba(74, 222, 128, 0.12)', text: '#FFFFFF' },
-  goal: { border: '#FFAB00', bg: 'rgba(255, 171, 0, 0.16)', text: '#FFFFFF' },
-  transfer: { border: '#919EAB', bg: 'rgba(145, 158, 171, 0.14)', text: '#FFFFFF' },
-  installment: { border: '#FFAB00', bg: 'rgba(255, 171, 0, 0.16)', text: '#FFFFFF' },
-  balance: { border: '#FFFFFF', bg: '#28343F', text: '#FFFFFF' },
-  unassigned: { border: '#637381', bg: 'rgba(99, 115, 129, 0.14)', text: '#919EAB' },
+  bank: { border: '#B6FF2E', bg: 'rgba(182, 255, 46, 0.14)', text: '#F6F7F3' },
+  credit: { border: '#FBBF24', bg: 'rgba(251, 191, 36, 0.16)', text: '#F6F7F3' },
+  bill: { border: '#FBBF24', bg: 'rgba(251, 191, 36, 0.16)', text: '#F6F7F3' },
+  investment: { border: '#A78BFA', bg: 'rgba(167, 139, 250, 0.14)', text: '#F6F7F3' },
+  expense: { border: '#FF6B5E', bg: 'rgba(255, 107, 94, 0.14)', text: '#F6F7F3' },
+  income: { border: '#34D399', bg: 'rgba(52, 211, 153, 0.14)', text: '#F6F7F3' },
+  goal: { border: '#FBBF24', bg: 'rgba(251, 191, 36, 0.16)', text: '#F6F7F3' },
+  transfer: { border: '#9A9DAC', bg: 'rgba(154, 157, 172, 0.14)', text: '#F6F7F3' },
+  installment: { border: '#FBBF24', bg: 'rgba(251, 191, 36, 0.16)', text: '#F6F7F3' },
+  balance: { border: '#F6F7F3', bg: '#333644', text: '#F6F7F3' },
+  unassigned: { border: '#6D707F', bg: 'rgba(154, 157, 172, 0.14)', text: '#9A9DAC' },
 };
 
 /** #RRGGBB → rgba(r,g,b,alpha), usada para o fundo translúcido de nós com cor própria (conta/meta). */
