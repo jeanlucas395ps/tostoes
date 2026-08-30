@@ -67,6 +67,16 @@
           <app-user-avatar [user]="i.responsibleUser ?? null" [name]="responsibleLabel(i)" size="sm" />
           <span class="item-icon"><app-lucide-svg [nodes]="lucideFor(entryIcon(i))" /></span>
           <strong class="item-name">{{ i.name }}</strong>
+          @if (canAdvance(i)) {
+            <button
+              class="icon-btn small advance-btn"
+              type="button"
+              title="Adiantar parcela"
+              (click)="openAdvance(i); $event.stopPropagation()"
+            >
+              <ion-icon name="arrow-down-outline"></ion-icon>
+            </button>
+          }
           <button class="icon-btn small" type="button" (click)="remove(i); $event.stopPropagation()">
             <ion-icon name="trash-outline"></ion-icon>
           </button>
@@ -229,11 +239,25 @@
         </label>
       } @else {
         <label class="field">
-          <span class="field-label">{{ meta.kind === 'income' ? 'Conta bancária de destino (opcional)' : 'Pagar com (opcional)' }}</span>
+          <span class="field-label">
+            @if (isInstallmentMode()) {
+              Cartão de crédito
+            } @else if (meta.kind === 'income') {
+              Conta bancária de destino (opcional)
+            } @else {
+              Pagar com (opcional)
+            }
+          </span>
           <select class="select" [(ngModel)]="form.sourceFinancialAccountId">
-            <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
-            @for (a of bankFinancialAccounts(); track a.id) {
-              <option [ngValue]="a.id">{{ a.name }}</option>
+            @if (!isInstallmentMode()) {
+              <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+            } @else {
+              <option [ngValue]="null">Selecione o cartão</option>
+            }
+            @for (a of (isInstallmentMode() ? creditFinancialAccounts() : bankFinancialAccounts()); track a.id) {
+              <option [ngValue]="a.id">
+                {{ a.type === 'credit' ? 'Cartão' : 'Banco' }} · {{ a.name }}
+              </option>
             }
           </select>
         </label>
@@ -247,6 +271,60 @@
         <button class="btn-soft" type="button" (click)="closeForm()">Cancelar</button>
         <button class="btn-brand" type="button" [disabled]="saving()" (click)="save()">
           {{ saving() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (advancePrompt(); as item) {
+  <div class="modal-backdrop" (click)="cancelAdvance()">
+    <div class="modal sheet" (click)="$event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h3>Adiantar · {{ item.name }}</h3>
+      <p class="modal-hint">
+        Transferência do banco para o cartão
+        <strong>{{ item.sourceFinancialAccountName }}</strong>.
+      </p>
+
+      <label class="field">
+        <span class="field-label">Conta bancária de saída</span>
+        <select class="select" [ngModel]="advanceBankId()" (ngModelChange)="advanceBankId.set($event)">
+          <option [ngValue]="null">Selecione</option>
+          @for (a of pureBankAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Valor</span>
+          <input
+            class="num"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0.01"
+            [ngModel]="advanceAmount()"
+            (ngModelChange)="advanceAmount.set(+$event)"
+          />
+        </label>
+        <label class="field grow">
+          <span class="field-label">Data</span>
+          <input type="date" [ngModel]="advanceDate()" (ngModelChange)="advanceDate.set($event)" />
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" (click)="cancelAdvance()">Cancelar</button>
+        <button
+          class="btn-brand"
+          type="button"
+          [disabled]="!advanceBankId() || advanceAmount() <= 0"
+          (click)="submitAdvance()"
+        >
+          Confirmar
         </button>
       </div>
     </div>

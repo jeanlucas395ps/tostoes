@@ -95,8 +95,33 @@ describe('AccountFormComponent', () => {
     const req = http.expectOne(`${base}/accounts`);
     expect(req.request.body.creditLimit).toBeNull();
     expect(req.request.body.closingDay).toBeNull();
+    expect(req.request.body.cdiMonthlyRate).toBeNull();
     req.flush({ item: existing });
     expect(emitted).toBeTrue();
+  });
+
+  it('sends optional cdiMonthlyRate for investment accounts', () => {
+    fixture.detectChanges();
+    component.form.name = 'NuInvest';
+    component.form.type = 'investment';
+    component.form.cdiMonthlyRate = 0.012;
+    component.save();
+    const req = http.expectOne(`${base}/accounts`);
+    expect(req.request.body.type).toBe('investment');
+    expect(req.request.body.cdiMonthlyRate).toBe(0.012);
+    expect(req.request.body.creditLimit).toBeNull();
+    req.flush({ item: { ...existing, type: 'investment', cdiMonthlyRate: 0.012 } });
+  });
+
+  it('sends null cdiMonthlyRate when investment uses settings fallback', () => {
+    fixture.detectChanges();
+    component.form.name = 'NuInvest';
+    component.form.type = 'investment';
+    component.form.cdiMonthlyRate = null;
+    component.save();
+    const req = http.expectOne(`${base}/accounts`);
+    expect(req.request.body.cdiMonthlyRate).toBeNull();
+    req.flush({ item: { ...existing, type: 'investment', cdiMonthlyRate: null } });
   });
 
   it('PUTs to the account id when editing', () => {

@@ -24,6 +24,7 @@ interface AccountFormState {
   creditLimit: number | null;
   closingDay: number | null;
   dueDay: number | null;
+  cdiMonthlyRate: number | null;
 }
 
 @Component({
@@ -61,6 +62,7 @@ export class AccountFormComponent {
             creditLimit: a.creditLimit ?? 5000,
             closingDay: a.closingDay ?? 1,
             dueDay: a.dueDay ?? 10,
+            cdiMonthlyRate: a.cdiMonthlyRate ?? null,
           }
         : this.blankForm('bank');
     });
@@ -77,6 +79,7 @@ export class AccountFormComponent {
       creditLimit: 5000,
       closingDay: 1,
       dueDay: 10,
+      cdiMonthlyRate: null,
     };
   }
 
@@ -86,6 +89,10 @@ export class AccountFormComponent {
 
   isCredit(): boolean {
     return this.form.type === 'credit';
+  }
+
+  isInvestment(): boolean {
+    return this.form.type === 'investment';
   }
 
   isForeign(): boolean {
@@ -117,6 +124,7 @@ export class AccountFormComponent {
       creditLimit: this.isCredit() ? this.form.creditLimit : null,
       closingDay: this.isCredit() ? this.form.closingDay : null,
       dueDay: this.isCredit() ? this.form.dueDay : null,
+      cdiMonthlyRate: this.isInvestment() ? this.form.cdiMonthlyRate : null,
     };
     this.saving.set(true);
     this.api.saveAccount(payload, this.account()?.id).subscribe({

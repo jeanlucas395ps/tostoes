@@ -94,6 +94,26 @@ export class FinanceApiService {
     return this.http.delete<{ ok: boolean }>(`${this.base}/accounts/${id}`);
   }
 
+  /** Transferência confirmada banco → cartão/destino (adiantamento / pagamento espontâneo). */
+  advanceAccountPayment(
+    targetAccountId: number,
+    body: {
+      sourceAccountId: number;
+      amount: number;
+      currency?: Currency;
+      transactionDate?: string;
+      description?: string;
+      itemNames?: string[];
+    }
+  ): Observable<{ ok: boolean; outTransactionId: number; inTransactionId: number; description: string }> {
+    return this.http.post<{
+      ok: boolean;
+      outTransactionId: number;
+      inTransactionId: number;
+      description: string;
+    }>(`${this.base}/accounts/${targetAccountId}/advance-payment`, body);
+  }
+
   getTransactions(
     year: number,
     month: number,

@@ -12,6 +12,11 @@
   flex-shrink: 0;
 
   &.small { width: 28px; height: 28px; font-size: 1rem; }
+
+  &.advance-btn {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
 }
 
 .subtitle {
@@ -238,6 +243,13 @@ input[type='month'] {
   font-size: 0.8125rem;
   font-weight: 600;
   margin: 0 0 var(--sp-3);
+}
+
+.modal-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-3);
+  line-height: 1.4;
 }
 
 .modal-actions {

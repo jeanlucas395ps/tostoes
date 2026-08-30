@@ -97,6 +97,10 @@ export interface FinancialAccount {
   creditLimitBrl?: number | null;
   closingDay?: number | null;
   dueDay?: number | null;
+  /** Conta investimento: CDI mensal próprio (ex. 0.0095). Null = usa Configurações. */
+  cdiMonthlyRate?: number | null;
+  /** CDI efetivo após fallback para planning_settings. */
+  effectiveCdiMonthlyRate?: number | null;
   color?: string | null;
   sortOrder: number;
   balance: number;
@@ -183,8 +187,13 @@ export interface Transaction {
   monthPlanEntryId?: number | null;
   canUnconfirm?: boolean;
   /** Transferência: conta/valores das duas pernas */
+  transferPairMode?: 'transfer' | 'aporte' | null;
+  transferLinkedTxId?: number | null;
+  transferSourceAccountId?: number | null;
   transferSourceAccountName?: string | null;
+  transferTargetAccountId?: number | null;
   transferTargetAccountName?: string | null;
+  transferTargetAccountType?: string | null;
   transferOutAmount?: number;
   transferOutCurrency?: Currency;
   transferOutAmountBrl?: number;
@@ -249,6 +258,8 @@ export interface InvestmentPortfolioItem {
   projectedGainBrl: number;
   projectedBalanceBrl: number;
   yieldsCdi: boolean;
+  /** CDI mensal efetivo usado na projeção (ponderado por contas ou settings). */
+  effectiveCdiMonthlyRate?: number;
 }
 
 export interface InvestmentPortfolio {
@@ -358,7 +369,7 @@ export interface CreditBillItem {
   name: string;
   amountBrl: number;
   isInstallment: boolean;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'payment';
   dueDay?: number | null;
   monthPlanEntryId?: number | null;
   canCancel?: boolean;

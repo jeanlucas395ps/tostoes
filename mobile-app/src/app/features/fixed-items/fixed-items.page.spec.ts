@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular/standalone';
 import { FixedItemsPage } from './fixed-items.page';
 import { environment } from '../../../environments/environment';
-import { RecurringItem } from '../../core/models/api.models';
+import { FinancialAccount, RecurringItem } from '../../core/models/api.models';
 
 const base = environment.apiUrl;
 
@@ -40,14 +40,37 @@ function setup(data: Record<string, unknown>): {
   };
 }
 
-function flushBoot(http: HttpTestingController, hasInvestment = false): void {
+function flushBoot(
+  http: HttpTestingController,
+  opts: {
+    hasInvestment?: boolean;
+    /** expense / installment: GET /accounts sem type */
+    paymentAccounts?: boolean;
+    accounts?: FinancialAccount[];
+  } = {}
+): void {
   http.expectOne(`${base}/settings`).flush({ eurToBrlFallback: 6.1, usdToBrlFallback: 5.1 });
-  http.expectOne(`${base}/planning-taxonomy`).flush({ customTabs: [{ id: 1, name: 'Brasil', sortOrder: 0 }], itemCategories: [] });
-  http.expectOne(`${base}/auth/users`).flush({ items: [{ id: 5, username: 'carol', name: 'Carol', gender: 'female' } as never] });
-  http.expectOne((r) => r.url === `${base}/accounts` && r.params.get('type') === 'bank').flush({ items: [] });
-  if (hasInvestment) {
+  http.expectOne(`${base}/planning-taxonomy`).flush({
+    customTabs: [{ id: 1, name: 'Brasil', sortOrder: 0 }],
+    itemCategories: [],
+  });
+  http.expectOne(`${base}/auth/users`).flush({
+    items: [{ id: 5, username: 'carol', name: 'Carol', gender: 'female' } as never],
+  });
+  if (opts.paymentAccounts) {
+    http
+      .expectOne((r) => r.url === `${base}/accounts` && !r.params.get('type'))
+      .flush({ items: opts.accounts ?? [] });
+  } else {
+    http
+      .expectOne((r) => r.url === `${base}/accounts` && r.params.get('type') === 'bank')
+      .flush({ items: opts.accounts ?? [] });
+  }
+  if (opts.hasInvestment) {
     http.expectOne(`${base}/investment-types`).flush({ items: [] });
-    http.expectOne((r) => r.url === `${base}/accounts` && r.params.get('type') === 'investment').flush({ items: [] });
+    http
+      .expectOne((r) => r.url === `${base}/accounts` && r.params.get('type') === 'investment')
+      .flush({ items: [] });
   }
   http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
 }
@@ -61,6 +84,30 @@ const expenseData = {
   userOverviewTabs: true,
 };
 
+const creditCard = {
+  id: 30,
+  name: 'Nubank',
+  type: 'credit',
+  currency: 'BRL',
+  balance: 0,
+  balanceBrl: 0,
+  initialBalance: 0,
+  initialBalanceDate: '2026-01-01',
+  sortOrder: 0,
+} as FinancialAccount;
+
+const bankAccount = {
+  id: 2,
+  name: 'ActivoBanco',
+  type: 'bank',
+  currency: 'BRL',
+  balance: 1000,
+  balanceBrl: 1000,
+  initialBalance: 1000,
+  initialBalanceDate: '2026-01-01',
+  sortOrder: 0,
+} as FinancialAccount;
+
 describe('FixedItemsPage (expense)', () => {
   let fixture: ComponentFixture<FixedItemsPage>;
   let component: FixedItemsPage;
@@ -71,7 +118,7 @@ describe('FixedItemsPage (expense)', () => {
   beforeEach(() => {
     ({ fixture, component, http, alertCreate, toastCreate } = setup(expenseData));
     fixture.detectChanges();
-    flushBoot(http);
+    flushBoot(http, { paymentAccounts: true });
   });
 
   afterEach(() => http.verify());
@@ -131,7 +178,10 @@ describe('FixedItemsPage (expense)', () => {
   it('shows a toast with the server error when saving fails', async () => {
     component.form.name = 'Aluguel';
     await component.save();
-    http.expectOne(`${base}/recurring-items`).flush({ error: 'Categoria inválida.' }, { status: 400, statusText: 'Bad Request' });
+    http.expectOne(`${base}/recurring-items`).flush(
+      { error: 'Categoria inválida.' },
+      { status: 400, statusText: 'Bad Request' }
+    );
     expect(toastCreate).toHaveBeenCalled();
     expect(component.saving()).toBeFalse();
   });
@@ -146,7 +196,9 @@ describe('FixedItemsPage (expense)', () => {
   it('clears loading and completes the refresher on a load error', () => {
     const refresher = { complete: jasmine.createSpy('complete') } as unknown as HTMLIonRefresherElement;
     component.load(refresher);
-    http.expectOne((r) => r.url === `${base}/recurring-items`).flush({}, { status: 500, statusText: 'Server Error' });
+    http
+      .expectOne((r) => r.url === `${base}/recurring-items`)
+      .flush({}, { status: 500, statusText: 'Server Error' });
     expect(component.loading()).toBeFalse();
     expect(refresher.complete).toHaveBeenCalled();
   });
@@ -207,7 +259,10 @@ describe('FixedItemsPage (expense)', () => {
   });
 
   it('labels the payment account for an expense entry', () => {
-    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    const label = component.itemAccountLabel({
+      id: 1,
+      sourceFinancialAccountName: 'Nubank',
+    } as RecurringItem);
     expect(label).toBe('Pagamento: Nubank');
   });
 
@@ -259,7 +314,10 @@ describe('FixedItemsPage (income)', () => {
   afterEach(() => http.verify());
 
   it('labels the destination account for an income entry', () => {
-    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    const label = component.itemAccountLabel({
+      id: 1,
+      sourceFinancialAccountName: 'Nubank',
+    } as RecurringItem);
     expect(label).toBe('Conta: Nubank (destino)');
   });
 
@@ -273,17 +331,30 @@ describe('FixedItemsPage (installment mode)', () => {
   let fixture: ComponentFixture<FixedItemsPage>;
   let component: FixedItemsPage;
   let http: HttpTestingController;
+  let toastCreate: jasmine.Spy;
 
   beforeEach(() => {
-    ({ fixture, component, http } = setup({ ...expenseData, installmentMode: true, categoryDefault: 'Geral' }));
+    ({ fixture, component, http, toastCreate } = setup({
+      ...expenseData,
+      installmentMode: true,
+      categoryDefault: 'Geral',
+    }));
     fixture.detectChanges();
-    flushBoot(http);
+    flushBoot(http, {
+      paymentAccounts: true,
+      accounts: [bankAccount, creditCard],
+    });
   });
 
   afterEach(() => http.verify());
 
   it('does not use custom tabs while in installment mode', () => {
     expect(component.usesCustomTabs()).toBeFalse();
+  });
+
+  it('exposes only credit cards for installment source', () => {
+    expect(component.creditFinancialAccounts().map((a) => a.id)).toEqual([30]);
+    expect(component.pureBankAccounts().map((a) => a.id)).toEqual([2]);
   });
 
   it('computes the end month from the start month and installment count', () => {
@@ -306,17 +377,114 @@ describe('FixedItemsPage (installment mode)', () => {
     expect(component.error()).toContain('parcela');
   });
 
-  it('sends isInstallment with the start/end dates', async () => {
+  it('requires a credit card before saving an installment', async () => {
     component.form.name = 'Sofá';
     component.form.startMonth = '2026-02';
     component.form.installmentCount = 4;
+    component.form.sourceFinancialAccountId = null;
+    await component.save();
+    expect(component.error()).toContain('cartão');
+    http.expectNone(`${base}/recurring-items`);
+  });
+
+  it('rejects a bank account as installment source', async () => {
+    component.form.name = 'Sofá';
+    component.form.startMonth = '2026-02';
+    component.form.installmentCount = 4;
+    component.form.sourceFinancialAccountId = bankAccount.id;
+    await component.save();
+    expect(component.error()).toContain('cartão');
+    http.expectNone(`${base}/recurring-items`);
+  });
+
+  it('sends isInstallment with credit card and start/end dates', async () => {
+    component.form.name = 'Sofá';
+    component.form.startMonth = '2026-02';
+    component.form.installmentCount = 4;
+    component.form.sourceFinancialAccountId = creditCard.id;
     await component.save();
     const req = http.expectOne(`${base}/recurring-items`);
     expect(req.request.body.isInstallment).toBeTrue();
     expect(req.request.body.startDate).toBe('2026-02-01');
     expect(req.request.body.endDate).toBe('2026-05-01');
+    expect(req.request.body.sourceFinancialAccountId).toBe(30);
     req.flush({ item: {} as RecurringItem });
     http.expectOne((r) => r.url === `${base}/recurring-items`).flush({ items: [] });
+  });
+
+  it('canAdvance only when the source is a credit card', () => {
+    expect(
+      component.canAdvance({
+        id: 1,
+        sourceFinancialAccountId: creditCard.id,
+      } as RecurringItem)
+    ).toBeTrue();
+    expect(
+      component.canAdvance({
+        id: 2,
+        sourceFinancialAccountId: bankAccount.id,
+      } as RecurringItem)
+    ).toBeFalse();
+    expect(component.canAdvance({ id: 3 } as RecurringItem)).toBeFalse();
+  });
+
+  it('openAdvance prefills bank, amount and date', () => {
+    const item = {
+      id: 9,
+      name: 'TesteParcela',
+      amount: 500,
+      sourceFinancialAccountId: creditCard.id,
+      sourceFinancialAccountName: 'Nubank',
+    } as RecurringItem;
+    component.openAdvance(item);
+    expect(component.advancePrompt()).toEqual(item);
+    expect(component.advanceBankId()).toBe(2);
+    expect(component.advanceAmount()).toBe(500);
+  });
+
+  it('submitAdvance posts to advance-payment and clears the prompt', () => {
+    const item = {
+      id: 9,
+      name: 'TesteParcela',
+      amount: 500,
+      currency: 'BRL',
+      sourceFinancialAccountId: creditCard.id,
+    } as RecurringItem;
+    component.advancePrompt.set(item);
+    component.advanceBankId.set(2);
+    component.advanceAmount.set(500);
+    component.advanceDate.set('2026-08-15');
+    component.submitAdvance();
+    const req = http.expectOne(
+      (r) => r.url === `${base}/accounts/30/advance-payment` && r.method === 'POST'
+    );
+    expect(req.request.body).toEqual(
+      jasmine.objectContaining({
+        sourceAccountId: 2,
+        amount: 500,
+        transactionDate: '2026-08-15',
+        itemNames: ['TesteParcela'],
+      })
+    );
+    req.flush({ ok: true, outTransactionId: 1, inTransactionId: 2, description: 'x' });
+    expect(component.advancePrompt()).toBeNull();
+  });
+
+  it('submitAdvance shows a toast on error', () => {
+    const item = {
+      id: 9,
+      name: 'TesteParcela',
+      amount: 500,
+      sourceFinancialAccountId: creditCard.id,
+    } as RecurringItem;
+    component.advancePrompt.set(item);
+    component.advanceBankId.set(2);
+    component.advanceAmount.set(500);
+    component.submitAdvance();
+    http
+      .expectOne((r) => r.url.includes('/advance-payment'))
+      .flush({ error: 'falhou' }, { status: 422, statusText: 'Unprocessable' });
+    expect(toastCreate).toHaveBeenCalled();
   });
 });
 
@@ -335,7 +503,7 @@ describe('FixedItemsPage (investment)', () => {
       userOverviewTabs: true,
     }));
     fixture.detectChanges();
-    flushBoot(http, true);
+    flushBoot(http, { hasInvestment: true });
   });
 
   afterEach(() => http.verify());
@@ -365,12 +533,18 @@ describe('FixedItemsPage (investment)', () => {
   });
 
   it('labels only the destination when there is no source', () => {
-    const label = component.itemAccountLabel({ id: 1, financialAccountName: 'NuInvest' } as RecurringItem);
+    const label = component.itemAccountLabel({
+      id: 1,
+      financialAccountName: 'NuInvest',
+    } as RecurringItem);
     expect(label).toBe('Entrada: NuInvest');
   });
 
   it('labels only the source when there is no destination', () => {
-    const label = component.itemAccountLabel({ id: 1, sourceFinancialAccountName: 'Nubank' } as RecurringItem);
+    const label = component.itemAccountLabel({
+      id: 1,
+      sourceFinancialAccountName: 'Nubank',
+    } as RecurringItem);
     expect(label).toBe('Saída: Nubank');
   });
 

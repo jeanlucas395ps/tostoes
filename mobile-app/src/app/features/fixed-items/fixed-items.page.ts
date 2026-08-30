@@ -33,7 +33,7 @@ import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-sv
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import type { IconNode } from 'lucide';
 import { responsibleLabel } from '../../core/utils/responsible.util';
-import { formatMoneyWithBrl, previewBrl, isForeignCurrency } from '../../core/utils/money.util';
+import { entryAmount, formatMoneyWithBrl, previewBrl, isForeignCurrency } from '../../core/utils/money.util';
 import { installmentEndMonth, clampInstallmentCount } from '../../core/utils/installment.util';
 import { buildDonutSlices } from '../../core/utils/donut-chart.util';
 
@@ -114,6 +114,10 @@ export class FixedItemsPage implements OnInit {
   newCategoryMode = signal(false);
   saving = signal(false);
   error = signal('');
+  advancePrompt = signal<RecurringItem | null>(null);
+  advanceBankId = signal<number | null>(null);
+  advanceAmount = signal(0);
+  advanceDate = signal(new Date().toISOString().slice(0, 10));
 
   categoryIconOptions = CATEGORY_ICON_OPTIONS;
   responsibleLabel = responsibleLabel;
@@ -122,6 +126,13 @@ export class FixedItemsPage implements OnInit {
   lucideFor = (icon: string | null | undefined): IconNode => categoryLucideNodes(icon);
 
   form: ItemFormState = this.blankForm();
+
+  pureBankAccounts = computed(() =>
+    this.bankFinancialAccounts().filter((a) => a.type === 'bank')
+  );
+  creditFinancialAccounts = computed(() =>
+    this.bankFinancialAccounts().filter((a) => a.type === 'credit')
+  );
 
   isInstallmentMode(): boolean {
     return this.meta.installmentMode === true;
@@ -204,7 +215,15 @@ export class FixedItemsPage implements OnInit {
       }
     });
     this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
-    this.api.getAccounts('bank').subscribe((r) => this.bankFinancialAccounts.set(r.items));
+    if (this.isInstallmentMode() || this.meta.kind === 'expense') {
+      this.api.getAccounts().subscribe((r) => {
+        this.bankFinancialAccounts.set(
+          r.items.filter((a) => a.type === 'bank' || a.type === 'credit')
+        );
+      });
+    } else {
+      this.api.getAccounts('bank').subscribe((r) => this.bankFinancialAccounts.set(r.items));
+    }
     if (this.isInvestment()) {
       this.api.getInvestmentTypes().subscribe((r) => this.investmentTypes.set(r.items));
       this.api.getAccounts('investment').subscribe((r) => this.investmentFinancialAccounts.set(r.items));
@@ -361,6 +380,13 @@ export class FixedItemsPage implements OnInit {
         this.error.set('O mês final não pode ser antes do inicial.');
         return;
       }
+      const cardId = this.form.sourceFinancialAccountId;
+      const isCredit =
+        !!cardId && this.creditFinancialAccounts().some((a) => a.id === cardId);
+      if (!isCredit) {
+        this.error.set('Vincule um cartão de crédito à compra parcelada.');
+        return;
+      }
     }
 
     const category = this.isInvestment()
@@ -420,6 +446,53 @@ export class FixedItemsPage implements OnInit {
       ],
     });
     await alert.present();
+  }
+
+  canAdvance(item: RecurringItem): boolean {
+    if (!this.isInstallmentMode() || !item.sourceFinancialAccountId) return false;
+    return this.creditFinancialAccounts().some((a) => a.id === item.sourceFinancialAccountId);
+  }
+
+  openAdvance(item: RecurringItem): void {
+    if (!this.canAdvance(item)) {
+      void this.toast('Vincule um cartão de crédito nesta compra parcelada para adiantar.');
+      return;
+    }
+    const banks = this.pureBankAccounts();
+    this.advanceBankId.set(banks[0]?.id ?? null);
+    this.advanceAmount.set(entryAmount(item));
+    this.advanceDate.set(new Date().toISOString().slice(0, 10));
+    this.advancePrompt.set(item);
+  }
+
+  cancelAdvance(): void {
+    this.advancePrompt.set(null);
+  }
+
+  submitAdvance(): void {
+    const item = this.advancePrompt();
+    const bankId = this.advanceBankId();
+    const cardId = item?.sourceFinancialAccountId;
+    const amount = this.advanceAmount();
+    if (!item || !bankId || !cardId || amount <= 0) return;
+
+    this.api
+      .advanceAccountPayment(cardId, {
+        sourceAccountId: bankId,
+        amount,
+        currency: item.currency ?? 'BRL',
+        transactionDate: this.advanceDate(),
+        description: `Adiantamento · ${item.name}`,
+        itemNames: [item.name],
+      })
+      .subscribe({
+        next: () => {
+          this.advancePrompt.set(null);
+          void this.toast('Adiantamento registrado.');
+        },
+        error: (err) =>
+          void this.toast(err?.error?.error ?? 'Não foi possível registrar o adiantamento.'),
+      });
   }
 }
 

@@ -47,7 +47,7 @@
             @if (bill.remainingBrl > 0) {
               <button class="btn-brand pay-btn" type="button" (click)="openPayBill(bill)">Pagar</button>
             } @else {
-              <span class="tag tag-income">Paga</span>
+              <button class="btn-brand pay-btn" type="button" (click)="openPayBill(bill)">Adiantar</button>
             }
           </div>
 
@@ -59,14 +59,21 @@
 
           @if (bill.items.length) {
             <div class="bill-items">
-              @for (it of bill.items; track it.id) {
+              @for (it of bill.items; track it.status + '-' + it.id) {
                 <div class="bill-item">
-                  <span class="tag" [class.tag-installment]="it.isInstallment" [class.tag-neutral]="!it.isInstallment">
-                    {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+                  <span
+                    class="tag"
+                    [class.tag-installment]="it.isInstallment && it.status !== 'payment'"
+                    [class.tag-neutral]="!it.isInstallment && it.status !== 'payment'"
+                    [class.tag-payment]="it.status === 'payment'"
+                  >
+                    {{ it.status === 'payment' ? 'Pagamento' : (it.isInstallment ? 'Parcela' : 'Compra') }}
                   </span>
                   <span class="bill-item-name">{{ it.name }}</span>
                   <span class="num">{{ it.amountBrl | currencyBrl }}</span>
-                  <span class="bill-item-status">{{ it.status === 'pending' ? 'a confirmar' : 'ok' }}</span>
+                  <span class="bill-item-status">
+                    {{ it.status === 'pending' ? 'a confirmar' : (it.status === 'payment' ? 'pago' : 'ok') }}
+                  </span>
                   @if (it.canCancel !== false) {
                     <button class="icon-btn small" type="button" (click)="cancelBillItem(it)">
                       <ion-icon name="trash-outline"></ion-icon>
@@ -95,9 +102,19 @@
   @if (activeSegment() === 'pending') {
     <div class="section-header">
       <h3>Pendentes</h3>
-      <button class="add-btn" type="button" (click)="openNewVariable()">
-        <ion-icon name="add-outline"></ion-icon> Novo
-      </button>
+      <div class="section-header-tools">
+        <input
+          type="search"
+          class="list-filter"
+          placeholder="Filtrar…"
+          [ngModel]="pendingFilter()"
+          (ngModelChange)="pendingFilter.set($event)"
+          aria-label="Filtrar pendentes"
+        />
+        <button class="add-btn" type="button" (click)="openNewVariable()">
+          <ion-icon name="add-outline"></ion-icon> Novo
+        </button>
+      </div>
     </div>
 
     @if (!loading() && !sortedPending().length) {
@@ -136,7 +153,19 @@
       }
     </div>
   } @else {
-    <div class="section-header"><h3>Confirmados</h3></div>
+    <div class="section-header">
+      <h3>Confirmados</h3>
+      <div class="section-header-tools">
+        <input
+          type="search"
+          class="list-filter"
+          placeholder="Filtrar…"
+          [ngModel]="confirmedFilter()"
+          (ngModelChange)="confirmedFilter.set($event)"
+          aria-label="Filtrar confirmados"
+        />
+      </div>
+    </div>
 
     @if (!loading() && !sortedConfirmed().length) {
       <p class="empty-state">Sem lançamentos ainda</p>
@@ -223,6 +252,14 @@
       }
 
       @if (variableIsTransfer()) {
+        <p class="hint">
+          @if (editingTransferPair()) {
+            Altere valor, data ou contas. As duas pernas atualizam juntas.
+          } @else {
+            Com saída e entrada preenchidas, confirma na hora e atualiza os saldos.
+            Banco → investimento vira aporte.
+          }
+        </p>
         <label class="field">
           <span class="field-label">Conta origem</span>
           <select class="select" [(ngModel)]="variableForm.bankAccountId">
@@ -307,15 +344,17 @@
       </label>
 
       @if (editingTx()) {
-        <label class="field">
-          <span class="field-label">Conta</span>
-          <select class="select" [(ngModel)]="variableForm.accountId">
-            <option [ngValue]="null">Selecione</option>
-            @for (a of allAccounts(); track a.id) {
-              <option [ngValue]="a.id">{{ a.name }}</option>
-            }
-          </select>
-        </label>
+        @if (!editingTransferPair()) {
+          <label class="field">
+            <span class="field-label">Conta</span>
+            <select class="select" [(ngModel)]="variableForm.accountId">
+              <option [ngValue]="null">Selecione</option>
+              @for (a of allAccounts(); track a.id) {
+                <option [ngValue]="a.id">{{ a.name }}</option>
+              }
+            </select>
+          </label>
+        }
         <label class="field">
           <span class="field-label">Data</span>
           <input type="date" [(ngModel)]="variableForm.transactionDate" />
@@ -334,12 +373,16 @@
   <div class="modal-backdrop" (click)="cancelPayBill()">
     <div class="modal sheet" (click)="$event.stopPropagation()">
       <div class="sheet-handle"></div>
-      <h3>Pagar fatura</h3>
+      <h3>Pagar / adiantar</h3>
       <p class="entry-name">{{ bill.name }}</p>
+      <p class="modal-hint">
+        Transferência do banco para o cartão.
+        @if (bill.dueDay) { Vence dia {{ bill.dueDay }}. }
+      </p>
 
       <label class="field">
         <span class="field-label">Pagar com</span>
-        <select class="select" [(ngModel)]="payBillBankId">
+        <select class="select" [ngModel]="payBillBankId()" (ngModelChange)="payBillBankId.set($event)">
           <option [ngValue]="null">Selecione</option>
           @for (a of bankAccounts(); track a.id) {
             <option [ngValue]="a.id">{{ a.name }}</option>
@@ -347,13 +390,55 @@
         </select>
       </label>
 
-      <p class="pay-bill-amount">
-        Valor: <strong class="num">{{ bill.remainingBrl | currencyBrl }}</strong>
-      </p>
+      <div class="amount-row">
+        <label class="field grow">
+          <span class="field-label">Valor (R$)</span>
+          <input
+            class="num"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0.01"
+            [ngModel]="payBillAmount()"
+            (ngModelChange)="payBillAmount.set(+$event)"
+          />
+        </label>
+        <label class="field grow">
+          <span class="field-label">Data</span>
+          <input type="date" [ngModel]="payBillDate()" (ngModelChange)="payBillDate.set($event)" />
+        </label>
+      </div>
+
+      @if (payableBillItems(bill).length) {
+        <div class="pay-bill-items">
+          <span class="field-label">O que está adiantando? (opcional)</span>
+          @for (it of payableBillItems(bill); track it.status + '-' + it.id) {
+            <label class="pay-bill-item-check">
+              <input
+                type="checkbox"
+                [checked]="isPayBillItemSelected(it.id)"
+                (change)="togglePayBillItem(it.id)"
+              />
+              <span class="tag" [class.tag-installment]="it.isInstallment" [class.tag-neutral]="!it.isInstallment">
+                {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+              </span>
+              <span class="bill-item-name">{{ it.name }}</span>
+              <span class="num">{{ it.amountBrl | currencyBrl }}</span>
+            </label>
+          }
+        </div>
+      }
 
       <div class="modal-actions">
         <button class="btn-soft" type="button" (click)="cancelPayBill()">Cancelar</button>
-        <button class="btn-brand" type="button" [disabled]="!payBillBankId()" (click)="submitPayBill()">Pagar</button>
+        <button
+          class="btn-brand"
+          type="button"
+          [disabled]="!payBillBankId() || payBillAmount() <= 0"
+          (click)="submitPayBill()"
+        >
+          Confirmar
+        </button>
       </div>
     </div>
   </div>

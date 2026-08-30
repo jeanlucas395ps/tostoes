@@ -404,10 +404,15 @@ describe('MovementsPage', () => {
       component.openNewVariable();
       component.variableForm.kind = 'transfer';
       component.variableForm.name = 'Envio';
+      component.variableForm.bankAccountId = 1;
+      component.variableForm.financialAccountId = 2;
       const savePromise = component.saveVariable();
       const req = http.expectOne((r) => r.url === `${base}/month-plan` && r.method === 'POST');
       expect(req.request.body.category).toBe('Transferência');
-      req.flush({});
+      expect(req.request.body.sourceFinancialAccountId).toBe(1);
+      expect(req.request.body.financialAccountId).toBe(2);
+      // Sem entry retornada → não auto-confirma; só fecha e recarrega.
+      req.flush({ entries: [], sections: {} });
       await savePromise;
       http.expectOne((r) => r.url === `${base}/planning-taxonomy`).flush({ customTabs: [], itemCategories: [] });
       flushLedger();
@@ -458,16 +463,17 @@ describe('MovementsPage', () => {
       expect(component.busyId()).toBeNull();
     });
 
-    it('clears state when the confirm call itself fails', () => {
+    it('keeps the dialog open and shows a toast when confirm fails', async () => {
       component.confirmEntry.set(pendingFixed);
       const result: ConfirmAccountResult = { accountId: 1, amount: 1500, currency: 'BRL', kind: 'expense' };
       component.submitConfirm(result);
       http.expectOne((r) => r.url === `${base}/month-plan/${pendingFixed.id}/confirm`).flush(
-        {},
+        { error: 'Saldo insuficiente.' },
         { status: 500, statusText: 'Server Error' }
       );
-      expect(component.confirmEntry()).toBeNull();
+      expect(component.confirmEntry()).toEqual(pendingFixed);
       expect(component.busyId()).toBeNull();
+      expect(toastCreate).toHaveBeenCalled();
     });
   });
 
@@ -495,6 +501,7 @@ describe('MovementsPage', () => {
         items: [{ id: 4, type: 'bank' } as FinancialAccount, { id: 5, type: 'investment' } as FinancialAccount],
       });
       expect(component.payBillBankId()).toBe(4);
+      expect(component.payBillAmount()).toBe(100);
       expect(component.payBillPrompt()).toEqual(bill);
     });
 
@@ -504,50 +511,40 @@ describe('MovementsPage', () => {
       expect(component.payBillPrompt()).toBeNull();
     });
 
-    it('submitPayBill is a no-op without a bill, bank id, or remaining balance', async () => {
+    it('submitPayBill is a no-op without a bill, bank id, or positive amount', async () => {
       component.payBillPrompt.set(null);
       component.payBillBankId.set(4);
+      component.payBillAmount.set(100);
       await component.submitPayBill();
       expect(component.payBillPrompt()).toBeNull();
-      http.expectNone((r) => r.url === `${base}/month-plan`);
+      http.expectNone((r) => r.url.includes('/advance-payment'));
 
-      component.payBillPrompt.set({ ...bill, remainingBrl: 0 });
+      component.payBillPrompt.set(bill);
+      component.payBillBankId.set(4);
+      component.payBillAmount.set(0);
       await component.submitPayBill();
-      expect(component.payBillPrompt()?.remainingBrl).toBe(0);
-      http.expectNone((r) => r.url === `${base}/month-plan`);
+      expect(component.payBillPrompt()).toEqual(bill);
+      http.expectNone((r) => r.url.includes('/advance-payment'));
     });
 
-    it('submitPayBill creates the transfer and auto-confirms the matching entry', async () => {
+    it('submitPayBill advances payment via the accounts endpoint', async () => {
       component.payBillPrompt.set(bill);
       component.payBillBankId.set(4);
+      component.payBillAmount.set(100);
+      component.payBillDate.set('2026-08-10');
       const submitPromise = component.submitPayBill();
-      const req = http.expectOne((r) => r.url === `${base}/month-plan` && r.method === 'POST');
-      req.flush({
-        sections: {
-          variable: [
-            {
-              id: 55,
-              kind: 'transfer',
-              status: 'pending',
-              name: 'Pagamento fatura · Nubank',
-              sourceFinancialAccountId: 4,
-            },
-          ],
-        },
-      });
-      const confirmReq = http.expectOne((r) => r.url === `${base}/month-plan/55/confirm`);
-      confirmReq.flush({});
-      await submitPromise;
-      flushLedger();
-      expect(component.payBillPrompt()).toBeNull();
-    });
-
-    it('submitPayBill reloads directly when no matching entry is found', async () => {
-      component.payBillPrompt.set(bill);
-      component.payBillBankId.set(4);
-      const submitPromise = component.submitPayBill();
-      const req = http.expectOne((r) => r.url === `${base}/month-plan` && r.method === 'POST');
-      req.flush({ sections: {} });
+      const req = http.expectOne((r) => r.url === `${base}/accounts/7/advance-payment` && r.method === 'POST');
+      expect(req.request.body).toEqual(
+        jasmine.objectContaining({
+          sourceAccountId: 4,
+          amount: 100,
+          currency: 'BRL',
+          transactionDate: '2026-08-10',
+          description: 'Pagamento fatura · Nubank',
+        })
+      );
+      expect(req.request.body.itemNames).toBeUndefined();
+      req.flush({ ok: true, outTransactionId: 1, inTransactionId: 2, description: 'x' });
       await submitPromise;
       flushLedger();
       expect(component.payBillPrompt()).toBeNull();
@@ -556,8 +553,9 @@ describe('MovementsPage', () => {
     it('submitPayBill shows a toast when the request fails', async () => {
       component.payBillPrompt.set(bill);
       component.payBillBankId.set(4);
+      component.payBillAmount.set(100);
       const submitPromise = component.submitPayBill();
-      http.expectOne((r) => r.url === `${base}/month-plan` && r.method === 'POST').flush(
+      http.expectOne((r) => r.url === `${base}/accounts/7/advance-payment` && r.method === 'POST').flush(
         {},
         { status: 500, statusText: 'Server Error' }
       );
@@ -808,18 +806,27 @@ describe('MovementsPage', () => {
       expect(component.payBillBankId()).toBeNull();
     });
 
-    it('matches the auto-confirm entry by source account when the name differs', async () => {
-      const bill = { accountId: 5, name: 'Fatura X', forecast: { pendingBrl: 0, confirmedBrl: 0, totalBrl: 0 }, paidBrl: 0, remainingBrl: 80, items: [] };
-      component.payBillPrompt.set(bill);
+    it('submitPayBill includes selected bill item names', async () => {
+      const billWithItems: CreditBill = {
+        accountId: 5,
+        name: 'Fatura X',
+        forecast: { pendingBrl: 0, confirmedBrl: 0, totalBrl: 80 },
+        paidBrl: 0,
+        remainingBrl: 80,
+        items: [
+          { id: 1, name: 'Compra A', amountBrl: 30, isInstallment: false, status: 'confirmed' },
+          { id: 2, name: 'Compra B', amountBrl: 50, isInstallment: true, status: 'pending' },
+        ],
+      };
+      component.payBillPrompt.set(billWithItems);
       component.payBillBankId.set(4);
+      component.payBillAmount.set(80);
+      component.payBillDate.set('2026-08-10');
+      component.payBillSelectedIds.set(new Set([1, 2]));
       const submitPromise = component.submitPayBill();
-      const req = http.expectOne((r) => r.url === `${base}/month-plan` && r.method === 'POST');
-      req.flush({
-        sections: {
-          today: [{ id: 61, kind: 'transfer', status: 'pending', name: 'Outro nome qualquer', sourceFinancialAccountId: 4 }],
-        },
-      });
-      http.expectOne(`${base}/month-plan/61/confirm`).flush({});
+      const req = http.expectOne((r) => r.url === `${base}/accounts/5/advance-payment` && r.method === 'POST');
+      expect(req.request.body.itemNames).toEqual(['Compra A', 'Compra B']);
+      req.flush({ ok: true, outTransactionId: 1, inTransactionId: 2, description: 'x' });
       await submitPromise;
       flushLedger();
     });

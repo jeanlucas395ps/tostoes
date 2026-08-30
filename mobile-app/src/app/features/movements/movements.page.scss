@@ -27,9 +27,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-2);
   margin: var(--sp-5) 0 var(--sp-3);
 
-  h3 { font-size: 0.9375rem; }
+  h3 { font-size: 0.9375rem; flex-shrink: 0; }
+}
+
+.section-header-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.list-filter {
+  flex: 1;
+  min-width: 0;
+  max-width: 160px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text);
+
+  &::placeholder { color: var(--text-muted); }
 }
 
 .add-btn {
@@ -329,6 +354,44 @@ ion-segment {
 .pay-bill-amount {
   font-size: 0.9375rem;
   margin: var(--sp-2) 0 0;
+}
+
+.modal-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-3);
+}
+
+.pay-bill-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 var(--sp-3);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.pay-bill-item-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.8125rem;
+
+  input { flex-shrink: 0; }
+
+  .bill-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tag-payment {
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .icon-picker {
