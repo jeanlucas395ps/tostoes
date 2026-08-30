@@ -245,33 +245,48 @@
     @if (!isInvestment()) {
       <label>
         <span>
-          @if (meta().kind === 'income') {
+          @if (isInstallmentMode()) {
+            Cartão de crédito
+          } @else if (meta().kind === 'income') {
             Conta bancária de destino (opcional)
           } @else {
             Pagar com, banco ou cartão (opcional)
           }
         </span>
-        @if (!bankFinancialAccounts().length) {
+        @if (isInstallmentMode() ? !creditFinancialAccounts().length : !bankFinancialAccounts().length) {
           <p class="hint-warn">
-            Sem contas, cadastre em
-            <a routerLink="/contas">Conta e Cartão</a>
-            ou escolha na confirmação em
-            <a routerLink="/movimentos">Movimentos</a>.
+            @if (isInstallmentMode()) {
+              Cadastre um cartão em
+              <a routerLink="/contas">Conta e Cartão</a>.
+            } @else {
+              Sem contas, cadastre em
+              <a routerLink="/contas">Conta e Cartão</a>
+              ou escolha na confirmação em
+              <a routerLink="/movimentos">Movimentos</a>.
+            }
           </p>
         } @else {
           <select [(ngModel)]="form.sourceFinancialAccountId">
-            <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
-            @for (a of bankFinancialAccounts(); track a.id) {
+            @if (!isInstallmentMode()) {
+              <option [ngValue]="null">Definir na confirmação (Movimentos)</option>
+            } @else {
+              <option [ngValue]="null">Selecione o cartão</option>
+            }
+            @for (a of (isInstallmentMode() ? creditFinancialAccounts() : bankFinancialAccounts()); track a.id) {
               <option [ngValue]="a.id">
                 {{ a.type === 'credit' ? 'Cartão' : 'Banco' }} · {{ a.name }}
               </option>
             }
           </select>
           <small class="hint">
-            @if (meta().kind === 'expense' || isInstallmentMode()) {
+            @if (isInstallmentMode()) {
+              A compra entra na fatura do cartão e pode ser adiantada em Movimentos ou aqui.
+            } @else if (meta().kind === 'expense') {
               No cartão, o valor entra na previsão da fatura do mês.
+              Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
+            } @else {
+              Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
             }
-            Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
           </small>
         }
       </label>
@@ -356,6 +371,9 @@
                 </div>
                 <div class="item-right">
                   <span class="amount">{{ itemLabel(item) }}</span>
+                  @if (canAdvance(item)) {
+                    <button type="button" class="btn-icon btn-advance" title="Adiantar parcela" (click)="openAdvance(item)">↓$</button>
+                  }
                   <button type="button" class="btn-icon" (click)="openEdit(item)">✎</button>
                   <button type="button" class="btn-icon danger" (click)="remove(item)">×</button>
                 </div>
@@ -384,6 +402,46 @@
       <div class="modal-actions">
         <button type="button" class="btn-muted" (click)="cancelForm()">Cancelar</button>
         <button type="button" class="btn-primary" (click)="save()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (advancePrompt(); as item) {
+  <div class="modal-backdrop" (click)="cancelAdvance()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Adiantar · {{ item.name }}</h3>
+      <p class="modal-hint">
+        Cria uma transferência confirmada da conta bancária para o cartão
+        <strong>{{ item.sourceFinancialAccountName }}</strong>, reduzindo a dívida.
+      </p>
+      <label class="modal-field">
+        <span>Conta bancária de saída</span>
+        <select [ngModel]="advanceBankId()" (ngModelChange)="advanceBankId.set($event)">
+          <option [ngValue]="null">Selecione</option>
+          @for (a of pureBankAccounts(); track a.id) {
+            <option [ngValue]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="modal-field">
+        <span>Valor</span>
+        <input type="number" step="0.01" min="0.01" [ngModel]="advanceAmount()" (ngModelChange)="advanceAmount.set(+$event)" />
+      </label>
+      <label class="modal-field">
+        <span>Data</span>
+        <input type="date" [ngModel]="advanceDate()" (ngModelChange)="advanceDate.set($event)" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" (click)="cancelAdvance()">Cancelar</button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!advanceBankId() || advanceAmount() <= 0"
+          (click)="submitAdvance()"
+        >
+          Confirmar adiantamento
+        </button>
       </div>
     </div>
   </div>

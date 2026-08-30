@@ -334,6 +334,25 @@
         </label>
       }
 
+      @if (form.type === 'investment') {
+        <label>
+          <span>Taxa CDI mensal (opcional)</span>
+          <input
+            type="number"
+            [(ngModel)]="form.cdiMonthlyRate"
+            step="0.0001"
+            min="0"
+            max="1"
+            placeholder="Ex.: 0.0095"
+          />
+          <small class="hint">
+            Deixe vazio para usar a taxa CDI de
+            <a routerLink="/configuracoes">Configurações</a>
+            (ex.: 0.0095 = 0,95%/mês).
+          </small>
+        </label>
+      }
+
       <label>
         <span>{{ form.type === 'credit' ? 'Data da dívida inicial' : 'Data do saldo inicial' }}</span>
         <input type="date" [(ngModel)]="form.initialBalanceDate" />

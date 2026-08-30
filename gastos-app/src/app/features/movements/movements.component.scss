@@ -359,6 +359,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface-elevated);
@@ -376,6 +377,33 @@
     font-size: 0.72rem;
     color: var(--text-muted);
     margin-left: 0.35rem;
+  }
+}
+
+.col-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.col-filter {
+  width: min(160px, 28vw);
+  height: 1.85rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface, #fff);
+  font-size: 0.78rem;
+  color: var(--text);
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary, #00ab55);
   }
 }
 
@@ -1134,4 +1162,64 @@
   padding: 0;
   margin-top: 0.35rem;
   font-family: inherit;
+}
+
+.field-readonly {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-elevated);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.modal--pay-bill {
+  max-width: 520px;
+}
+
+.modal-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.pay-bill-items {
+  margin: 0.75rem 0 0.25rem;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.55rem 0.65rem;
+
+  .pay-bill-items-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.45rem;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  li label {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 0.45rem;
+    align-items: center;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+}
+
+.bill-item-tag.payment {
+  background: rgba(0, 171, 85, 0.12);
+  color: var(--accent-dark, #007b55);
 }

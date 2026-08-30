@@ -95,13 +95,9 @@
                       · Fatura {{ bill.forecast.totalBrl | currencyBrl }}
                     </p>
                   </div>
-                  @if (bill.remainingBrl > 0) {
-                    <button type="button" class="btn-pay-bill" (click)="openPayBill(bill)">
-                      Pagar fatura
-                    </button>
-                  } @else {
-                    <span class="bill-paid">Paga</span>
-                  }
+                  <button type="button" class="btn-pay-bill" (click)="openPayBill(bill)">
+                    {{ bill.remainingBrl > 0 ? 'Pagar fatura' : 'Adiantar' }}
+                  </button>
                 </header>
                 <div class="credit-bill-stats">
                   <span>Pendente {{ bill.forecast.pendingBrl | currencyBrl }}</span>
@@ -112,12 +108,12 @@
                   <ul class="credit-bill-items">
                     @for (it of bill.items; track it.status + '-' + it.id) {
                       <li>
-                        <span class="bill-item-tag" [class.parcel]="it.isInstallment">
-                          {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+                        <span class="bill-item-tag" [class.parcel]="it.isInstallment" [class.payment]="it.status === 'payment'">
+                          {{ it.status === 'payment' ? 'Pagamento' : (it.isInstallment ? 'Parcela' : 'Compra') }}
                         </span>
                         <span class="bill-item-name">{{ it.name }}</span>
                         <strong>{{ it.amountBrl | currencyBrl }}</strong>
-                        <small>{{ it.status === 'pending' ? 'a confirmar' : 'ok' }}</small>
+                        <small>{{ it.status === 'pending' ? 'a confirmar' : (it.status === 'payment' ? 'pago' : 'ok') }}</small>
                         @if (it.canCancel) {
                           <button
                             type="button"
@@ -148,9 +144,19 @@
         <section class="col-panel">
           <div class="col-header">
             <h2>A confirmar <span class="col-hint">sugestões dos fixos</span></h2>
-            @if (sortedPending().length) {
-              <span class="col-badge pending">{{ sortedPending().length }}</span>
-            }
+            <div class="col-header-tools">
+              <input
+                type="search"
+                class="col-filter"
+                placeholder="Filtrar…"
+                [ngModel]="pendingFilter()"
+                (ngModelChange)="pendingFilter.set($event)"
+                aria-label="Filtrar a confirmar"
+              />
+              @if (sortedPending().length) {
+                <span class="col-badge pending">{{ sortedPending().length }}</span>
+              }
+            </div>
           </div>
 
           @if (!sortedPending().length) {
@@ -261,7 +267,17 @@
         <section class="col-panel">
           <div class="col-header">
             <h2>Confirmados</h2>
-            <span class="col-badge done">{{ sortedConfirmed().length }}</span>
+            <div class="col-header-tools">
+              <input
+                type="search"
+                class="col-filter"
+                placeholder="Filtrar…"
+                [ngModel]="confirmedFilter()"
+                (ngModelChange)="confirmedFilter.set($event)"
+                aria-label="Filtrar confirmados"
+              />
+              <span class="col-badge done">{{ sortedConfirmed().length }}</span>
+            </div>
           </div>
 
           @if (!sortedConfirmed().length) {
@@ -409,31 +425,64 @@
 
 @if (payBillPrompt(); as bill) {
   <div class="modal-backdrop" (click)="cancelPayBill()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h3>Pagar fatura, {{ bill.name }}</h3>
+    <div class="modal modal--pay-bill" (click)="$event.stopPropagation()">
+      <h3>Pagar / adiantar · {{ bill.name }}</h3>
       <p class="modal-hint">
-        Transfere do banco para o cartão e reduz a dívida / libera limite.
-        Valor: <strong>{{ bill.remainingBrl | currencyBrl }}</strong>
-        @if (bill.dueDay) { (vence dia {{ bill.dueDay }}) }
+        Cria uma transferência confirmada do banco para o cartão e reduz a dívida.
+        @if (bill.dueDay) { Vencimento dia {{ bill.dueDay }}. }
+        Opcionalmente marque as compras que este pagamento cobre.
       </p>
       <label class="modal-field">
         <span>Conta bancária de saída</span>
         <select [ngModel]="payBillBankId()" (ngModelChange)="payBillBankId.set($event)">
-          <option [ngValue]="null">, Selecione, </option>
+          <option [ngValue]="null">Selecione</option>
           @for (a of bankAccounts(); track a.id) {
             <option [ngValue]="a.id">{{ a.name }}</option>
           }
         </select>
       </label>
+      <div class="modal-row-2">
+        <label class="modal-field">
+          <span>Valor (R$)</span>
+          <input type="number" step="0.01" min="0.01" [ngModel]="payBillAmount()" (ngModelChange)="payBillAmount.set(+$event)" />
+        </label>
+        <label class="modal-field">
+          <span>Data</span>
+          <input type="date" [ngModel]="payBillDate()" (ngModelChange)="payBillDate.set($event)" />
+        </label>
+      </div>
+      @if (payBillSelectableItems().length) {
+        <div class="pay-bill-items">
+          <span class="pay-bill-items-label">O que está adiantando? (opcional)</span>
+          <ul>
+            @for (it of payBillSelectableItems(); track it.status + '-' + it.id) {
+              <li>
+                <label>
+                  <input
+                    type="checkbox"
+                    [checked]="isPayBillItemSelected(it.id)"
+                    (change)="togglePayBillItem(it.id)"
+                  />
+                  <span class="bill-item-tag" [class.parcel]="it.isInstallment">
+                    {{ it.isInstallment ? 'Parcela' : 'Compra' }}
+                  </span>
+                  <span>{{ it.name }}</span>
+                  <strong>{{ it.amountBrl | currencyBrl }}</strong>
+                </label>
+              </li>
+            }
+          </ul>
+        </div>
+      }
       <div class="modal-actions">
         <button type="button" class="btn-muted" (click)="cancelPayBill()">Cancelar</button>
         <button
           type="button"
           class="btn-primary"
-          [disabled]="!payBillBankId()"
+          [disabled]="!payBillBankId() || payBillAmount() <= 0"
           (click)="submitPayBill()"
         >
-          Confirmar pagamento
+          Confirmar transferência
         </button>
       </div>
     </div>
@@ -484,22 +533,31 @@
 
       <label class="modal-field">
         <span>Tipo</span>
-        <select [(ngModel)]="variableForm.kind" (ngModelChange)="onVariableKindChange()">
-          <option value="expense">Gasto</option>
-          <option value="income">Recebimento</option>
-          <option value="investment">Investimento</option>
-          <option value="transfer">Transferência</option>
-        </select>
+        @if (editingTransferPair()) {
+          <p class="field-readonly">Transferência</p>
+        } @else {
+          <select [(ngModel)]="variableForm.kind" (ngModelChange)="onVariableKindChange()">
+            <option value="expense">Gasto</option>
+            <option value="income">Recebimento</option>
+            <option value="investment">Investimento</option>
+            <option value="transfer">Transferência</option>
+          </select>
+        }
       </label>
 
       @if (variableIsTransfer()) {
         <p class="modal-hint">
-          Na confirmação você define conta/valor/moeda de saída e de entrada.
+          @if (editingTransferPair()) {
+            Altere valor, data ou contas. As duas pernas (saída e entrada) são atualizadas juntas e os saldos recalculam.
+          } @else {
+            Com saída e entrada preenchidas, a transferência é confirmada na hora e os saldos das contas atualizam.
+            Banco → investimento vira aporte (aparece nos dois lados).
+          }
         </p>
         <label class="modal-field">
-          <span>Conta de saída (opcional)</span>
+          <span>Conta de saída</span>
           <select [(ngModel)]="variableForm.bankAccountId">
-            <option [ngValue]="null">Definir na confirmação</option>
+            <option [ngValue]="null">Selecione</option>
             @for (a of accounts(); track a.id) {
               <option [ngValue]="a.id">
                 {{ accountTypeLabel(a.type) }} · {{ a.name }}
@@ -508,9 +566,9 @@
           </select>
         </label>
         <label class="modal-field">
-          <span>Conta de entrada (opcional)</span>
+          <span>Conta de entrada</span>
           <select [(ngModel)]="variableForm.financialAccountId">
-            <option [ngValue]="null">Definir na confirmação</option>
+            <option [ngValue]="null">Selecione</option>
             @for (a of accounts(); track a.id) {
               <option [ngValue]="a.id">
                 {{ accountTypeLabel(a.type) }} · {{ a.name }}
@@ -639,11 +697,11 @@
         </p>
       }
 
-      @if (editingTx()) {
+      @if (editingTx() && !editingTransferPair()) {
         <label class="modal-field">
           <span>Conta do lançamento</span>
           <select [(ngModel)]="variableForm.accountId" required>
-            <option [ngValue]="null">, Selecione, </option>
+            <option [ngValue]="null">Selecione</option>
             @for (a of accounts(); track a.id) {
               <option [ngValue]="a.id">
                 {{ accountTypeLabel(a.type) }} · {{ a.name }}

@@ -67,6 +67,7 @@ export class AccountsComponent implements OnInit {
     creditLimit: 0 as number | null,
     closingDay: 1 as number | null,
     dueDay: 10 as number | null,
+    cdiMonthlyRate: null as number | null,
     initialBalanceDate: new Date().toISOString().slice(0, 10),
     color: '#3b82f6',
   };
@@ -219,6 +220,7 @@ export class AccountsComponent implements OnInit {
       creditLimit: type === 'credit' ? 5000 : null,
       closingDay: type === 'credit' ? 1 : null,
       dueDay: type === 'credit' ? 10 : null,
+      cdiMonthlyRate: null,
       initialBalanceDate: new Date().toISOString().slice(0, 10),
       color: type === 'investment' ? '#a371f7' : type === 'credit' ? '#f59e0b' : '#3b82f6',
     };
@@ -235,6 +237,7 @@ export class AccountsComponent implements OnInit {
       creditLimit: a.creditLimit ?? null,
       closingDay: a.closingDay ?? null,
       dueDay: a.dueDay ?? null,
+      cdiMonthlyRate: a.cdiMonthlyRate ?? null,
       initialBalanceDate: a.initialBalanceDate,
       color: a.color ?? '#3b82f6',
     };
@@ -250,6 +253,7 @@ export class AccountsComponent implements OnInit {
     const name = this.form.name.trim();
     if (!name) return;
     const isCredit = this.form.type === 'credit';
+    const isInvestment = this.form.type === 'investment';
     const payload: Partial<FinancialAccount> = {
       name,
       type: this.form.type,
@@ -260,6 +264,7 @@ export class AccountsComponent implements OnInit {
       creditLimit: isCredit ? this.form.creditLimit : null,
       closingDay: isCredit ? this.form.closingDay : null,
       dueDay: isCredit ? this.form.dueDay : null,
+      cdiMonthlyRate: isInvestment ? this.form.cdiMonthlyRate : null,
     };
     const id = this.editing()?.id;
     this.api.saveAccount(payload, id).subscribe({

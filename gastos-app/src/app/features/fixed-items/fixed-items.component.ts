@@ -108,6 +108,16 @@ export class FixedItemsComponent implements OnInit {
   activeCategory = signal<CategoryFilter>('all');
   newCategoryMode = signal(false);
   categoryIconOptions = CATEGORY_ICON_OPTIONS;
+  advancePrompt = signal<RecurringItem | null>(null);
+  advanceBankId = signal<number | null>(null);
+  advanceAmount = signal(0);
+  advanceDate = signal(new Date().toISOString().slice(0, 10));
+  pureBankAccounts = computed(() =>
+    this.bankFinancialAccounts().filter((a) => a.type === 'bank')
+  );
+  creditFinancialAccounts = computed(() =>
+    this.bankFinancialAccounts().filter((a) => a.type === 'credit')
+  );
 
   form: Partial<RecurringItem> & {
     currency?: Currency;
@@ -598,6 +608,13 @@ export class FixedItemsComponent implements OnInit {
         alert('O mês de início deve ser anterior ou igual ao da última parcela.');
         return;
       }
+      const cardId = this.form.sourceFinancialAccountId;
+      const isCredit =
+        !!cardId && this.creditFinancialAccounts().some((a) => a.id === cardId);
+      if (!isCredit) {
+        alert('Vincule um cartão de crédito à compra parcelada.');
+        return;
+      }
       this.form.isInstallment = true;
       this.form.startDate = `${this.form.startMonth}-01`;
       // Último dia do mês final não é necessário: sync usa YYYY-MM
@@ -686,5 +703,52 @@ export class FixedItemsComponent implements OnInit {
   itemLabel(item: RecurringItem): string {
     const brl = this.itemMonthlyBrl(item);
     return formatMoneyWithBrl(entryAmount(item), item.currency ?? 'BRL', brl);
+  }
+
+  canAdvance(item: RecurringItem): boolean {
+    if (!this.isInstallmentMode() || !item.sourceFinancialAccountId) return false;
+    return this.creditFinancialAccounts().some((a) => a.id === item.sourceFinancialAccountId);
+  }
+
+  openAdvance(item: RecurringItem): void {
+    if (!this.canAdvance(item)) {
+      alert('Vincule um cartão de crédito nesta compra parcelada para adiantar.');
+      return;
+    }
+    const banks = this.pureBankAccounts();
+    this.advanceBankId.set(banks[0]?.id ?? null);
+    this.advanceAmount.set(entryAmount(item));
+    this.advanceDate.set(new Date().toISOString().slice(0, 10));
+    this.advancePrompt.set(item);
+  }
+
+  cancelAdvance(): void {
+    this.advancePrompt.set(null);
+  }
+
+  submitAdvance(): void {
+    const item = this.advancePrompt();
+    const bankId = this.advanceBankId();
+    const cardId = item?.sourceFinancialAccountId;
+    const amount = this.advanceAmount();
+    if (!item || !bankId || !cardId || amount <= 0) return;
+
+    this.api
+      .advanceAccountPayment(cardId, {
+        sourceAccountId: bankId,
+        amount,
+        currency: item.currency ?? 'BRL',
+        transactionDate: this.advanceDate(),
+        description: `Adiantamento · ${item.name}`,
+        itemNames: [item.name],
+      })
+      .subscribe({
+        next: () => {
+          this.advancePrompt.set(null);
+          alert('Adiantamento registrado: transferência confirmada para o cartão.');
+        },
+        error: (err) =>
+          alert(err?.error?.error ?? 'Não foi possível registrar o adiantamento.'),
+      });
   }
 }

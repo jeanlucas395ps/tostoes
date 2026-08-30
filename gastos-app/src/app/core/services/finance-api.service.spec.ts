@@ -270,5 +270,26 @@ describe('FinanceApiService', () => {
 
     api.deleteRecurringItem(1).subscribe();
     http.expectOne(`${base}/recurring-items/1`).flush({ ok: true });
+
+    api
+      .advanceAccountPayment(30, {
+        sourceAccountId: 2,
+        amount: 500,
+        currency: 'BRL',
+        transactionDate: '2026-08-15',
+        description: 'Adiantamento · TesteParcela',
+        itemNames: ['TesteParcela'],
+      })
+      .subscribe();
+    const adv = http.expectOne(`${base}/accounts/30/advance-payment`);
+    expect(adv.request.method).toBe('POST');
+    expect(adv.request.body).toEqual(
+      jasmine.objectContaining({
+        sourceAccountId: 2,
+        amount: 500,
+        itemNames: ['TesteParcela'],
+      })
+    );
+    adv.flush({ ok: true, outTransactionId: 1, inTransactionId: 2, description: 'x' });
   });
 });

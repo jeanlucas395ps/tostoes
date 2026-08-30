@@ -98,6 +98,11 @@ export class MovementsComponent implements OnInit {
   installmentCount = signal(2);
   payBillPrompt = signal<CreditBill | null>(null);
   payBillBankId = signal<number | null>(null);
+  payBillAmount = signal(0);
+  payBillDate = signal(new Date().toISOString().slice(0, 10));
+  payBillSelectedIds = signal<Set<number>>(new Set());
+  pendingFilter = signal('');
+  confirmedFilter = signal('');
   cancelBillPrompt = signal<CreditBillItem | null>(null);
   investmentTypes = signal<InvestmentType[]>([]);
   newCategoryMode = signal(false);
@@ -135,8 +140,30 @@ export class MovementsComponent implements OnInit {
   }
 
   variableIsTransfer(): boolean {
-    return this.variableForm.kind === 'transfer';
+    return this.variableForm.kind === 'transfer' || this.editingTransferPair();
   }
+
+  /** Edição de transferência/aporte confirmado (duas pernas). */
+  editingTransferPair = computed(() => {
+    const t = this.editingTx();
+    if (!t) return false;
+    return !!t.transferLinkedTxId || !!t.transferTargetAccountId || this.isPairedTx(t);
+  });
+
+  private isPairedTx(t: Transaction): boolean {
+    const notes = t.notes ?? '';
+    return (
+      (t.kind === 'transfer' && notes.includes('Transferência →')) ||
+      (t.kind === 'investment' && notes.includes('Aporte →'))
+    );
+  }
+
+  variableModalTitle = computed(() => {
+    if (this.editingTransferPair()) return 'Editar transferência';
+    if (this.editingTx()) return 'Editar variável';
+    if (this.editingPending()) return 'Editar variável';
+    return 'Novo variável';
+  });
 
   bankAccounts = computed(() =>
     this.accounts().filter((a) => a.type === 'bank')
@@ -158,12 +185,6 @@ export class MovementsComponent implements OnInit {
     return 'Banco';
   }
 
-  variableModalTitle = computed(() => {
-    if (this.editingTx()) return 'Editar variável';
-    if (this.editingPending()) return 'Editar variável';
-    return 'Novo variável';
-  });
-
   formPreviewBrl = computed(() => {
     const cur = this.variableForm.currency;
     const fx = this.fxPreview();
@@ -178,7 +199,11 @@ export class MovementsComponent implements OnInit {
 
   sortedPending = computed(() => {
     const pending = this.ledger()?.pending ?? [];
-    return [...pending].sort((a, b) => {
+    const q = this.pendingFilter().trim().toLowerCase();
+    const filtered = q
+      ? pending.filter((e) => this.matchesPendingFilter(e, q))
+      : pending;
+    return [...filtered].sort((a, b) => {
       const aVar = this.isVariablePending(a) ? 0 : 1;
       const bVar = this.isVariablePending(b) ? 0 : 1;
       if (aVar !== bVar) return aVar - bVar;
@@ -191,12 +216,57 @@ export class MovementsComponent implements OnInit {
 
   sortedConfirmed = computed(() => {
     const confirmed = this.ledger()?.confirmed ?? [];
-    return [...confirmed].sort((a, b) => {
+    const q = this.confirmedFilter().trim().toLowerCase();
+    const filtered = q
+      ? confirmed.filter((t) => this.matchesConfirmedFilter(t, q))
+      : confirmed;
+    return [...filtered].sort((a, b) => {
       const byDate = a.transactionDate.localeCompare(b.transactionDate);
       if (byDate !== 0) return byDate;
       return a.id - b.id;
     });
   });
+
+  private matchesPendingFilter(e: MonthPlanEntry, q: string): boolean {
+    const hay = [
+      e.name,
+      e.kind,
+      this.entryTagLabel(e),
+      e.category,
+      e.itemCategoryName,
+      e.customTabName,
+      e.sourceFinancialAccountName,
+      e.financialAccountName,
+      e.currency,
+      String(e.dueDay ?? ''),
+      String(entryAmount(e)),
+      String(e.suggestedAmountBrl ?? ''),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return hay.includes(q);
+  }
+
+  private matchesConfirmedFilter(t: Transaction, q: string): boolean {
+    const hay = [
+      t.description,
+      t.kind,
+      this.entryTagLabel(t),
+      t.category,
+      t.accountName,
+      t.transferSourceAccountName,
+      t.transferTargetAccountName,
+      t.currency,
+      t.transactionDate,
+      String(t.amount),
+      String(t.amountBrl),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return hay.includes(q);
+  }
 
   creditBills = computed(() => this.ledger()?.creditBills ?? []);
 
@@ -225,7 +295,7 @@ export class MovementsComponent implements OnInit {
 
   loadLedger(): void {
     this.loading.set(true);
-    this.api.getLedger(this.year(), this.month() + 1, 'income,expense,investment,transfer').subscribe({
+    this.api.getLedger(this.year(), this.month() + 1, 'income,expense,investment,leisure,transfer').subscribe({
       next: (l) => {
         this.ledger.set(l);
         const edits: Record<number, number> = {};
@@ -376,22 +446,25 @@ export class MovementsComponent implements OnInit {
     this.editingPending.set(null);
     this.newCategoryMode.set(false);
     const catName = t.category === 'Variável' ? 'Geral' : t.category;
+    const isPair = this.isPairedTx(t) || !!t.transferTargetAccountId || !!t.transferLinkedTxId;
+    const sourceId = t.transferSourceAccountId ?? t.accountId ?? null;
+    const targetId = t.transferTargetAccountId ?? null;
     this.variableForm = {
-      kind: t.kind,
+      kind: isPair ? 'transfer' : t.kind,
       name: t.description,
-      amount: t.amount,
-      currency: t.currency,
-      category: catName,
-      itemCategoryId: this.categoryIdFromName(catName) ?? this.defaultCategoryId(),
+      amount: t.transferOutAmount ?? t.amount,
+      currency: t.transferOutCurrency ?? t.currency,
+      category: isPair ? 'Transferência' : catName,
+      itemCategoryId: isPair ? null : (this.categoryIdFromName(catName) ?? this.defaultCategoryId()),
       customTabId: this.defaultTabId(),
       newCategoryName: '',
       newCategoryIcon: 'package',
       responsibleUserId: t.responsibleUserId ?? null,
       transactionDate: t.transactionDate,
-      accountId: t.accountId ?? null,
+      accountId: sourceId,
       investmentTypeId: t.investmentTypeId ?? null,
-      financialAccountId: null,
-      bankAccountId: null,
+      financialAccountId: targetId,
+      bankAccountId: sourceId,
     };
     this.showVariableModal.set(true);
     this.refreshFxPreview();
@@ -462,6 +535,14 @@ export class MovementsComponent implements OnInit {
     if (!this.variableForm.name.trim()) return;
     if (this.variableIsTransfer()) {
       // categoria não é obrigatória
+      if (!this.variableForm.bankAccountId || !this.variableForm.financialAccountId) {
+        alert('Selecione a conta de saída e a conta de entrada da transferência.');
+        return;
+      }
+      if (this.variableForm.bankAccountId === this.variableForm.financialAccountId) {
+        alert('Conta de saída e entrada devem ser diferentes.');
+        return;
+      }
     } else if (
       !this.variableIsInvestment() &&
       !this.newCategoryMode() &&
@@ -489,6 +570,46 @@ export class MovementsComponent implements OnInit {
 
     const tx = this.editingTx();
     if (tx) {
+      const isPair = this.editingTransferPair();
+      if (isPair) {
+        if (!this.variableForm.bankAccountId || !this.variableForm.financialAccountId) {
+          alert('Selecione a conta de saída e a conta de entrada da transferência.');
+          return;
+        }
+        this.api
+          .saveTransaction(
+            {
+              kind: tx.kind, // API preserva kind do par; enviado por compatibilidade
+              description: this.variableForm.name.trim(),
+              amount: this.variableForm.amount,
+              currency: this.variableForm.currency,
+              transactionDate: this.variableForm.transactionDate,
+              category: tx.category || 'Transferência',
+              region: tx.region ?? 'geral',
+              responsibleUserId: this.variableForm.responsibleUserId,
+              accountId: this.variableForm.bankAccountId,
+              targetAccountId: this.variableForm.financialAccountId,
+              amountIn: this.variableForm.amount,
+              currencyIn: this.variableForm.currency,
+              notes: tx.notes ?? undefined,
+            } as Partial<Transaction> & {
+              targetAccountId?: number;
+              amountIn?: number;
+              currencyIn?: Currency;
+            },
+            tx.id
+          )
+          .subscribe({
+            next: () => {
+              this.closeVariableModal();
+              this.load();
+            },
+            error: (err) =>
+              alert(err?.error?.error ?? 'Não foi possível salvar a transferência.'),
+          });
+        return;
+      }
+
       if (!this.variableForm.accountId) {
         alert('Selecione a conta deste lançamento.');
         return;
@@ -504,6 +625,7 @@ export class MovementsComponent implements OnInit {
           region: tx.region ?? region,
           responsibleUserId: this.variableForm.responsibleUserId,
           accountId: this.variableForm.accountId,
+          notes: tx.notes ?? undefined,
         },
         tx.id
       ).subscribe({
@@ -511,6 +633,8 @@ export class MovementsComponent implements OnInit {
           this.closeVariableModal();
           this.load();
         },
+        error: (err) =>
+          alert(err?.error?.error ?? 'Não foi possível salvar o lançamento.'),
       });
       return;
     }
@@ -543,24 +667,75 @@ export class MovementsComponent implements OnInit {
       currency: this.variableForm.currency,
       responsibleUserId: this.variableForm.responsibleUserId,
       investmentTypeId: this.variableForm.investmentTypeId,
-      financialAccountId: this.variableIsTransfer()
-        ? this.variableForm.financialAccountId
-        : this.variableForm.financialAccountId,
+      financialAccountId: this.variableForm.financialAccountId,
       sourceFinancialAccountId: this.variableIsTransfer()
         ? this.variableForm.bankAccountId
         : null,
       ...taxonomy,
       region,
     }).subscribe({
-      next: () => {
-        this.closeVariableModal();
-        this.resetVariableForm('expense');
-        this.api.getPlanningTaxonomy().subscribe((t) => {
-          this.customTabs.set(t.customTabs);
-          this.itemCategories.set(t.itemCategories);
-        });
-        this.load();
+      next: (plan) => {
+        const shouldAutoConfirm =
+          this.variableIsTransfer() &&
+          !!this.variableForm.bankAccountId &&
+          !!this.variableForm.financialAccountId;
+
+        const finish = () => {
+          this.closeVariableModal();
+          this.resetVariableForm('expense');
+          this.api.getPlanningTaxonomy().subscribe((t) => {
+            this.customTabs.set(t.customTabs);
+            this.itemCategories.set(t.itemCategories);
+          });
+          this.load();
+        };
+
+        if (!shouldAutoConfirm) {
+          finish();
+          return;
+        }
+
+        const pools = [
+          ...(plan.sections?.variable ?? []),
+          ...(plan.sections?.today ?? []),
+          ...(plan.sections?.upcoming ?? []),
+          ...(plan.sections?.overdue ?? []),
+          ...(plan.entries ?? []),
+        ];
+        const entry = pools.find(
+          (e) =>
+            e.kind === 'transfer' &&
+            e.status === 'pending' &&
+            e.sourceFinancialAccountId === this.variableForm.bankAccountId &&
+            e.financialAccountId === this.variableForm.financialAccountId
+        ) ?? pools.find((e) => e.kind === 'transfer' && e.status === 'pending');
+
+        if (!entry) {
+          finish();
+          return;
+        }
+
+        this.api
+          .confirmMonthPlanEntry(entry.id, {
+            amount: this.variableForm.amount,
+            currency: this.variableForm.currency,
+            amountOut: this.variableForm.amount,
+            currencyOut: this.variableForm.currency,
+            amountIn: this.variableForm.amount,
+            currencyIn: this.variableForm.currency,
+            accountId: this.variableForm.bankAccountId!,
+            targetAccountId: this.variableForm.financialAccountId!,
+          })
+          .subscribe({
+            next: finish,
+            error: (err) => {
+              alert(err?.error?.error ?? 'Transferência criada, mas falhou ao confirmar. Confirme em A confirmar.');
+              finish();
+            },
+          });
       },
+      error: (err) =>
+        alert(err?.error?.error ?? 'Não foi possível criar o lançamento.'),
     });
   }
 
@@ -707,9 +882,9 @@ export class MovementsComponent implements OnInit {
           this.confirmEntry.set(null);
           this.load();
         },
-        error: () => {
+        error: (err) => {
           this.busyId.set(null);
-          this.confirmEntry.set(null);
+          alert(err?.error?.error ?? 'Não foi possível confirmar o lançamento.');
         },
       });
     };
@@ -746,6 +921,9 @@ export class MovementsComponent implements OnInit {
         this.accounts.set(r.items);
         const banks = r.items.filter((a) => a.type === 'bank');
         this.payBillBankId.set(banks[0]?.id ?? null);
+        this.payBillAmount.set(bill.remainingBrl > 0 ? bill.remainingBrl : bill.forecast.totalBrl);
+        this.payBillDate.set(this.defaultTxDate());
+        this.payBillSelectedIds.set(new Set());
         this.payBillPrompt.set(bill);
       },
     });
@@ -753,63 +931,58 @@ export class MovementsComponent implements OnInit {
 
   cancelPayBill(): void {
     this.payBillPrompt.set(null);
+    this.payBillSelectedIds.set(new Set());
+  }
+
+  togglePayBillItem(id: number): void {
+    const next = new Set(this.payBillSelectedIds());
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this.payBillSelectedIds.set(next);
+    const bill = this.payBillPrompt();
+    if (!bill || next.size === 0) return;
+    const sum = bill.items
+      .filter((it) => next.has(it.id) && it.status !== 'payment')
+      .reduce((acc, it) => acc + it.amountBrl, 0);
+    if (sum > 0) this.payBillAmount.set(Math.round(sum * 100) / 100);
+  }
+
+  isPayBillItemSelected(id: number): boolean {
+    return this.payBillSelectedIds().has(id);
+  }
+
+  payBillSelectableItems(): CreditBillItem[] {
+    return (this.payBillPrompt()?.items ?? []).filter((i) => i.status !== 'payment');
   }
 
   submitPayBill(): void {
     const bill = this.payBillPrompt();
     const bankId = this.payBillBankId();
-    if (!bill || !bankId || bill.remainingBrl <= 0) return;
+    const amount = this.payBillAmount();
+    if (!bill || !bankId || amount <= 0) return;
+
+    const selected = bill.items.filter(
+      (it) => this.payBillSelectedIds().has(it.id) && it.status !== 'payment'
+    );
+    const itemNames = selected.map((it) => it.name);
 
     this.api
-      .addMonthPlanEntry({
-        year: this.year(),
-        month: this.month() + 1,
-        kind: 'transfer',
-        name: `Pagamento fatura, ${bill.name}`,
-        amount: bill.remainingBrl,
+      .advanceAccountPayment(bill.accountId, {
+        sourceAccountId: bankId,
+        amount,
         currency: 'BRL',
-        sourceFinancialAccountId: bankId,
-        financialAccountId: bill.accountId,
-        category: 'Transferência',
-        region: 'geral',
+        transactionDate: this.payBillDate(),
+        description: `Pagamento fatura, ${bill.name}`,
+        itemNames: itemNames.length ? itemNames : undefined,
       })
       .subscribe({
-        next: (plan) => {
-          const pools = [
-            ...(plan.sections?.variable ?? []),
-            ...(plan.sections?.today ?? []),
-            ...(plan.sections?.upcoming ?? []),
-            ...(plan.sections?.overdue ?? []),
-            ...(plan.entries ?? []),
-          ];
-          const entry = pools.find(
-            (e) =>
-              e.kind === 'transfer' &&
-              e.status === 'pending' &&
-              (e.name.includes(bill.name) || e.sourceFinancialAccountId === bankId)
-          );
+        next: () => {
           this.payBillPrompt.set(null);
-          if (!entry) {
-            this.load();
-            return;
-          }
-          this.api
-            .confirmMonthPlanEntry(entry.id, {
-              amount: bill.remainingBrl,
-              currency: 'BRL',
-              amountOut: bill.remainingBrl,
-              currencyOut: 'BRL',
-              amountIn: bill.remainingBrl,
-              currencyIn: 'BRL',
-              accountId: bankId,
-              targetAccountId: bill.accountId,
-            })
-            .subscribe({
-              next: () => this.load(),
-              error: () => this.load(),
-            });
+          this.payBillSelectedIds.set(new Set());
+          this.load();
         },
-        error: () => alert('Não foi possível registrar o pagamento da fatura.'),
+        error: (err) =>
+          alert(err?.error?.error ?? 'Não foi possível registrar o pagamento da fatura.'),
       });
   }
 
@@ -894,26 +1067,51 @@ export class MovementsComponent implements OnInit {
   }
 
   isTransfer(t: Transaction): boolean {
-    return t.kind === 'transfer';
+    return t.kind === 'transfer' || !!t.transferPairMode || this.isPairedTx(t);
   }
 
   isExpense(t: Transaction): boolean {
     return t.kind === 'expense' || t.kind === 'leisure';
   }
 
-  entryTagLabel(e: { kind: EntryKind; isGoal?: boolean; isInstallment?: boolean }): string {
+  entryTagLabel(e: {
+    kind: EntryKind;
+    isGoal?: boolean;
+    isInstallment?: boolean;
+    notes?: string | null;
+    transferPairMode?: string | null;
+  }): string {
     if (e.isGoal) return '◇ Meta';
     if (e.isInstallment) return '▦ Parcel.';
-    if (e.kind === 'transfer') return '⇄ Transf.';
+    if (
+      e.kind === 'transfer' ||
+      e.transferPairMode === 'aporte' ||
+      e.transferPairMode === 'transfer' ||
+      (e.kind === 'investment' && (e.notes ?? '').includes('Aporte →'))
+    ) {
+      return '⇄ Transf.';
+    }
     if (e.kind === 'income') return '↑ Receb.';
     if (e.kind === 'investment') return '◆ Invest.';
     return '↓ Gasto';
   }
 
-  entryTagClass(e: { kind: EntryKind; isGoal?: boolean; isInstallment?: boolean }): string {
+  entryTagClass(e: {
+    kind: EntryKind;
+    isGoal?: boolean;
+    isInstallment?: boolean;
+    notes?: string | null;
+    transferPairMode?: string | null;
+  }): string {
     if (e.isGoal) return 'goal';
     if (e.isInstallment) return 'installment';
-    if (e.kind === 'transfer') return 'transfer';
+    if (
+      e.kind === 'transfer' ||
+      !!e.transferPairMode ||
+      (e.kind === 'investment' && (e.notes ?? '').includes('Aporte →'))
+    ) {
+      return 'transfer';
+    }
     if (e.kind === 'income') return 'income';
     if (e.kind === 'investment') return 'investment';
     return 'expense';
