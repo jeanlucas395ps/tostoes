@@ -84,6 +84,7 @@ final class LedgerController
              WHERE t.planning_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ?
                AND t.kind IN ($placeholders)
                AND NOT (t.kind = 'transfer' AND t.notes LIKE 'Transferência ←%')
+               AND NOT (t.kind = 'income' AND t.notes LIKE 'Aporte ←%')
              ORDER BY t.transaction_date ASC, t.id ASC"
         );
         $txStmt->execute(array_merge([$planningId, $year, $month], $kinds));
@@ -195,8 +196,22 @@ final class LedgerController
                 if (($c['kind'] ?? '') !== 'transfer') {
                     continue;
                 }
-                if (($c['transferTargetAccountName'] ?? null) === $card['name']) {
+                $targetId = isset($c['transferTargetAccountId']) ? (int) $c['transferTargetAccountId'] : 0;
+                $matchesTarget = $targetId === $accountId
+                    || ($c['transferTargetAccountName'] ?? null) === $card['name'];
+                if ($matchesTarget) {
                     $paidBrl += (float) ($c['transferInAmountBrl'] ?? $c['amountBrl'] ?? 0);
+                    // Inclui o pagamento na fatura para o usuário ver o adiantamento.
+                    $items[] = [
+                        'id' => $c['id'],
+                        'name' => $c['description'] ?? 'Pagamento / adiantamento',
+                        'amountBrl' => (float) ($c['transferInAmountBrl'] ?? $c['amountBrl'] ?? 0),
+                        'isInstallment' => false,
+                        'status' => 'payment',
+                        'dueDay' => null,
+                        'monthPlanEntryId' => null,
+                        'canCancel' => false,
+                    ];
                 }
             }
 
@@ -227,7 +242,7 @@ final class LedgerController
     }
 
     /**
-     * Anexa valor/moeda/conta de entrada nas transferências (perna de saída).
+     * Anexa valor/moeda/conta de entrada nas transferências / aportes (perna de saída).
      *
      * @param list<array<string, mixed>> $confirmed
      * @return list<array<string, mixed>>
@@ -236,10 +251,14 @@ final class LedgerController
     {
         $linkedIds = [];
         foreach ($confirmed as $c) {
-            if (($c['kind'] ?? '') !== 'transfer') {
+            $notes = (string) ($c['notes'] ?? '');
+            $kind = $c['kind'] ?? '';
+            $isPairOut = ($kind === 'transfer' && str_contains($notes, 'Transferência →'))
+                || ($kind === 'investment' && str_contains($notes, 'Aporte →'));
+            if (!$isPairOut) {
                 continue;
             }
-            if (preg_match('/\(#(\d+)\)/', (string) ($c['notes'] ?? ''), $m)) {
+            if (preg_match('/\(#(\d+)\)/', $notes, $m)) {
                 $linkedIds[(int) $c['id']] = (int) $m[1];
             }
         }
@@ -250,7 +269,8 @@ final class LedgerController
         $uniqueInIds = array_values(array_unique(array_values($linkedIds)));
         $placeholders = implode(',', array_fill(0, count($uniqueInIds), '?'));
         $stmt = $pdo->prepare(
-            "SELECT t.id, t.amount, t.currency, t.amount_brl, t.eur_to_brl, fa.name AS account_name
+            "SELECT t.id, t.amount, t.currency, t.amount_brl, t.eur_to_brl, t.account_id,
+                    fa.name AS account_name, fa.type AS account_type
              FROM transactions t
              LEFT JOIN financial_accounts fa ON fa.id = t.account_id
              WHERE t.planning_id = ? AND t.id IN ($placeholders)"
@@ -262,21 +282,31 @@ final class LedgerController
         }
 
         foreach ($confirmed as &$c) {
-            if (($c['kind'] ?? '') !== 'transfer') {
-                continue;
-            }
             $outId = (int) $c['id'];
             $inId = $linkedIds[$outId] ?? null;
             if ($inId === null || !isset($byId[$inId])) {
                 continue;
             }
             $in = $byId[$inId];
+            $notes = (string) ($c['notes'] ?? '');
+            $isAporte = str_contains($notes, 'Aporte →');
             $targetFromNotes = null;
-            if (preg_match('/^Transferência → (.+?)(?:\s*\(#\d+\))?$/', (string) ($c['notes'] ?? ''), $nm)) {
+            $pattern = $isAporte
+                ? '/^Aporte → (.+?)(?:\s*\(#\d+\))?/'
+                : '/^Transferência → (.+?)(?:\s*\(#\d+\))?/';
+            if (preg_match($pattern, $notes, $nm)) {
                 $targetFromNotes = trim($nm[1]);
+                if (str_contains($targetFromNotes, ' · ')) {
+                    $targetFromNotes = trim(explode(' · ', $targetFromNotes, 2)[0]);
+                }
             }
+            $c['transferPairMode'] = $isAporte ? 'aporte' : 'transfer';
+            $c['transferLinkedTxId'] = $inId;
+            $c['transferSourceAccountId'] = isset($c['accountId']) ? (int) $c['accountId'] : null;
             $c['transferSourceAccountName'] = $c['accountName'] ?? null;
+            $c['transferTargetAccountId'] = isset($in['account_id']) ? (int) $in['account_id'] : null;
             $c['transferTargetAccountName'] = $in['account_name'] ?? $targetFromNotes;
+            $c['transferTargetAccountType'] = $in['account_type'] ?? null;
             $c['transferOutAmount'] = (float) $c['amount'];
             $c['transferOutCurrency'] = $c['currency'] ?? 'BRL';
             $c['transferOutAmountBrl'] = (float) ($c['amountBrl'] ?? 0);

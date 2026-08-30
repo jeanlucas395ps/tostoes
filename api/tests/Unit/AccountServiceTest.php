@@ -104,6 +104,34 @@ final class AccountServiceTest extends TestCase
         $this->assertSame(62.0, AccountService::balanceToBrl(10.0, 'EUR', 6.2));
     }
 
+    public function testResolveAccountCdiFallsBackToPlanning(): void
+    {
+        $settings = $this->createMock(\PDOStatement::class);
+        $settings->method('execute');
+        $settings->method('fetchColumn')->willReturn('0.0095');
+
+        $pdo = $this->createMock(\PDO::class);
+        $pdo->method('prepare')->willReturn($settings);
+
+        $rate = AccountService::resolveAccountCdiMonthlyRate($pdo, 1, [
+            'type' => 'investment',
+            'cdi_monthly_rate' => null,
+        ]);
+        $this->assertSame(0.0095, $rate);
+    }
+
+    public function testResolveAccountCdiUsesOverride(): void
+    {
+        $pdo = $this->createMock(\PDO::class);
+        $pdo->expects($this->never())->method('prepare');
+
+        $rate = AccountService::resolveAccountCdiMonthlyRate($pdo, 1, [
+            'type' => 'investment',
+            'cdi_monthly_rate' => 0.02,
+        ]);
+        $this->assertSame(0.02, $rate);
+    }
+
     #[DataProvider('txAmountProvider')]
     public function testTxAmountInAccountCurrency(
         array $row,

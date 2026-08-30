@@ -168,6 +168,9 @@ final class Router
         if ($method === 'POST' && $path === '/accounts') {
             AccountController::store();
         }
+        if (preg_match('#^/accounts/(\d+)/advance-payment$#', $path, $m) && $method === 'POST') {
+            AccountController::advancePayment((int) $m[1]);
+        }
         if (preg_match('#^/accounts/(\d+)$#', $path, $m)) {
             $id = (int) $m[1];
             if ($method === 'GET') {

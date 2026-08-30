@@ -9,6 +9,8 @@ use Gastos\Api\Database;
 use Gastos\Api\Response;
 use Gastos\Api\Services\AccountService;
 use Gastos\Api\Services\AccountFlowGraphService;
+use Gastos\Api\Services\GoalPlanService;
+use Gastos\Api\Services\PlanningService;
 use PDO;
 
 final class AccountController
@@ -132,8 +134,8 @@ final class AccountController
         $stmt = $pdo->prepare(
             'INSERT INTO financial_accounts
              (planning_id, name, type, currency, initial_balance, credit_limit, closing_day, due_day,
-              initial_balance_date, color, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              cdi_monthly_rate, initial_balance_date, color, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         try {
             $stmt->execute([
@@ -145,6 +147,7 @@ final class AccountController
                 $body['creditLimit'],
                 $body['closingDay'],
                 $body['dueDay'],
+                $body['cdiMonthlyRate'],
                 $body['initialBalanceDate'],
                 $body['color'],
                 $body['sortOrder'],
@@ -171,7 +174,8 @@ final class AccountController
         $pdo->prepare(
             'UPDATE financial_accounts SET
                name = ?, type = ?, currency = ?, initial_balance = ?, credit_limit = ?,
-               closing_day = ?, due_day = ?, initial_balance_date = ?,
+               closing_day = ?, due_day = ?, cdi_monthly_rate = ?,
+               initial_balance_date = ?,
                color = ?, sort_order = ?
              WHERE id = ? AND planning_id = ?'
         )->execute([
@@ -182,6 +186,7 @@ final class AccountController
             $body['creditLimit'],
             $body['closingDay'],
             $body['dueDay'],
+            $body['cdiMonthlyRate'],
             $body['initialBalanceDate'],
             $body['color'],
             $body['sortOrder'],
@@ -242,6 +247,7 @@ final class AccountController
         $creditLimit = null;
         $closingDay = null;
         $dueDay = null;
+        $cdiMonthlyRate = null;
         if ($type === 'credit') {
             $creditLimit = isset($body['creditLimit']) ? round((float) $body['creditLimit'], 2) : null;
             if ($creditLimit !== null && $creditLimit < 0) {
@@ -255,6 +261,14 @@ final class AccountController
             if ($dueDay !== null && ($dueDay < 1 || $dueDay > 28)) {
                 Response::error('Dia de vencimento deve ser entre 1 e 28.', 422);
             }
+        } elseif ($type === 'investment' && array_key_exists('cdiMonthlyRate', $body)) {
+            $raw = $body['cdiMonthlyRate'];
+            if ($raw !== null && $raw !== '') {
+                $cdiMonthlyRate = round((float) $raw, 6);
+                if ($cdiMonthlyRate < 0 || $cdiMonthlyRate > 1) {
+                    Response::error('Taxa CDI mensal deve ser entre 0 e 1 (ex.: 0.0095 = 0,95%).', 422);
+                }
+            }
         }
 
         return [
@@ -265,10 +279,91 @@ final class AccountController
             'creditLimit' => $creditLimit,
             'closingDay' => $closingDay,
             'dueDay' => $dueDay,
+            'cdiMonthlyRate' => $cdiMonthlyRate,
             'initialBalanceDate' => $date,
             'color' => ($body['color'] ?? null) ?: null,
             'sortOrder' => (int) ($body['sortOrder'] ?? 0),
         ];
+    }
+
+    /**
+     * Adiantamento / pagamento espontâneo: transferência confirmada banco → cartão (ou destino).
+     * Body: sourceAccountId, amount, currency?, transactionDate?, description?, itemNames?[]
+     */
+    public static function advancePayment(int $targetAccountId): void
+    {
+        $registeredBy = Auth::requireUser();
+        $planningId = Auth::requirePlanningId();
+        $pdo = Database::connection();
+        $target = self::fetch($pdo, $targetAccountId, $planningId);
+        $body = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
+
+        $sourceAccountId = (int) ($body['sourceAccountId'] ?? $body['accountId'] ?? 0);
+        $amount = isset($body['amount']) ? (float) $body['amount'] : 0.0;
+        if ($amount <= 0) {
+            Response::error('Informe o valor do adiantamento.', 422);
+        }
+
+        $date = (string) ($body['transactionDate'] ?? $body['date'] ?? date('Y-m-d'));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            Response::error('Data inválida (use YYYY-MM-DD).', 422);
+        }
+
+        $itemNames = $body['itemNames'] ?? [];
+        if (!is_array($itemNames)) {
+            $itemNames = [];
+        }
+        $itemNames = array_values(array_filter(array_map(
+            static fn ($n) => trim((string) $n),
+            $itemNames
+        ), static fn ($n) => $n !== ''));
+
+        $targetType = (string) ($target['type'] ?? '');
+        $targetLabel = $targetType === 'credit'
+            ? (string) $target['name']
+            : (string) $target['name'];
+        $defaultDesc = $targetType === 'credit'
+            ? "Adiantamento fatura, {$targetLabel}"
+            : "Transferência para {$targetLabel}";
+        $description = trim((string) ($body['description'] ?? '')) ?: $defaultDesc;
+        if ($itemNames !== []) {
+            $description .= ' · ' . implode(', ', array_slice($itemNames, 0, 5));
+            if (count($itemNames) > 5) {
+                $description .= '…';
+            }
+        }
+
+        $extraNotes = $itemNames !== []
+            ? 'Itens: ' . implode(', ', $itemNames)
+            : null;
+
+        $ownerId = PlanningService::ownerUserId($pdo, $planningId);
+        $pair = AccountService::createConfirmedTransfer($pdo, [
+            'planningId' => $planningId,
+            'ownerUserId' => $ownerId,
+            'registeredBy' => $registeredBy,
+            'sourceAccountId' => $sourceAccountId,
+            'targetAccountId' => $targetAccountId,
+            'amount' => $amount,
+            'currency' => $body['currency'] ?? 'BRL',
+            'amountIn' => $body['amountIn'] ?? $amount,
+            'currencyIn' => $body['currencyIn'] ?? $body['currency'] ?? 'BRL',
+            'transactionDate' => $date,
+            'description' => $description,
+            'category' => 'Transferência',
+            'region' => 'geral',
+            'extraNotes' => $extraNotes,
+        ]);
+
+        GoalPlanService::refreshGoalsForAccount($pdo, $planningId, $sourceAccountId);
+        GoalPlanService::refreshGoalsForAccount($pdo, $planningId, $targetAccountId);
+
+        Response::json([
+            'ok' => true,
+            'outTransactionId' => $pair['outTxId'],
+            'inTransactionId' => $pair['inTxId'],
+            'description' => $description,
+        ]);
     }
 
     /** @return array<string, mixed> */

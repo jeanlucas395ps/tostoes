@@ -111,6 +111,7 @@ applyMigration025($pdo);
 applyMigration026($pdo);
 applyMigration027($pdo);
 applyMigration028($pdo);
+applyMigration029($pdo);
 
 $pdo->exec(
     'UPDATE transactions SET registered_by_user_id = user_id
@@ -1154,6 +1155,20 @@ function applyMigration028(PDO $pdo): void
         }
         echo "→ ai_reports.status já atualizado\n";
     }
+}
+
+function applyMigration029(PDO $pdo): void
+{
+    if (!tableExists($pdo, 'financial_accounts')) {
+        return;
+    }
+    if (!columnExists($pdo, 'financial_accounts', 'cdi_monthly_rate')) {
+        $pdo->exec(
+            'ALTER TABLE financial_accounts
+             ADD COLUMN cdi_monthly_rate DECIMAL(8,6) NULL'
+        );
+    }
+    echo "→ CDI mensal opcional por conta de investimento OK\n";
 }
 
 function applyMigration026(PDO $pdo): void

@@ -104,14 +104,15 @@ final class TransactionController
     {
         Auth::requireUser();
         $planningId = Auth::requirePlanningId();
-        $body = self::parseBody();
+        $raw = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
+        $body = self::parseBodyArray($raw);
         $pdo = Database::connection();
-        $responsible = ResponsibleUser::parseFromBody($pdo, $body, $planningId);
+        $responsible = ResponsibleUser::parseFromBody($pdo, $raw, $planningId);
 
         $accountId = AccountService::validateAccountId($pdo, $planningId, (int) ($body['accountId'] ?? 0));
 
         $prevStmt = $pdo->prepare(
-            'SELECT account_id FROM transactions WHERE id = ? AND planning_id = ?'
+            'SELECT * FROM transactions WHERE id = ? AND planning_id = ?'
         );
         $prevStmt->execute([$id, $planningId]);
         $prevRow = $prevStmt->fetch(PDO::FETCH_ASSOC);
@@ -119,6 +120,40 @@ final class TransactionController
             Response::error('Lançamento não encontrado.', 404);
         }
         $prevAccountId = (int) $prevRow['account_id'];
+        $prevNotes = (string) ($prevRow['notes'] ?? '');
+
+        $linkedId = null;
+        $pairMode = null; // transfer | aporte
+        if (preg_match('/\(#(\d+)\)/', $prevNotes, $m)) {
+            if (str_contains($prevNotes, 'Transferência →') || str_contains($prevNotes, 'Transferência ←')) {
+                $linkedId = (int) $m[1];
+                $pairMode = 'transfer';
+            } elseif (str_contains($prevNotes, 'Aporte →') || str_contains($prevNotes, 'Aporte ←')) {
+                $linkedId = (int) $m[1];
+                $pairMode = 'aporte';
+            }
+        }
+
+        // Preserva notes se o cliente não enviou.
+        $notes = array_key_exists('notes', $raw)
+            ? (($raw['notes'] ?? null) ?: null)
+            : ($prevRow['notes'] ?? null);
+
+        $kind = $body['kind'];
+        // Par vinculado: não deixa o cliente trocar o kind da perna e quebrar o vínculo.
+        if ($pairMode === 'transfer' || $pairMode === 'aporte') {
+            $kind = (string) $prevRow['kind'];
+        } elseif ($kind !== 'transfer' && is_string($notes) && str_starts_with($notes, 'Transferência')) {
+            $notes = null;
+        }
+
+        $targetAccountId = isset($raw['targetAccountId']) ? (int) $raw['targetAccountId'] : null;
+        $amountIn = isset($raw['amountIn']) ? (float) $raw['amountIn'] : null;
+        $currencyIn = isset($raw['currencyIn']) ? (string) $raw['currencyIn'] : null;
+
+        if ($pairMode !== null && $targetAccountId) {
+            AccountService::validateAccountTransfer($pdo, $planningId, $accountId, $targetAccountId);
+        }
 
         $stmt = $pdo->prepare(
             'UPDATE transactions SET
@@ -129,7 +164,7 @@ final class TransactionController
         );
         $stmt->execute([
             $body['transactionDate'],
-            $body['kind'],
+            $kind,
             $body['description'],
             $body['amount'],
             $body['currency'],
@@ -139,16 +174,81 @@ final class TransactionController
             $body['region'],
             $responsible['responsible'],
             $responsible['responsibleUserId'],
-            $body['notes'],
+            $notes,
             $body['investmentTypeId'],
             $accountId,
             $id,
             $planningId,
         ]);
 
-        GoalPlanService::refreshGoalsForAccount($pdo, $planningId, $accountId);
-        if ($prevAccountId !== $accountId) {
-            GoalPlanService::refreshGoalsForAccount($pdo, $planningId, $prevAccountId);
+        $accountsTouched = [$accountId, $prevAccountId];
+
+        if ($linkedId !== null && $pairMode !== null) {
+            $linkStmt = $pdo->prepare(
+                'SELECT * FROM transactions WHERE id = ? AND planning_id = ?'
+            );
+            $linkStmt->execute([$linkedId, $planningId]);
+            $linkRow = $linkStmt->fetch(PDO::FETCH_ASSOC);
+            if ($linkRow) {
+                $prevLinkAccountId = (int) $linkRow['account_id'];
+                $linkAccountId = $targetAccountId ?: $prevLinkAccountId;
+
+                $moneyIn = MoneyHelper::parseInput($pdo, $planningId, [
+                    'amount' => $amountIn ?? $body['amount'],
+                    'currency' => $currencyIn ?? $body['currency'],
+                    'transactionDate' => $body['transactionDate'],
+                ]);
+
+                $sourceName = AccountService::accountName($pdo, $planningId, $accountId);
+                $targetName = AccountService::accountName($pdo, $planningId, $linkAccountId);
+
+                if ($pairMode === 'aporte') {
+                    $outNotes = "Aporte → {$targetName} (#{$linkedId})";
+                    $inNotes = "Aporte ← {$sourceName} (#{$id})";
+                    $inKind = 'income';
+                    $outKind = 'investment';
+                } else {
+                    $outNotes = "Transferência → {$targetName} (#{$linkedId})";
+                    $inNotes = "Transferência ← {$sourceName} (#{$id})";
+                    $inKind = 'transfer';
+                    $outKind = 'transfer';
+                }
+
+                $pdo->prepare(
+                    'UPDATE transactions SET notes = ?, kind = ? WHERE id = ? AND planning_id = ?'
+                )->execute([$outNotes, $outKind, $id, $planningId]);
+
+                $pdo->prepare(
+                    'UPDATE transactions SET transaction_date = ?, description = ?, category = ?,
+                     region = ?, responsible = ?, responsible_user_id = ?,
+                     amount = ?, currency = ?, amount_brl = ?, eur_to_brl = ?,
+                     account_id = ?, notes = ?, kind = ?
+                     WHERE id = ? AND planning_id = ?'
+                )->execute([
+                    $body['transactionDate'],
+                    $body['description'],
+                    $body['category'],
+                    $body['region'],
+                    $responsible['responsible'],
+                    $responsible['responsibleUserId'],
+                    $moneyIn['amount'],
+                    $moneyIn['currency'],
+                    $moneyIn['amountBrl'],
+                    $moneyIn['eurToBrl'],
+                    $linkAccountId,
+                    $inNotes,
+                    $inKind,
+                    $linkedId,
+                    $planningId,
+                ]);
+
+                $accountsTouched[] = $linkAccountId;
+                $accountsTouched[] = $prevLinkAccountId;
+            }
+        }
+
+        foreach (array_unique(array_filter($accountsTouched)) as $accId) {
+            GoalPlanService::refreshGoalsForAccount($pdo, $planningId, (int) $accId);
         }
         self::show($id, $planningId);
     }
@@ -233,6 +333,12 @@ final class TransactionController
     private static function parseBody(): array
     {
         $body = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
+        return self::parseBodyArray($body);
+    }
+
+    /** @param array<string, mixed> $body */
+    private static function parseBodyArray(array $body): array
+    {
         $kind = $body['kind'] ?? '';
         if (!in_array($kind, ['income', 'expense', 'investment', 'leisure', 'transfer'], true)) {
             Response::error('Tipo inválido.', 422);

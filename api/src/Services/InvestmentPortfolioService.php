@@ -8,6 +8,7 @@ use PDO;
 
 /**
  * Saldo atual por tipo de investimento e projeção do próximo mês (CDI + aportes fixos).
+ * CDI mensal: por conta de investimento (opcional) com fallback em planning_settings.
  */
 final class InvestmentPortfolioService
 {
@@ -16,7 +17,7 @@ final class InvestmentPortfolioService
     {
         $refMonth = max(1, min(12, $refMonth));
         [$nextYear, $nextMonth] = self::nextMonth($refYear, $refMonth);
-        $cdiRate = self::cdiMonthlyRate($pdo, $planningId);
+        $settingsCdiRate = AccountService::planningCdiMonthlyRate($pdo, $planningId);
 
         $stmt = $pdo->prepare(
             'SELECT id, name, slug, color, target_monthly_brl, current_balance_brl
@@ -35,12 +36,18 @@ final class InvestmentPortfolioService
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $typeId = (int) $row['id'];
             $slug = (string) $row['slug'];
-            $balance = self::resolveCurrentBalance($pdo, $planningId, $typeId, (float) $row['current_balance_brl']);
-            $contribution = self::monthlyContributionForType($pdo, $planningId, $typeId, $nextYear, $nextMonth);
             $cdiPercent = self::cdiPercentForSlug($slug);
-            $cdiYield = $cdiPercent > 0
-                ? round($balance * $cdiRate * ($cdiPercent / 100), 2)
-                : 0.0;
+            $resolved = self::resolveBalanceAndCdiYield(
+                $pdo,
+                $planningId,
+                $typeId,
+                (float) $row['current_balance_brl'],
+                $settingsCdiRate,
+                $cdiPercent
+            );
+            $balance = $resolved['balance'];
+            $cdiYield = $resolved['cdiYield'];
+            $contribution = self::monthlyContributionForType($pdo, $planningId, $typeId, $nextYear, $nextMonth);
             $projectedGain = round($cdiYield + $contribution, 2);
 
             $items[] = [
@@ -55,6 +62,7 @@ final class InvestmentPortfolioService
                 'projectedGainBrl' => $projectedGain,
                 'projectedBalanceBrl' => round($balance + $projectedGain, 2),
                 'yieldsCdi' => $cdiPercent > 0,
+                'effectiveCdiMonthlyRate' => $resolved['effectiveCdiMonthlyRate'],
             ];
 
             $totalBalance += $balance;
@@ -68,7 +76,7 @@ final class InvestmentPortfolioService
             'refMonth' => $refMonth,
             'nextYear' => $nextYear,
             'nextMonth' => $nextMonth,
-            'cdiMonthlyRate' => $cdiRate,
+            'cdiMonthlyRate' => $settingsCdiRate,
             'items' => $items,
             'totals' => [
                 'currentBalanceBrl' => round($totalBalance, 2),
@@ -79,18 +87,34 @@ final class InvestmentPortfolioService
         ];
     }
 
-    private static function resolveCurrentBalance(
+    /**
+     * @return array{balance: float, cdiYield: float, effectiveCdiMonthlyRate: float}
+     */
+    private static function resolveBalanceAndCdiYield(
         PDO $pdo,
         int $planningId,
         int $typeId,
-        float $storedBalance
-    ): float {
+        float $storedBalance,
+        float $settingsCdiRate,
+        float $cdiPercent
+    ): array {
         $accountIds = self::linkedAccountIds($pdo, $planningId, $typeId);
         if ($accountIds === []) {
-            return round(max(0, $storedBalance), 2);
+            $yield = $cdiPercent > 0
+                ? round(max(0, $storedBalance) * $settingsCdiRate * ($cdiPercent / 100), 2)
+                : 0.0;
+
+            return [
+                'balance' => round(max(0, $storedBalance), 2),
+                'cdiYield' => $yield,
+                'effectiveCdiMonthlyRate' => $settingsCdiRate,
+            ];
         }
 
         $fromAccounts = 0.0;
+        $cdiYield = 0.0;
+        $weightedRate = 0.0;
+
         foreach ($accountIds as $accountId) {
             $stmt = $pdo->prepare(
                 'SELECT * FROM financial_accounts WHERE id = ? AND planning_id = ? AND active = 1'
@@ -107,14 +131,35 @@ final class InvestmentPortfolioService
                 $accCurrency === 'BRL' ? 'EUR' : $accCurrency
             );
             $bal = AccountService::computeBalance($pdo, $account, $rate);
-            $fromAccounts += AccountService::balanceToBrl($bal, $accCurrency, $rate);
+            $balBrl = AccountService::balanceToBrl($bal, $accCurrency, $rate);
+            if ($balBrl <= 0) {
+                continue;
+            }
+            $fromAccounts += $balBrl;
+            $accountCdi = AccountService::resolveAccountCdiMonthlyRate($pdo, $planningId, $account);
+            $weightedRate += $balBrl * $accountCdi;
+            if ($cdiPercent > 0) {
+                $cdiYield += $balBrl * $accountCdi * ($cdiPercent / 100);
+            }
         }
 
         if ($fromAccounts > 0) {
-            return round($fromAccounts, 2);
+            return [
+                'balance' => round($fromAccounts, 2),
+                'cdiYield' => round($cdiYield, 2),
+                'effectiveCdiMonthlyRate' => round($weightedRate / $fromAccounts, 6),
+            ];
         }
 
-        return round(max(0, $storedBalance), 2);
+        $yield = $cdiPercent > 0
+            ? round(max(0, $storedBalance) * $settingsCdiRate * ($cdiPercent / 100), 2)
+            : 0.0;
+
+        return [
+            'balance' => round(max(0, $storedBalance), 2),
+            'cdiYield' => $yield,
+            'effectiveCdiMonthlyRate' => $settingsCdiRate,
+        ];
     }
 
     /** @return list<int> */
@@ -200,17 +245,6 @@ final class InvestmentPortfolioService
         }
 
         return round($total, 2);
-    }
-
-    private static function cdiMonthlyRate(PDO $pdo, int $planningId): float
-    {
-        $stmt = $pdo->prepare(
-            'SELECT cdi_monthly_rate FROM planning_settings WHERE planning_id = ? LIMIT 1'
-        );
-        $stmt->execute([$planningId]);
-        $rate = $stmt->fetchColumn();
-
-        return $rate !== false ? (float) $rate : 0.0095;
     }
 
     private static function cdiPercentForSlug(string $slug): float

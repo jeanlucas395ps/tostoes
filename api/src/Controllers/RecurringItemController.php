@@ -307,6 +307,13 @@ final class RecurringItemController
             if ($startDate > $endDate) {
                 Response::error('A data de início deve ser anterior ou igual à data de fim.', 422);
             }
+            $sourceId = isset($body['sourceFinancialAccountId']) ? (int) $body['sourceFinancialAccountId'] : 0;
+            if ($sourceId <= 0) {
+                Response::error('Vincule um cartão de crédito à compra parcelada.', 422);
+            }
+            $pdo = Database::connection();
+            $planningId = Auth::requirePlanningId();
+            AccountService::validateAccountId($pdo, $planningId, $sourceId, 'credit');
         } else {
             $startDate = null;
             $endDate = null;
@@ -360,10 +367,13 @@ final class RecurringItemController
     /** @param array<string, mixed> $body */
     private static function resolveSourceFinancialAccountId(PDO $pdo, int $planningId, array $body): ?int
     {
-        $kind = $body['kind'] ?? '';
         $id = isset($body['sourceFinancialAccountId']) ? (int) $body['sourceFinancialAccountId'] : 0;
         if ($id <= 0) {
             return null;
+        }
+
+        if (!empty($body['isInstallment'])) {
+            return AccountService::validateAccountId($pdo, $planningId, $id, 'credit');
         }
 
         return AccountService::validatePaymentSourceAccountId($pdo, $planningId, $id);

@@ -109,6 +109,164 @@ final class AccountService
     }
 
     /**
+     * Cria transferência confirmada (duas pernas ligadas por notes).
+     * Banco → investimento vira aporte (investment + income), igual ao fluxo de investimento,
+     * para o saldo aparecer e a entrada não ser ocultada no ledger.
+     *
+     * @param array{
+     *   planningId: int,
+     *   ownerUserId: int,
+     *   registeredBy: int,
+     *   sourceAccountId: int,
+     *   targetAccountId: int,
+     *   amount: float,
+     *   currency?: string,
+     *   amountIn?: float|null,
+     *   currencyIn?: string|null,
+     *   transactionDate: string,
+     *   description: string,
+     *   category?: string,
+     *   region?: string,
+     *   responsible?: string|null,
+     *   responsibleUserId?: int|null,
+     *   investmentTypeId?: int|null,
+     *   extraNotes?: string|null
+     * } $data
+     * @return array{outTxId: int, inTxId: int, mode: string}
+     */
+    public static function createConfirmedTransfer(PDO $pdo, array $data): array
+    {
+        $accounts = self::validateAccountTransfer(
+            $pdo,
+            (int) $data['planningId'],
+            (int) $data['sourceAccountId'],
+            (int) $data['targetAccountId']
+        );
+        $sourceType = self::accountType($pdo, (int) $data['planningId'], $accounts['sourceAccountId']);
+        $targetType = self::accountType($pdo, (int) $data['planningId'], $accounts['targetAccountId']);
+        $sourceName = self::accountName($pdo, (int) $data['planningId'], $accounts['sourceAccountId']);
+        $targetName = self::accountName($pdo, (int) $data['planningId'], $accounts['targetAccountId']);
+
+        $date = (string) $data['transactionDate'];
+        $moneyOut = MoneyHelper::parseInput($pdo, (int) $data['planningId'], [
+            'amount' => $data['amount'],
+            'currency' => $data['currency'] ?? 'BRL',
+            'transactionDate' => $date,
+        ]);
+        $moneyIn = MoneyHelper::parseInput($pdo, (int) $data['planningId'], [
+            'amount' => $data['amountIn'] ?? $data['amount'],
+            'currency' => $data['currencyIn'] ?? $data['currency'] ?? 'BRL',
+            'transactionDate' => $date,
+        ]);
+        if ($moneyOut['amount'] <= 0 || $moneyIn['amount'] <= 0) {
+            Response::error('Informe um valor maior que zero.', 422);
+        }
+
+        $asAporte = $sourceType === 'bank' && $targetType === 'investment';
+        $outKind = $asAporte ? 'investment' : 'transfer';
+        $inKind = $asAporte ? 'income' : 'transfer';
+        $category = $data['category'] ?? ($asAporte ? 'Investimento' : 'Transferência');
+        $extra = trim((string) ($data['extraNotes'] ?? ''));
+
+        if ($asAporte) {
+            $outNotes = "Aporte → {$targetName}";
+            $inNotesPrefix = "Aporte ← {$sourceName}";
+        } else {
+            $outNotes = "Transferência → {$targetName}";
+            $inNotesPrefix = "Transferência ← {$sourceName}";
+        }
+        if ($extra !== '') {
+            $outNotes .= " · {$extra}";
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO transactions
+             (user_id, planning_id, account_id, registered_by_user_id, transaction_date, kind, description,
+              amount, currency, amount_brl, eur_to_brl, category, region, responsible, responsible_user_id,
+              investment_type_id, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            (int) $data['ownerUserId'],
+            (int) $data['planningId'],
+            $accounts['sourceAccountId'],
+            (int) $data['registeredBy'],
+            $date,
+            $outKind,
+            (string) $data['description'],
+            $moneyOut['amount'],
+            $moneyOut['currency'],
+            $moneyOut['amountBrl'],
+            $moneyOut['eurToBrl'] ?? null,
+            $category,
+            $data['region'] ?? 'geral',
+            $data['responsible'] ?? null,
+            $data['responsibleUserId'] ?? null,
+            $asAporte ? ($data['investmentTypeId'] ?? null) : null,
+            $outNotes,
+        ]);
+        $outTxId = (int) $pdo->lastInsertId();
+
+        $stmt->execute([
+            (int) $data['ownerUserId'],
+            (int) $data['planningId'],
+            $accounts['targetAccountId'],
+            (int) $data['registeredBy'],
+            $date,
+            $inKind,
+            (string) $data['description'],
+            $moneyIn['amount'],
+            $moneyIn['currency'],
+            $moneyIn['amountBrl'],
+            $moneyIn['eurToBrl'] ?? null,
+            $category,
+            $data['region'] ?? 'geral',
+            $data['responsible'] ?? null,
+            $data['responsibleUserId'] ?? null,
+            $asAporte ? ($data['investmentTypeId'] ?? null) : null,
+            "{$inNotesPrefix} (#{$outTxId})",
+        ]);
+        $inTxId = (int) $pdo->lastInsertId();
+
+        $finalOutNotes = $asAporte
+            ? "Aporte → {$targetName} (#{$inTxId})"
+            : "Transferência → {$targetName} (#{$inTxId})";
+        if ($extra !== '') {
+            $finalOutNotes .= " · {$extra}";
+        }
+        $pdo->prepare('UPDATE transactions SET notes = ? WHERE id = ? AND planning_id = ?')
+            ->execute([$finalOutNotes, $outTxId, (int) $data['planningId']]);
+
+        return [
+            'outTxId' => $outTxId,
+            'inTxId' => $inTxId,
+            'mode' => $asAporte ? 'aporte' : 'transfer',
+        ];
+    }
+
+    public static function accountType(PDO $pdo, int $planningId, int $accountId): string
+    {
+        $stmt = $pdo->prepare(
+            'SELECT type FROM financial_accounts WHERE id = ? AND planning_id = ?'
+        );
+        $stmt->execute([$accountId, $planningId]);
+        $type = $stmt->fetchColumn();
+
+        return $type ? (string) $type : '';
+    }
+
+    public static function accountName(PDO $pdo, int $planningId, int $accountId): string
+    {
+        $stmt = $pdo->prepare(
+            'SELECT name FROM financial_accounts WHERE id = ? AND planning_id = ?'
+        );
+        $stmt->execute([$accountId, $planningId]);
+        $name = $stmt->fetchColumn();
+
+        return $name ? (string) $name : 'Conta';
+    }
+
+    /**
      * Aplica lançamento ao saldo (conta bancária/investimento ou dívida do cartão).
      *
      * @param array<string, mixed> $row
@@ -177,6 +335,36 @@ final class AccountService
         }
 
         return round($balance, 2);
+    }
+
+    /** Taxa CDI mensal padrão do planejamento (Configurações). */
+    public static function planningCdiMonthlyRate(PDO $pdo, int $planningId): float
+    {
+        $stmt = $pdo->prepare(
+            'SELECT cdi_monthly_rate FROM planning_settings WHERE planning_id = ? LIMIT 1'
+        );
+        $stmt->execute([$planningId]);
+        $rate = $stmt->fetchColumn();
+
+        return $rate !== false ? (float) $rate : 0.0095;
+    }
+
+    /**
+     * CDI mensal efetivo da conta: override da conta de investimento, senão settings.
+     *
+     * @param array<string, mixed> $accountRow
+     */
+    public static function resolveAccountCdiMonthlyRate(PDO $pdo, int $planningId, array $accountRow): float
+    {
+        if (($accountRow['type'] ?? '') === 'investment'
+            && isset($accountRow['cdi_monthly_rate'])
+            && $accountRow['cdi_monthly_rate'] !== null
+            && $accountRow['cdi_monthly_rate'] !== ''
+        ) {
+            return (float) $accountRow['cdi_monthly_rate'];
+        }
+
+        return self::planningCdiMonthlyRate($pdo, $planningId);
     }
 
     /** @param array<string, mixed> $row */
@@ -261,6 +449,8 @@ final class AccountService
                 ? (int) $row['closing_day'] : null,
             'dueDay' => isset($row['due_day']) && $row['due_day'] !== null
                 ? (int) $row['due_day'] : null,
+            'cdiMonthlyRate' => null,
+            'effectiveCdiMonthlyRate' => null,
             'color' => $row['color'],
             'sortOrder' => (int) $row['sort_order'],
             'balance' => $balance,
@@ -280,6 +470,16 @@ final class AccountService
             'usdToBrl' => $usdToBrl,
         ];
 
+        if (($row['type'] ?? '') === 'investment') {
+            $override = isset($row['cdi_monthly_rate']) && $row['cdi_monthly_rate'] !== null
+                ? (float) $row['cdi_monthly_rate'] : null;
+            $mapped['cdiMonthlyRate'] = $override;
+            $mapped['effectiveCdiMonthlyRate'] = self::resolveAccountCdiMonthlyRate(
+                $pdo,
+                $planningId,
+                $row
+            );
+        }
         if ($isCredit) {
             $nowY = (int) date('Y');
             $nowM = (int) date('n');
