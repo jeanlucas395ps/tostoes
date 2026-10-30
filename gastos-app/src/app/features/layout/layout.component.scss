@@ -644,6 +644,13 @@ button.topbar-user {
   min-width: 0;
 }
 
+.main--bleed {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Modais: estilos globais em ui-system.scss */
 
 /* ══════════════════════════════════════════════

@@ -30,6 +30,8 @@ export class LayoutComponent implements OnInit {
   theme = inject(ThemeService);
 
   pageTitle = signal('Início');
+  /** Páginas como o grafo ocupam 100% da área útil (sem padding do main). */
+  contentBleed = signal(false);
 
   readonly today = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -80,7 +82,9 @@ export class LayoutComponent implements OnInit {
     while (route.firstChild) {
       route = route.firstChild;
     }
-    const fromData = route.snapshot.data['title'] as string | undefined;
+    const data = route.snapshot.data;
+    this.contentBleed.set(!!data['contentBleed']);
+    const fromData = data['title'] as string | undefined;
     if (fromData) {
       this.pageTitle.set(fromData);
       return;

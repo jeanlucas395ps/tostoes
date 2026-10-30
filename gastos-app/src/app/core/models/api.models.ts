@@ -289,6 +289,17 @@ export interface AccountFlowGraphNode {
   column?: string;
   accountId?: number;
   unassigned?: boolean;
+  /** true quando o usuário já salvou a posição deste nó. */
+  positionSaved?: boolean;
+  editable?: boolean;
+  monthPlanEntryId?: number | null;
+  recurringItemId?: number | null;
+  financialGoalId?: number | null;
+  transactionId?: number | null;
+  isVariable?: boolean;
+  isInstallment?: boolean;
+  /** Valor do lançamento (útil quando o item ainda não tem aresta para uma conta). */
+  amountBrl?: number;
 }
 
 export interface AccountFlowGraphEdge {
@@ -341,6 +352,8 @@ export interface AccountFlowGraph {
   width: number;
   height: number;
   totals: { outflowBrl: number; inflowBrl: number };
+  viewport?: { zoom: number; x: number; y: number } | null;
+  syntheticLayout?: Record<string, { x: number; y: number }>;
 }
 
 export interface PlanningUsageStart {

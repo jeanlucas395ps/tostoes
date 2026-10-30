@@ -83,7 +83,7 @@ export const routes: Routes = [
           import('./features/account-graph/account-graph.component').then(
             (m) => m.AccountGraphComponent
           ),
-        data: { title: 'Grafo de contas' },
+        data: { title: 'Grafo de contas', contentBleed: true },
       },
       {
         path: 'relatorios-ia',

@@ -28,7 +28,7 @@ export class SafeHtmlPipe implements PipeTransform {
       return false;
     }
     // Apenas tags SVG comuns (sem foreignObject / iframe / embed).
-    const stripped = html.replace(/<\/?(svg|path|polyline|line|circle|rect|g|defs|use|title|desc)(\s[^>]*)?>/gi, '');
+    const stripped = html.replace(/<\/?(svg|path|polyline|polygon|line|circle|rect|g|defs|use|title|desc)(\s[^>]*)?>/gi, '');
     return !/<[a-z]/i.test(stripped);
   }
 }

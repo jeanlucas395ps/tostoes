@@ -1,227 +1,435 @@
-<div class="account-graph-page">
+<div class="graph-shell" [class.graph-shell--panel]="sidePanelOpen()">
 
-  <!-- Header -->
-  <header class="page-top page-top--toolbar">
-    <div class="page-lead-block">
-      <p class="page-lead">Fluxos previstos e confirmados entre bancos, investimentos, gastos e metas.</p>
+  <!-- Barra superior compacta: modos + totais + ações -->
+  <header class="graph-top">
+    <div class="graph-top-left">
+      <app-month-nav
+        [year]="year()"
+        [month]="month()"
+        (yearChange)="onYearChange($event)"
+        (monthChange)="onMonthChange($event)"
+      />
+      <div class="graph-tabs" role="tablist">
+        <button type="button" role="tab" [class.active]="mode() === 'current'" (click)="setMode('current')">
+          Mês atual
+        </button>
+        <button type="button" role="tab" [class.active]="mode() === 'planned'" (click)="setMode('planned')">
+          Previsto
+        </button>
+        <button type="button" role="tab" [class.active]="mode() === 'confirmed'" (click)="setMode('confirmed')">
+          Real
+        </button>
+      </div>
     </div>
-    <app-month-nav
-      [year]="year()"
-      [month]="month()"
-      (yearChange)="onYearChange($event)"
-      (monthChange)="onMonthChange($event)"
-    />
+
+    <div class="graph-top-center">
+      @if (totals(); as t) {
+        <span class="total-chip total-chip--in">Entradas {{ t.inflowBrl | currencyBrl }}</span>
+        <span class="total-chip total-chip--out">Saídas {{ t.outflowBrl | currencyBrl }}</span>
+        <span class="total-chip total-chip--bal">
+          Saldo {{ (t.inflowBrl - t.outflowBrl) | currencyBrl }}
+        </span>
+        @if (unassignedCnt() > 0 && mode() !== 'confirmed') {
+          <span class="total-chip total-chip--warn">{{ unassignedCnt() }} sem conta</span>
+        }
+      }
+    </div>
+
+    <div class="graph-top-right">
+      <button type="button" class="tool-btn" [class.active]="showFilters()" (click)="toggleFilters()" title="Filtros">
+        Filtros
+        @if (activeFilterCount() > 0) {
+          <span class="filter-badge">{{ activeFilterCount() }}</span>
+        }
+      </button>
+      <button
+        type="button"
+        class="tool-btn"
+        (click)="autoOrganize()"
+        title="Reorganizar o grafo automaticamente e substituir o layout atual"
+      >
+        Organizar
+      </button>
+      <button type="button" class="tool-btn tool-btn--primary" (click)="openCreatePanel()" title="Novo item">
+        + Novo
+      </button>
+      <div class="zoom-group">
+        <button type="button" class="zoom-btn" (click)="fitView()" title="Ajustar">⛶</button>
+        <button type="button" class="zoom-btn" (click)="zoomIn()">+</button>
+        <span class="zoom-pct">{{ zoomPct() }}%</span>
+        <button type="button" class="zoom-btn" (click)="zoomOut()">−</button>
+      </div>
+    </div>
   </header>
 
-  <!-- Toolbar: modo + sumário + controles do grafo -->
-  <div class="graph-toolbar">
-    <!-- Tabs previsto / real -->
-    <div class="graph-tabs" role="tablist">
-      <button type="button" role="tab"
-        [class.active]="mode() === 'confirmed'"
-        (click)="setMode('confirmed')">
-        Real
-      </button>
-      <button type="button" role="tab"
-        [class.active]="mode() === 'planned'"
-        (click)="setMode('planned')">
-        Previsto
-      </button>
-      <button type="button" role="tab"
-        [class.active]="mode() === 'current'"
-        (click)="setMode('current')"
-        title="Previsto (fixos, metas) + variáveis pendentes do mês">
-        Mês atual
-      </button>
-    </div>
-
-    <!-- Sumário de totais -->
-    @if (totals(); as t) {
-      <div class="graph-totals">
-        <span class="total-chip total-chip--out">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-          Saídas {{ t.outflowBrl | currencyBrl }}
-        </span>
-        <span class="total-chip total-chip--in">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-          Entradas {{ t.inflowBrl | currencyBrl }}
-        </span>
-        @if (unassignedCnt() > 0 && (mode() === 'planned' || mode() === 'current')) {
-          <span class="total-chip total-chip--warn">
-            ⚠ {{ unassignedCnt() }} sem conta definida
-          </span>
-        }
-      </div>
-    }
-
-    <!-- Botão de filtros -->
-    <button type="button" class="filter-toggle-btn"
-      [class.active]="showFilters() || activeFilterCount() > 0"
-      (click)="toggleFilters()"
-      title="Filtros">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-      Filtros
-      @if (activeFilterCount() > 0) {
-        <span class="filter-badge">{{ activeFilterCount() }}</span>
-      }
-    </button>
-
-    <!-- Controles de zoom/fit -->
-    <div class="graph-zoom-controls">
-      <button type="button" class="zoom-btn" title="Ajustar ao canvas" (click)="fitView()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V3h4"/><path d="M21 7V3h-4"/><path d="M3 17v4h4"/><path d="M21 17v4h-4"/></svg>
-      </button>
-      <button type="button" class="zoom-btn" title="Zoom +" (click)="zoomIn()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <span class="zoom-pct">{{ zoomPct() }}%</span>
-      <button type="button" class="zoom-btn" title="Zoom −" (click)="zoomOut()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- Painel de filtros ────────────────────────────────────────────── -->
   @if (showFilters()) {
-    <div class="filter-panel">
-      <div class="filter-panel-head">
-        <span class="filter-panel-title">Filtros</span>
-        @if (activeFilterCount() > 0) {
-          <button type="button" class="filter-clear-btn" (click)="clearFilters()">Limpar tudo</button>
-        }
-      </div>
-
-      <div class="filter-groups">
-
-        <!-- Tipo -->
-        @if (availableTypes().length) {
-          <div class="filter-group">
-            <span class="filter-group-label">Tipo</span>
-            <div class="filter-chips">
-              @for (t of availableTypes(); track t.key) {
-                <button type="button" class="filter-chip"
-                  [class.active]="isTypeActive(t.key)"
-                  (click)="toggleType(t.key)">
-                  {{ t.label }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Contas bancárias / investimentos -->
-        @if (availableAccounts().length) {
-          <div class="filter-group">
-            <span class="filter-group-label">Contas</span>
-            <div class="filter-chips">
-              @for (a of availableAccounts(); track a.id) {
-                <button type="button" class="filter-chip filter-chip--account"
-                  [class.active]="isAccountActive(a.id)"
-                  [style.--chip-acc-color]="a.color"
-                  (click)="toggleAccount(a.id)">
-                  <span class="chip-dot" [style.background]="a.color"></span>
-                  {{ a.label }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Categorias (Mercado, Exercícios, …) -->
-        @if (availableCategories().length) {
-          <div class="filter-group">
-            <span class="filter-group-label">Categorias</span>
-            <div class="filter-chips filter-chips--wrap">
-              @for (cat of availableCategories(); track cat.id) {
-                <button type="button" class="filter-chip"
-                  [class.active]="isCategoryActive(cat.id)"
-                  (click)="toggleCategory(cat.id)">
-                  <span class="chip-icon" aria-hidden="true"><app-lucide-svg [nodes]="lucideFor(cat.icon)" /></span>
-                  {{ cat.name }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Abas personalizadas (Brasil, Portugal, …) -->
-        @if (availableTabs().length) {
-          <div class="filter-group">
-            <span class="filter-group-label">Abas</span>
-            <div class="filter-chips">
-              @for (tab of availableTabs(); track tab.id) {
-                <button type="button" class="filter-chip"
-                  [class.active]="isTabActive(tab.id)"
-                  (click)="toggleTab(tab.id)">
-                  {{ tab.name }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-      </div>
+    <div class="filter-bar">
+      @if (activeFilterCount() > 0) {
+        <button type="button" class="filter-clear-btn" (click)="clearFilters()">Limpar</button>
+      }
+      @for (t of availableTypes(); track t.key) {
+        <button type="button" class="filter-chip" [class.active]="isTypeActive(t.key)" (click)="toggleType(t.key)">
+          {{ t.label }}
+        </button>
+      }
+      @for (a of availableAccounts(); track a.id) {
+        <button type="button" class="filter-chip" [class.active]="isAccountActive(a.id)" (click)="toggleAccount(a.id)">
+          {{ a.label }}
+        </button>
+      }
     </div>
   }
 
-  <!-- Legenda dos tipos de nó -->
-  <div class="graph-legend">
-    <span><i class="leg-dot leg-bank"></i>Banco</span>
-    <span><i class="leg-dot leg-credit"></i>Cartão</span>
-    <span><i class="leg-dot leg-credit"></i>Fatura</span>
-    <span><i class="leg-dot leg-invest"></i>Investimento</span>
-    <span><i class="leg-dot leg-expense"></i>Gasto</span>
-    <span><i class="leg-dot leg-income"></i>Recebimento</span>
-    <span><i class="leg-dot leg-goal"></i>Meta</span>
-    <span class="leg-hint">· · ·  conta a definir</span>
-    <span class="leg-hint">Clique em um nó para realçar conexões</span>
-  </div>
-
-  <!-- Container do grafo Cytoscape -->
-  <div class="graph-canvas-card">
-    @if (loading()) {
-      <div class="graph-overlay graph-overlay--loading">
-        <app-skeleton variant="detail" [count]="4" label="Carregando diagrama" />
-      </div>
-    }
-    @if (isEmpty() && !loading()) {
-      <div class="graph-overlay graph-overlay--empty">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.35">
-          <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
-        </svg>
-        <p>Sem fluxos neste mês.</p>
-        <small>Cadastre gastos fixos, metas ou investimentos com conta de origem.</small>
-      </div>
-    }
-    <!-- O Cytoscape monta o canvas aqui -->
-    <div #cyContainer class="cy-container" [style.visibility]="isEmpty() || loading() ? 'hidden' : 'visible'"></div>
-
-    <!-- Tooltip de hover -->
-    @if (tooltip().visible) {
-      <div class="cy-tooltip"
-           [style.left.px]="tooltip().x"
-           [style.top.px]="tooltip().y">
-        <div class="cy-tooltip-title">
-          <span class="cy-tooltip-dot" [style.background]="tooltip().color"></span>
-          {{ tooltip().title }}
-        </div>
-        @for (row of tooltip().rows; track row.label) {
-          @if (row.value) {
-            <div class="cy-tooltip-row">
-              <span class="cy-tooltip-label">{{ row.label }}</span>
-              <span class="cy-tooltip-value" [style.color]="row.color || ''">{{ row.value }}</span>
-            </div>
-          } @else {
-            <div class="cy-tooltip-name">{{ row.label }}</div>
+  <div class="graph-body">
+    <div
+      class="graph-canvas"
+      (dragover)="onCanvasDragOver($event)"
+      (drop)="onCanvasDrop($event)"
+    >
+      @if (linkMode()) {
+        <div class="link-banner">
+          Arraste a seta até o bloco. Ela acompanha o mouse e encaixa no alvo em verde.
+          @if (linkHint()) {
+            <span class="link-banner-hint">{{ linkHint() }}</span>
           }
+          <button type="button" (click)="cancelLinkMode()">Cancelar</button>
+        </div>
+      }
+      @if (loading()) {
+        <div class="graph-overlay">
+          <app-skeleton variant="detail" [count]="3" label="Carregando diagrama" />
+        </div>
+      }
+      @if (isEmpty() && !loading()) {
+        <div class="graph-overlay graph-overlay--empty">
+          <p>Sem fluxos neste mês. Arraste um bloco da paleta para começar.</p>
+        </div>
+      }
+
+      <div #cyContainer class="cy-container" [class.cy-container--linking]="linkMode()"></div>
+
+      @if (linkArrow(); as arrow) {
+        <svg class="link-arrow" aria-hidden="true">
+          <line
+            [attr.x1]="arrow.x1"
+            [attr.y1]="arrow.y1"
+            [attr.x2]="arrow.x2"
+            [attr.y2]="arrow.y2"
+            [attr.stroke]="arrow.valid ? '#1BAA5C' : '#14151A'"
+          />
+          <polygon [attr.points]="arrow.head" [attr.fill]="arrow.valid ? '#1BAA5C' : '#14151A'" />
+        </svg>
+      }
+
+      @for (card of flowCards(); track card.id) {
+        <div
+          class="flow-card"
+          [class.flow-card--draft]="card.draft"
+          [class.flow-card--dim]="card.dimmed"
+          [style.left.px]="card.x"
+          [style.top.px]="card.y"
+          [style.width.px]="card.w"
+          [style.height.px]="card.h"
+        >
+          <div class="flow-card-inner" [style.transform]="'scale(' + card.scale + ')'">
+            <span class="flow-card-icon" [style.background]="card.accent" [innerHTML]="card.icon | safeHtml"></span>
+            <span class="flow-card-rest" [class.flow-card-rest--check]="!!card.check">
+              <span class="flow-card-copy">
+                <span class="flow-card-title">{{ card.title }}</span>
+                @if (card.value) {
+                  <span class="flow-card-value" [class.flow-card-value--meta]="card.meta">{{ card.value }}</span>
+                }
+              </span>
+              @if (card.check; as check) {
+                <label
+                  class="node-check"
+                  [class.node-check--done]="check.happened"
+                  [title]="check.happened ? 'Desmarcar (ainda não aconteceu)' : 'Marcar como aconteceu neste mês'"
+                  (click)="$event.stopPropagation()"
+                  (pointerdown)="$event.stopPropagation()"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="check.happened"
+                    [disabled]="check.busy"
+                    (change)="toggleHappened(card.id, $event)"
+                  />
+                </label>
+              }
+            </span>
+          </div>
+        </div>
+      }
+
+      <p class="canvas-hint">Arraste um bloco da direita ou dê duplo clique no fundo</p>
+
+      <!-- Portas de ligação (estilo Excalidraw) -->
+      @for (port of linkPorts(); track port.nodeId) {
+        <button
+          type="button"
+          class="link-port"
+          [style.left.px]="port.x"
+          [style.top.px]="port.y"
+          [style.width.px]="port.size"
+          [style.height.px]="port.size"
+          title="Arrastar ligação / clicar para ligar"
+          (pointerdown)="onPortPointerDown(port.nodeId, $event)"
+        >+</button>
+      }
+
+      <!-- Mini preview ao hover de banco/cartão -->
+      @if (hubSpawnPreview(); as prev) {
+        <div
+          class="hub-spawn"
+          [style.left.px]="prev.x"
+          [style.top.px]="prev.y"
+          [style.width.px]="prev.w"
+          [style.minHeight.px]="prev.h"
+          (pointerenter)="pinHubSpawnPreview()"
+          (pointerleave)="scheduleClearHubSpawnPreview()"
+        >
+          <div class="hub-spawn-ghost">
+            <span class="hub-spawn-ghost-title">Novo bloco</span>
+            <span class="hub-spawn-ghost-sub">ligado a esta conta</span>
+          </div>
+          <div class="hub-spawn-kinds">
+            @for (k of spawnKindsForPreview(); track k.kind) {
+              <button type="button" (click)="spawnFromHubPreview(k.kind)">{{ k.label }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Ações flutuantes no nó selecionado -->
+      @if (nodeActions(); as actions) {
+        <div class="node-actions" [style.left.px]="actions.x" [style.top.px]="actions.y">
+          <button type="button" (click)="openEditPanel(actions.nodeId)">Editar</button>
+          <button type="button" (click)="startLinkFrom(actions.nodeId)">Ligar</button>
+          <button type="button" (click)="openCreateFrom(actions.nodeId)">+ Novo ligado</button>
+        </div>
+      }
+    </div>
+
+    <!-- Paleta sempre aberta: arraste o tipo para o grafo -->
+    <aside class="side-panel" aria-label="Blocos do grafo">
+        <header class="side-panel-head">
+          @if (createStep() === 'form' && panelMode() === 'create') {
+            <button type="button" class="side-back" (click)="backToTypePick()">
+              <span aria-hidden="true">←</span>
+              Voltar
+            </button>
+          }
+          <div>
+            <p class="side-panel-kicker">{{ createStep() === 'form' ? panelKicker() : 'Arraste para o grafo' }}</p>
+            <h2>{{ createStep() === 'form' ? panelTitle() : 'Blocos' }}</h2>
+          </div>
+        </header>
+
+        <div class="side-panel-body">
+          @if (createStep() === 'pick') {
+          @for (group of createTypeGroups(); track group.title) {
+            <section class="type-group">
+              <h3>{{ group.title }}</h3>
+              <div class="type-grid">
+                @for (item of group.items; track item.id) {
+                  <button
+                    type="button"
+                    class="type-card"
+                    draggable="true"
+                    [class.active]="formBlock() === item.id && createStep() === 'form'"
+                    (dragstart)="onBlockDragStart(item.id, $event)"
+                    (click)="chooseBlock(item.id)"
+                  >
+                    <span class="type-card-icon" [innerHTML]="item.icon | safeHtml"></span>
+                    <span class="type-card-copy">
+                      <strong>{{ item.label }}</strong>
+                      <span>{{ item.hint }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+          }
+
+          @if (createStep() === 'form' && formBlock() === 'bank' && accountMode() === 'pick') {
+            <p class="type-note">
+              Escolha um banco que você já tem, ou cadastre um novo.
+            </p>
+            <div class="type-grid">
+              @for (a of bankAccounts(); track a.id) {
+                <button type="button" class="type-card" (click)="placeExistingBank(a)" [disabled]="formSaving()">
+                  <span class="type-card-swatch" [style.background]="a.color || '#3b82f6'" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                  <span class="type-card-copy">
+                    <strong>{{ a.name }}</strong>
+                    <span>Usar este banco</span>
+                  </span>
+                </button>
+              }
+              <button type="button" class="type-card" (click)="accountMode.set('new')">
+                <span class="type-card-icon" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                <span class="type-card-copy">
+                  <strong>Cadastrar novo</strong>
+                  <span>Nome, cor e saldo inicial</span>
+                </span>
+              </button>
+            </div>
+            @if (formError()) {
+              <p class="form-error">{{ formError() }}</p>
+            }
+          } @else if (createStep() === 'form' && (formBlock() === 'bank' || formBlock() === 'credit' || formBlock() === 'investment-account')) {
+            <label class="field">
+              <span>Nome</span>
+              <input type="text" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="Ex.: Nubank, Itaú" />
+            </label>
+            <label class="field">
+              <span>Cor</span>
+              <input type="color" [ngModel]="formColor()" (ngModelChange)="formColor.set($event)" />
+            </label>
+            <label class="field">
+              <span>Saldo inicial (R$)</span>
+              <input type="number" step="0.01" [ngModel]="formInitialBalance()" (ngModelChange)="formInitialBalance.set(+$event)" />
+            </label>
+            @if (formBlock() === 'credit') {
+              <label class="field">
+                <span>Limite (R$)</span>
+                <input type="number" min="0" step="0.01" [ngModel]="formCreditLimit()" (ngModelChange)="formCreditLimit.set(+$event)" />
+              </label>
+              <label class="field">
+                <span>Dia de fechamento</span>
+                <input type="number" min="1" max="31" [ngModel]="formClosingDay()" (ngModelChange)="formClosingDay.set(+$event)" />
+              </label>
+              <label class="field">
+                <span>Dia de vencimento</span>
+                <input type="number" min="1" max="31" [ngModel]="formDueDay()" (ngModelChange)="formDueDay.set(+$event)" />
+              </label>
+            }
+            @if (formError()) {
+              <p class="form-error">{{ formError() }}</p>
+            }
+          } @else if (createStep() === 'form' && formBlock() === 'totalizer') {
+            <p class="type-note">
+              Agrupa gastos ou recebimentos sem conta. Ligado a um banco ou cartão, a soma sai da conta como um único gasto.
+            </p>
+            <label class="field">
+              <span>Nome</span>
+              <input type="text" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="Ex.: Casa, Mercado do mês" />
+            </label>
+            <label class="field">
+              <span>Valor inicial (R$)</span>
+              <input type="number" min="0" step="0.01" [ngModel]="formAmount()" (ngModelChange)="formAmount.set(+$event)" />
+            </label>
+            @if (formError()) {
+              <p class="form-error">{{ formError() }}</p>
+            }
+          } @else if (createStep() === 'form' || panelMode() === 'edit') {
+          <label class="field">
+            <span>Tipo</span>
+            <select [ngModel]="formKind()" (ngModelChange)="formKind.set($event)">
+              @for (opt of formKindOptions(); track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Frequência</span>
+            <div class="seg">
+              <button type="button" [class.active]="formRecurrence() === 'variable'" (click)="formRecurrence.set('variable')">
+                Variável (só este mês)
+              </button>
+              <button type="button" [class.active]="formRecurrence() === 'fixed'" (click)="formRecurrence.set('fixed')">
+                Fixo (mensal)
+              </button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Nome</span>
+            <input type="text" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="Ex.: Salário, Conta de luz" />
+          </label>
+
+          <label class="field">
+            <span>Valor (R$)</span>
+            <input type="number" min="0" step="0.01" [ngModel]="formAmount()" (ngModelChange)="formAmount.set(+$event)" />
+          </label>
+
+          <label class="field">
+            <span>{{ formKind() === 'income' ? 'Conta que recebe' : (formKind() === 'investment' ? 'Banco de saída' : 'Conta / cartão') }}</span>
+            <select [ngModel]="formAccountId()" (ngModelChange)="formAccountId.set($event)">
+              <option [ngValue]="null">Sem conta (definir depois)</option>
+              @for (a of bankAndCreditAccounts(); track a.id) {
+                <option [ngValue]="a.id">{{ a.name }} ({{ a.type }})</option>
+              }
+            </select>
+          </label>
+
+          @if (formKind() === 'investment') {
+            <label class="field">
+              <span>Conta de investimento (destino)</span>
+              <select [ngModel]="formTargetAccountId()" (ngModelChange)="formTargetAccountId.set($event)">
+                <option [ngValue]="null">Selecione</option>
+                @for (a of investmentAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}</option>
+                }
+              </select>
+            </label>
+          }
+
+          @if (formError()) {
+            <p class="form-error">{{ formError() }}</p>
+          }
+          }
+        </div>
+
+        @if (createStep() === 'form' || panelMode() === 'edit') {
+        <footer class="side-panel-foot">
+          @if (panelMode() === 'edit') {
+            <button type="button" class="tool-btn tool-btn--danger" (click)="requestDeleteFromPanel()" [disabled]="formSaving()">
+              Excluir
+            </button>
+          }
+          <span class="side-panel-foot-spacer"></span>
+          @if (panelMode() === 'create' && createStep() === 'form') {
+            <button type="button" class="tool-btn" (click)="backToTypePick()" [disabled]="formSaving()">Voltar</button>
+          }
+          <button type="button" class="tool-btn" (click)="closeSidePanel()" [disabled]="formSaving()">Cancelar</button>
+          @if ((createStep() === 'form' || panelMode() === 'edit') && !(formBlock() === 'bank' && accountMode() === 'pick')) {
+            <button type="button" class="tool-btn tool-btn--primary" (click)="submitCreate()" [disabled]="formSaving()">
+              {{ formSaving() ? 'Salvando…' : 'Salvar no grafo' }}
+            </button>
+          }
+        </footer>
         }
-      </div>
-    }
+      </aside>
   </div>
 
-  <!-- Dica de uso -->
-  <p class="graph-tip">
-    Arraste nós para reorganizar · Scroll para zoom · Arraste o fundo para navegar
-  </p>
-
+  @if (deletePrompt(); as prompt) {
+    <div class="delete-modal-backdrop" (click)="cancelDelete()">
+      <div class="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" (click)="$event.stopPropagation()">
+        <h2 id="delete-title">Excluir {{ prompt.kindLabel }}</h2>
+        <p>
+          <strong>{{ prompt.name }}</strong> é um {{ prompt.kindLabel }}.
+          @if (prompt.isFixed) {
+            Item fixo: dá para tirar só deste mês ou deste mês em diante.
+            Meses já passados não são alterados.
+          } @else {
+            Item variável: a exclusão vale só para este mês.
+            Meses já passados e os próximos não são alterados.
+          }
+        </p>
+        <div class="delete-modal-actions">
+          <button type="button" class="tool-btn" (click)="cancelDelete()" [disabled]="deleteBusy()">Cancelar</button>
+          <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('month')" [disabled]="deleteBusy()">
+            Só este mês
+          </button>
+          @if (prompt.isFixed && prompt.recurringItemId) {
+            <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('upcoming')" [disabled]="deleteBusy()">
+              Este mês e os próximos
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>

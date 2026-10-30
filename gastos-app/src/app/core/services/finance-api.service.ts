@@ -204,6 +204,59 @@ export class FinanceApiService {
     });
   }
 
+  saveAccountFlowGraphLayout(body: {
+    year: number;
+    month: number;
+    mode: AccountFlowGraphMode;
+    positions: Array<{ nodeKey: string; x: number; y: number }>;
+    viewport?: { zoom: number; x: number; y: number };
+  }): Observable<{ ok: boolean; saved: number }> {
+    return this.http.put<{ ok: boolean; saved: number }>(
+      `${this.base}/accounts/flow-graph/layout`,
+      body
+    );
+  }
+
+  createAccountFlowGraphNode(body: {
+    year: number;
+    month: number;
+    mode: AccountFlowGraphMode;
+    kind: 'income' | 'expense' | 'investment' | 'leisure' | 'totalizer';
+    recurrence: 'fixed' | 'variable';
+    name: string;
+    amount: number;
+    currency?: string;
+    accountId?: number | string | null;
+    targetAccountId?: number | null;
+    linkAccountNodeId?: string | null;
+    dueDay?: number;
+    x?: number;
+    y?: number;
+  }): Observable<AccountFlowGraph> {
+    return this.http.post<AccountFlowGraph>(`${this.base}/accounts/flow-graph/nodes`, body);
+  }
+
+  linkAccountFlowGraphNodes(body: {
+    year: number;
+    month: number;
+    mode: AccountFlowGraphMode;
+    fromNodeId: string;
+    toNodeId: string;
+  }): Observable<AccountFlowGraph> {
+    return this.http.post<AccountFlowGraph>(`${this.base}/accounts/flow-graph/link`, body);
+  }
+
+  unlinkAccountFlowGraphNodes(body: {
+    year: number;
+    month: number;
+    mode: AccountFlowGraphMode;
+    flowNodeId?: string;
+    fromNodeId?: string;
+    toNodeId?: string;
+  }): Observable<AccountFlowGraph> {
+    return this.http.post<AccountFlowGraph>(`${this.base}/accounts/flow-graph/unlink`, body);
+  }
+
   getProjections(
     year: number,
     kind?: EntryKind
