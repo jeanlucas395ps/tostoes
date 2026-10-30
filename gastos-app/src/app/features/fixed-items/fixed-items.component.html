@@ -19,7 +19,7 @@
             } @else if (tab.key === 'conjunto') {
               <app-user-avatar name="Conjunto" size="sm" />
             } @else {
-              <span class="user-tab-avatar-all" aria-hidden="true">⊞</span>
+              <span class="user-tab-avatar-all" aria-hidden="true" [innerHTML]="iconGrid | safeHtml"></span>
             }
           </span>
           <span class="user-tab-name">{{ tab.label }}</span>
@@ -274,7 +274,7 @@
             }
             @for (a of (isInstallmentMode() ? creditFinancialAccounts() : bankFinancialAccounts()); track a.id) {
               <option [ngValue]="a.id">
-                {{ a.type === 'credit' ? 'Cartão' : 'Banco' }} · {{ a.name }}
+                {{ a.type === 'credit' ? 'Cartão' : a.type === 'investment' ? 'Invest.' : 'Banco' }} · {{ a.name }}
               </option>
             }
           </select>
@@ -283,9 +283,9 @@
               A compra entra na fatura do cartão e pode ser adiantada em Movimentos ou aqui.
             } @else if (meta().kind === 'expense') {
               No cartão, o valor entra na previsão da fatura do mês.
-              Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
+              Vincule para aparecer na <a routerLink="/visualizacao-360">Visualização 360</a>.
             } @else {
-              Vincule para aparecer no <a routerLink="/grafo-contas">Grafo de contas</a>.
+              Vincule para aparecer na <a routerLink="/visualizacao-360">Visualização 360</a>.
             }
           </small>
         }
@@ -322,7 +322,7 @@
             }
           </select>
           <small class="hint">
-            Com banco e destino, o fluxo aparece completo no <a routerLink="/grafo-contas">Grafo previsto</a>.
+            Com banco e destino, o fluxo aparece completo na <a routerLink="/visualizacao-360">Visualização 360</a>.
           </small>
         }
       </label>
@@ -372,10 +372,16 @@
                 <div class="item-right">
                   <span class="amount">{{ itemLabel(item) }}</span>
                   @if (canAdvance(item)) {
-                    <button type="button" class="btn-icon btn-advance" title="Adiantar parcela" (click)="openAdvance(item)">↓$</button>
+                    <button type="button" class="btn-icon btn-advance" title="Adiantar parcela" (click)="openAdvance(item)">
+                      <span aria-hidden="true" [innerHTML]="iconAdvance | safeHtml"></span>
+                    </button>
                   }
-                  <button type="button" class="btn-icon" (click)="openEdit(item)">✎</button>
-                  <button type="button" class="btn-icon danger" (click)="remove(item)">×</button>
+                  <button type="button" class="btn-icon" title="Editar" (click)="openEdit(item)">
+                    <span aria-hidden="true" [innerHTML]="iconPencil | safeHtml"></span>
+                  </button>
+                  <button type="button" class="btn-icon danger" title="Excluir" (click)="remove(item)">
+                    <span aria-hidden="true" [innerHTML]="iconClose | safeHtml"></span>
+                  </button>
                 </div>
               </div>
             </li>

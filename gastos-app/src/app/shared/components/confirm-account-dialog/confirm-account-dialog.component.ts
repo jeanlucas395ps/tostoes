@@ -24,7 +24,7 @@ const KIND_LABELS: Record<EntryKind, string> = {
   income: 'Recebimento',
   expense: 'Gasto',
   investment: 'Investimento',
-  leisure: 'Lazer',
+  leisure: 'Gasto',
   transfer: 'Transferência',
 };
 
@@ -66,7 +66,7 @@ export class ConfirmAccountDialogComponent {
   cancelled = output<void>();
 
   readonly kindLabels = KIND_LABELS;
-  readonly kindOptions: EntryKind[] = ['income', 'expense', 'investment', 'leisure', 'transfer'];
+  readonly kindOptions: EntryKind[] = ['income', 'expense', 'investment', 'transfer'];
 
   isInvestment = computed(() => this.editKind() === 'investment');
   isTransfer = computed(() => this.editKind() === 'transfer');
@@ -80,10 +80,17 @@ export class ConfirmAccountDialogComponent {
     this.accounts().filter((a) => a.type === 'bank').sort((a, b) => a.name.localeCompare(b.name))
   );
 
-  /** Banco ou cartão, origem de gastos / lazer. */
+  /** Banco, cartão ou investimento — origem de gastos. */
   paymentAccounts = computed(() =>
     this.accounts()
-      .filter((a) => a.type === 'bank' || a.type === 'credit')
+      .filter((a) => a.type === 'bank' || a.type === 'credit' || a.type === 'investment')
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  );
+
+  /** Banco ou investimento — destino de recebimentos (ex.: rendimento direto na corretora). */
+  incomeAccounts = computed(() =>
+    this.accounts()
+      .filter((a) => a.type === 'bank' || a.type === 'investment')
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   );
 
@@ -97,6 +104,11 @@ export class ConfirmAccountDialogComponent {
     [...this.accounts()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   );
 
+  /** Conta do lançamento simples (não aporte/transferência). */
+  defaultAccountOptions = computed(() =>
+    this.editKind() === 'income' ? this.incomeAccounts() : this.paymentAccounts()
+  );
+
   accountTypeShort = accountTypeShortLabel;
 
   constructor() {
@@ -108,7 +120,7 @@ export class ConfirmAccountDialogComponent {
       this.editCurrency.set(e.currency ?? 'BRL');
       this.editAmountIn.set(amt);
       this.editCurrencyIn.set(e.currency ?? 'BRL');
-      this.editKind.set(e.kind);
+      this.editKind.set(e.kind === 'leisure' ? 'expense' : e.kind);
 
       if (e.kind === 'investment') {
         if (e.financialAccountId && !this.investmentAccountId()) {

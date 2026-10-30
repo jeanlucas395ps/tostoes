@@ -146,12 +146,12 @@
           @if (editKind() === 'income') {
             Em qual conta entrou?
           } @else {
-            Pagar com (banco ou cartão)
+            Pagar com
           }
         </span>
         <select [(ngModel)]="bankAccountId">
           <option [ngValue]="null">, Selecione, </option>
-          @for (a of (editKind() === 'income' ? bankAccounts() : paymentAccounts()); track a.id) {
+          @for (a of defaultAccountOptions(); track a.id) {
             <option [ngValue]="a.id">
               {{ accountTypeShort(a.type) }} · {{ a.name }}
               ({{ accountBalanceLabel(a) }})
@@ -159,9 +159,13 @@
           }
         </select>
       </label>
-      @if (editKind() !== 'income') {
+      @if (editKind() === 'income') {
         <small class="hint">
-          No cartão, o valor entra na fatura e no uso do limite. Para pagar a fatura, use Transferência (banco → cartão).
+          Pode ser banco ou investimento (ex.: rendimento ou depósito direto na corretora).
+        </small>
+      } @else {
+        <small class="hint">
+          Banco, cartão ou investimento. No cartão, o valor entra na fatura. Para pagar a fatura, use Transferência (banco → cartão).
         </small>
       }
     }

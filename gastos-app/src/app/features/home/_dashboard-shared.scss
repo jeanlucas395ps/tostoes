@@ -199,14 +199,23 @@
 }
 
 .kpi-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   font-size: 1.125rem;
   font-weight: 900;
   flex-shrink: 0;
+  color: #fff;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    color: inherit;
+    stroke: currentColor;
+  }
 }
 
 .kpi-trend {
@@ -239,18 +248,18 @@
 }
 
 .kpi-income {
-  .kpi-icon { background: var(--income-lighter);  color: var(--income-dark);      }
-  .kpi-value { color: var(--income-dark); }
+  .kpi-icon { background: #1baa5c; color: #fff; }
+  .kpi-value { color: var(--text); }
 }
 
 .kpi-expense {
-  .kpi-icon { background: var(--danger-fill);       color: var(--danger);            }
-  .kpi-value { color: var(--danger); }
+  .kpi-icon { background: #e5342b; color: #fff; }
+  .kpi-value { color: var(--text); }
 }
 
 .kpi-invest {
-  .kpi-icon { background: var(--accent-invest-fill); color: var(--accent-invest);   }
-  .kpi-value { color: var(--accent-invest); }
+  .kpi-icon { background: #5a3fd1; color: #fff; }
+  .kpi-value { color: var(--text); }
 }
 
 .dash-grid {

@@ -33,13 +33,22 @@
         } @else if (compact()) {
           @if (cell.showPreview) {
             <div class="cell-preview cell-preview--compact">
-              <span class="prev-line income">↑ {{ cell.incomeProjected | currencyBrl }}</span>
-              <span class="prev-line expense">↓ {{ cell.expenseProjected | currencyBrl }}</span>
+              <span class="prev-line income">
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></span>
+                {{ cell.incomeProjected | currencyBrl }}
+              </span>
+              <span class="prev-line expense">
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></span>
+                {{ cell.expenseProjected | currencyBrl }}
+              </span>
               <span
                 class="prev-line balance"
                 [class.positive]="cell.balanceProjected >= 0"
                 [class.negative]="cell.balanceProjected < 0"
-              >= {{ cell.balanceProjected | currencyBrl }}</span>
+              >
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconBalance | safeHtml"></span>
+                {{ cell.balanceProjected | currencyBrl }}
+              </span>
             </div>
           } @else if (cell.hasReal) {
             <span class="cell-real" [class.zero]="cell.balanceReal === 0">
@@ -52,13 +61,22 @@
           </span>
           @if (cell.showPreview) {
             <div class="cell-preview">
-              <span class="prev-line income">↑ {{ cell.incomeProjected | currencyBrl }}</span>
-              <span class="prev-line expense">↓ {{ cell.expenseProjected | currencyBrl }}</span>
+              <span class="prev-line income">
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></span>
+                {{ cell.incomeProjected | currencyBrl }}
+              </span>
+              <span class="prev-line expense">
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></span>
+                {{ cell.expenseProjected | currencyBrl }}
+              </span>
               <span
                 class="prev-line balance"
                 [class.negative]="cell.balanceProjected < 0"
                 [class.positive]="cell.balanceProjected >= 0"
-              >= {{ cell.balanceProjected | currencyBrl }}</span>
+              >
+                <span class="prev-ico" aria-hidden="true" [innerHTML]="iconBalance | safeHtml"></span>
+                {{ cell.balanceProjected | currencyBrl }}
+              </span>
             </div>
           }
         }
@@ -80,9 +98,18 @@
       </span>
     } @else {
       <span class="legend legend-compact">
-        <span class="leg-item"><span class="leg-sym income">↑</span> Receb.</span>
-        <span class="leg-item"><span class="leg-sym expense">↓</span> Gastos</span>
-        <span class="leg-item"><span class="leg-sym balance">=</span> Saldo</span>
+        <span class="leg-item">
+          <span class="leg-sym income" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></span>
+          Receb.
+        </span>
+        <span class="leg-item">
+          <span class="leg-sym expense" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></span>
+          Gastos
+        </span>
+        <span class="leg-item">
+          <span class="leg-sym balance" aria-hidden="true" [innerHTML]="iconBalance | safeHtml"></span>
+          Saldo
+        </span>
       </span>
     }
   </div>

@@ -36,7 +36,7 @@
     </div>
   } @else if (!items().length) {
     <div class="empty-panel">
-      <div class="empty-icon" aria-hidden="true">✦</div>
+      <div class="empty-icon" aria-hidden="true" [innerHTML]="iconSpark | safeHtml"></div>
       <h2>Nenhum relatório ainda</h2>
       <p>Escolha de 1 a 3 meses e a IA monta um panorama da sua saúde financeira.</p>
       <button type="button" class="btn-brand" [disabled]="remainingToday() <= 0" (click)="openPicker()">
@@ -141,8 +141,14 @@
               @if (cell?.beforePlanningStart) {
                 <span class="m-empty">—</span>
               } @else {
-                <span class="m-line income">↑ {{ preview.income | currencyBrl }}</span>
-                <span class="m-line expense">↓ {{ preview.expense | currencyBrl }}</span>
+                <span class="m-line income">
+                  <span class="m-line-ico" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></span>
+                  {{ preview.income | currencyBrl }}
+                </span>
+                <span class="m-line expense">
+                  <span class="m-line-ico" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></span>
+                  {{ preview.expense | currencyBrl }}
+                </span>
                 <span
                   class="m-line balance"
                   [class.positive]="preview.balance >= 0"

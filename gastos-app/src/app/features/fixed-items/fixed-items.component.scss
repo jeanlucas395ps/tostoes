@@ -403,12 +403,18 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 800;
+  border-radius: 8px;
   background: var(--surface-elevated);
   color: var(--text-muted);
   border: 1px solid var(--border);
+
+  svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    color: inherit;
+    stroke: currentColor;
+  }
 }
 
 .item-main {
@@ -513,9 +519,26 @@
 }
 
 .btn-icon {
-  width: 30px; height: 30px; border: 1.5px solid var(--border); border-radius: var(--radius);
-  background: transparent; cursor: pointer; color: var(--text-muted); font-size: 0.8rem;
-  display: grid; place-items: center; transition: all 0.15s;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    color: inherit;
+    stroke: currentColor;
+  }
+
   &:hover { color: var(--text); border-color: var(--border-strong); }
   &.danger:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
 }

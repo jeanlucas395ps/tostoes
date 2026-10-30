@@ -4,11 +4,13 @@ import { PlanningService } from '../../core/services/planning.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PlanningInvitePreview } from '../../core/models/api.models';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+import { ICON_CHECK, ICON_CLOSE } from '../../core/utils/flow-icons';
 
 @Component({
   selector: 'app-invite-accept',
   standalone: true,
-  imports: [RouterLink, SkeletonComponent],
+  imports: [RouterLink, SkeletonComponent, SafeHtmlPipe],
   templateUrl: './invite-accept.component.html',
   styleUrl: './invite-accept.component.scss',
 })
@@ -17,6 +19,9 @@ export class InviteAcceptComponent implements OnInit {
   private router = inject(Router);
   private planning = inject(PlanningService);
   auth = inject(AuthService);
+
+  readonly iconCheck = ICON_CHECK;
+  readonly iconClose = ICON_CLOSE;
 
   token = '';
   invite = signal<PlanningInvitePreview | null>(null);

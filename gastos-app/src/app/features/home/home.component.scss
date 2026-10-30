@@ -230,9 +230,9 @@
 
 .account-mini-card {
   display: grid;
-  grid-template-columns: 20px 1fr;
+  grid-template-columns: 28px 1fr;
   grid-template-rows: auto auto auto;
-  column-gap: 0.5rem;
+  column-gap: 0.7rem;
   row-gap: 0.15rem;
   align-items: center;
   min-width: 0;
@@ -251,26 +251,38 @@
   }
 }
 
-/* icon, row 1 col 1 */
+/* icon, row 1 col 1 — tile no estilo do grafo */
 .account-mini-icon {
   grid-column: 1;
   grid-row: 1;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: var(--acc-color);
   flex-shrink: 0;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--acc-color) 30%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--acc-color) 28%, transparent);
   display: grid;
   place-items: center;
+  color: #fff;
+  line-height: 0;
+  overflow: hidden;
+}
 
-  svg {
-    width: 11px;
-    height: 11px;
-    color: rgba(255, 255, 255, 0.95);
-    stroke: rgba(255, 255, 255, 0.95);
-    display: block;
-  }
+/* SVG via innerHTML não recebe atributos de encapsulamento */
+:host ::ng-deep .account-mini-icon svg {
+  width: 14px;
+  height: 14px;
+  color: inherit;
+  stroke: currentColor;
+  display: block;
+}
+
+:host ::ng-deep .kpi-icon svg {
+  width: 18px;
+  height: 18px;
+  color: inherit;
+  stroke: currentColor;
+  display: block;
 }
 
 /* name, row 1 col 2 */
@@ -399,48 +411,32 @@
   }
 }
 
-/* ── KPIs sem gradiente na home ─────────────────────────────────── */
+/* ── KPIs: tile colorido + valor preto (linguagem do grafo) ───────── */
 
-.home .kpi-income {
-  background: var(--surface);
-  border-color: var(--border);
-
-  .kpi-icon {
-    background: var(--income-lighter);
-    color: var(--income-dark);
-  }
-
-  .kpi-value {
-    color: var(--income-dark);
-  }
-}
-
-.home .kpi-expense {
-  background: var(--surface);
-  border-color: var(--border);
-
-  .kpi-icon {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-
-  .kpi-value {
-    color: var(--danger);
-  }
-}
-
+.home .kpi-income,
+.home .kpi-expense,
 .home .kpi-invest {
   background: var(--surface);
   border-color: var(--border);
 
-  .kpi-icon {
-    background: var(--accent-invest-soft);
-    color: var(--accent-invest);
-  }
-
   .kpi-value {
-    color: var(--accent-invest);
+    color: var(--text);
   }
+}
+
+.home .kpi-income .kpi-icon {
+  background: #1baa5c;
+  color: #fff;
+}
+
+.home .kpi-expense .kpi-icon {
+  background: #e5342b;
+  color: #fff;
+}
+
+.home .kpi-invest .kpi-icon {
+  background: #5a3fd1;
+  color: #fff;
 }
 
 /* ── Chart card container ─────────────────────────────────────────── */

@@ -96,7 +96,7 @@
   &.active, &--primary {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
   }
 
   &:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -104,7 +104,7 @@
 
 .filter-badge {
   margin-left: 0.25rem;
-  background: #fff;
+  background: var(--on-primary);
   color: var(--primary);
   border-radius: 999px;
   padding: 0 0.35rem;
@@ -129,6 +129,18 @@
   cursor: pointer;
   color: var(--text-muted);
   border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    color: inherit;
+    stroke: currentColor;
+  }
 }
 
 .zoom-pct {
@@ -248,17 +260,27 @@
 }
 
 .link-port {
+  --port-scale: 1;
   position: absolute;
   z-index: 4;
-  transform: translate(-40%, -50%);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  /* Base fixa 18×18; scale acompanha o zoom do card (como flow-card-inner). */
+  transform: translate(-40%, -50%) scale(var(--port-scale));
+  transform-origin: center center;
   border: 1.5px solid var(--text);
   background: var(--surface);
   color: var(--text);
   border-radius: 50%;
   padding: 0;
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
+  overflow: hidden;
   cursor: crosshair;
   opacity: 0;
   transition: opacity 0.12s ease, transform 0.12s ease;
@@ -270,7 +292,7 @@
 
   &:hover {
     opacity: 1 !important;
-    transform: translate(-40%, -50%) scale(1.12);
+    transform: translate(-40%, -50%) scale(calc(var(--port-scale) * 1.12));
     border-color: #3B82F6;
     color: #3B82F6;
   }
@@ -280,10 +302,28 @@
   position: absolute;
   z-index: 6;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  margin: 0;
+  border: 1.5px dashed color-mix(in srgb, var(--hub-spawn-accent, var(--text)) 55%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--text-muted);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   pointer-events: auto;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
   animation: hub-spawn-in 0.16s ease-out;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+
+  &:hover {
+    border-style: solid;
+    border-color: var(--hub-spawn-accent, var(--primary));
+    background: var(--surface);
+    transform: translateX(2px);
+  }
 }
 
 @keyframes hub-spawn-in {
@@ -291,53 +331,40 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-.hub-spawn-ghost {
-  flex: 1;
+.hub-spawn-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hub-spawn-accent, var(--primary)) 16%, transparent);
+  color: var(--hub-spawn-accent, var(--primary));
+
+  :deep(svg) {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+}
+
+.hub-spawn-copy {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  min-height: 3.2rem;
-  border: 1.5px dashed color-mix(in srgb, var(--text) 55%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  color: var(--text-muted);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .hub-spawn-ghost-title {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--text);
+  line-height: 1.15;
 }
 
 .hub-spawn-ghost-sub {
   font-size: 0.62rem;
   font-weight: 600;
-}
-
-.hub-spawn-kinds {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.25rem;
-
-  button {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    border-radius: var(--radius);
-    padding: 0.35rem 0.4rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    cursor: pointer;
-
-    &:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: var(--primary-soft);
-    }
-  }
+  line-height: 1.2;
 }
 
 .cy-container {
@@ -345,6 +372,11 @@
   inset: 0;
 
   &--linking { cursor: crosshair; }
+
+  &--loading {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .link-arrow {
@@ -370,6 +402,12 @@
   box-sizing: border-box;
 
   &--dim { opacity: 0.18; }
+
+  &--editing {
+    z-index: 7;
+    pointer-events: auto;
+    overflow: visible;
+  }
 }
 
 .flow-card-inner {
@@ -455,6 +493,40 @@
   }
 }
 
+.flow-card-copy--edit {
+  gap: 0.2rem;
+  padding-right: 4px;
+}
+
+.flow-card-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  padding: 0.15rem 0.35rem;
+  box-sizing: border-box;
+
+  &--title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b6e7a;
+  }
+
+  &--value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #14151a;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+}
+
 .graph-overlay {
   position: absolute;
   inset: 0;
@@ -515,6 +587,16 @@
     white-space: nowrap;
 
     &:hover { background: var(--primary-soft); color: var(--primary); }
+  }
+
+  button.node-actions__danger {
+    background: color-mix(in srgb, #E5342B 16%, var(--surface));
+    color: #E5342B;
+
+    &:hover {
+      background: color-mix(in srgb, #E5342B 26%, var(--surface));
+      color: #c62822;
+    }
   }
 }
 
@@ -650,6 +732,12 @@
 
   &:hover {
     border-color: var(--primary);
+    background: var(--primary-soft);
+  }
+
+  &--accent {
+    cursor: pointer;
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
     background: var(--primary-soft);
   }
 }

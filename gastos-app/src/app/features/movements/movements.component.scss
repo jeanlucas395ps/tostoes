@@ -433,8 +433,26 @@
   text-align: center;
 
   .empty-icon {
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 0.75rem;
+    border-radius: 10px;
+    background: #1baa5c;
+    color: #fff;
+    display: grid;
+    place-items: center;
+
+    svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      color: inherit;
+      stroke: currentColor;
+    }
+
+    &--muted {
+      background: #5b5e6b;
+    }
   }
 
   p {
@@ -595,6 +613,9 @@
 }
 
 .btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.45rem 0.9rem;
   border: none;
   border-radius: var(--radius-full);
@@ -609,6 +630,34 @@
 
   &:hover:not(:disabled) { opacity: 0.88; }
   &:disabled { opacity: 0.4; cursor: wait; }
+}
+
+.btn-ico {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    color: inherit;
+    stroke: currentColor;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .btn-remove {
@@ -632,17 +681,30 @@
 }
 
 .btn-skip {
+  position: relative;
+  box-sizing: border-box;
   width: 32px;
   height: 32px;
+  padding: 0;
+  margin: 0;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-full);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
-  display: grid;
-  place-items: center;
+  line-height: 0;
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   transition: all 0.15s;
+
+  .btn-ico {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
 
   &:hover:not(:disabled) {
     border-color: var(--danger);
@@ -750,28 +812,28 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 0.1rem 0.4rem;
-  border-radius: var(--radius-full);
+  padding: 0.15rem 0.45rem;
+  border-radius: 8px;
   vertical-align: middle;
 
   &.income {
-    background: var(--income-soft);
-    color: var(--income-dark);
+    background: color-mix(in srgb, #1baa5c 14%, var(--surface));
+    color: #1baa5c;
   }
   &.expense {
-    background: var(--danger-soft);
-    color: var(--danger-dark);
+    background: color-mix(in srgb, #e5342b 12%, var(--surface));
+    color: #e5342b;
   }
   &.investment {
-    background: var(--accent-invest-soft);
-    color: var(--accent-invest);
+    background: color-mix(in srgb, #5a3fd1 14%, var(--surface));
+    color: #5a3fd1;
   }
   &.transfer {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0284c7;
+    background: color-mix(in srgb, #5b5e6b 12%, var(--surface));
+    color: #5b5e6b;
   }
   &.installment {
-    background: rgba(245, 158, 11, 0.14);
+    background: color-mix(in srgb, #f59e0b 14%, var(--surface));
     color: #b45309;
   }
   &.goal {

@@ -46,11 +46,13 @@
   place-items: center;
   flex-shrink: 0;
   // box-shadow: var(--logo-glow);
-  color: #fff;
+  color: var(--on-primary);
 
   svg {
     width: 22px;
     height: 22px;
+    color: inherit;
+    stroke: currentColor;
   }
 }
 
@@ -258,9 +260,9 @@
   display: block;
   padding: 0.625rem 0.75rem 0.375rem;
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.06em;
   color: var(--text-faint);
 }
 
@@ -270,7 +272,7 @@
   gap: 0.75rem;
   padding: 0.5625rem 0.75rem;
   margin-bottom: 2px;
-  border-radius: var(--radius);
+  border-radius: 10px;
   color: var(--text-muted);
   text-decoration: none;
   font-size: 0.875rem;
@@ -285,10 +287,9 @@
     .nav-icon { opacity: 1; }
   }
 
-  /* Active, green, aligned with Minimals */
   &.active {
-    background: var(--primary-soft);
-    color: var(--primary-dark);
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    color: var(--text);
     font-weight: 700;
 
     .nav-icon { opacity: 1; color: var(--primary); }
@@ -300,7 +301,7 @@
       top: 50%;
       transform: translateY(-50%);
       width: 3px;
-      height: 60%;
+      height: 56%;
       background: var(--primary);
       border-radius: 0 4px 4px 0;
     }
@@ -442,11 +443,13 @@
   flex-shrink: 0;
   place-items: center;
   box-shadow: var(--shadow-primary);
+  color: var(--on-primary);
 
   svg {
     width: 18px;
     height: 18px;
-    stroke: rgba(255, 255, 255, 0.95);
+    color: inherit;
+    stroke: currentColor;
     display: block;
   }
 
@@ -807,6 +810,10 @@ button.topbar-user {
     -webkit-overflow-scrolling: touch;
   }
 
+  .main--bleed {
+    padding: 0;
+  }
+
 }
 
 /* ══════════════════════════════════════════════
@@ -895,6 +902,10 @@ button.topbar-user {
 
   .main {
     padding: 1.5rem 2rem 3rem;
+  }
+
+  .main--bleed {
+    padding: 0;
   }
 
   .user-menu-backdrop {

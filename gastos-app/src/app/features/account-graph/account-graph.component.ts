@@ -15,72 +15,48 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.com
 import { FinanceApiService } from '../../core/services/finance-api.service';
 import {
   AccountFlowGraph,
+  AccountFlowGraphEdge,
   AccountFlowGraphMode,
   AccountFlowGraphNode,
   FinancialAccount,
 } from '../../core/models/api.models';
 import {
-  amountPlacement,
+  accountFlowBalances,
+  canEditGraphNode,
   canLinkGraphNodes,
-  HUB_SPAWN_KIND_LEISURE,
-  HUB_SPAWN_KINDS,
+  cardAmounts,
+  edgeAmountKey,
+  edgeVisibleForFilters,
+  editDraftForNode,
   isFlowNodeId as isFlowGraphId,
   isHubNodeId,
+  nodeVisibleForFilters,
+  rewireDrop,
+  spawnLinkFromNode,
 } from '../../core/utils/account-graph-mapping.util';
+import {
+  ICON_BALANCE,
+  ICON_BANK,
+  ICON_CARD,
+  ICON_EXPENSE,
+  ICON_GOAL,
+  ICON_INCOME,
+  ICON_INV,
+  ICON_MAXIMIZE,
+  ICON_TOTAL,
+  ICON_TRANSFER,
+  ICON_TREND,
+  nodeCardIcon,
+} from '../../core/utils/flow-icons';
 
 cytoscape.use(dagre);
-
-function blockIcon(paths: string): string {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-}
-
-const ICON_INCOME = blockIcon('<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>');
-const ICON_EXPENSE = blockIcon('<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2z"/><path d="M8 7h8"/><path d="M8 11h8"/>');
-const ICON_TREND = blockIcon('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>');
-const ICON_BANK = blockIcon('<polygon points="12 2 20 7 4 7"/><line x1="6" x2="6" y1="11" y2="18"/><line x1="10" x2="10" y1="11" y2="18"/><line x1="14" x2="14" y1="11" y2="18"/><line x1="18" x2="18" y1="11" y2="18"/><line x1="3" x2="21" y1="22" y2="22"/>');
-const ICON_CARD = blockIcon('<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>');
-const ICON_INV = blockIcon('<path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/>');
-const ICON_TOTAL = blockIcon('<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>');
-const ICON_GOAL = blockIcon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/>');
-const ICON_TRANSFER = blockIcon('<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>');
-const ICON_BALANCE = blockIcon('<path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>');
 
 const CARD_W = 228;
 const CARD_H = 76;
 
-/** Ícone do tipo, desenhado dentro do quadrado colorido do cartão. */
-function nodeCardIcon(id: string, type: string): string {
-  if (id.startsWith('__saldo')) return ICON_BALANCE;
-  if (id.startsWith('bank:') || type === 'bank') return ICON_BANK;
-  if (id.startsWith('credit:') || type === 'credit') return ICON_CARD;
-  if (id.startsWith('inv:')) return ICON_INV;
-  if (id.startsWith('tot:') || type === 'totalizer') return ICON_TOTAL;
-  switch (type) {
-    case 'income':
-      return ICON_INCOME;
-    case 'expense':
-    case 'leisure':
-    case 'installment':
-      return ICON_EXPENSE;
-    case 'investment':
-      return ICON_TREND;
-    case 'goal':
-      return ICON_GOAL;
-    case 'transfer':
-      return ICON_TRANSFER;
-    default:
-      return ICON_EXPENSE;
-  }
-}
-
 type ExtendedMode = AccountFlowGraphMode;
-type FormKind = 'income' | 'expense' | 'investment' | 'leisure';
+type FormKind = 'income' | 'expense' | 'investment' | 'transfer' | 'goal';
 type GraphBlockKind = FormKind | 'bank' | 'credit' | 'investment-account' | 'totalizer';
-
-const DRAFT_ITEM_ID = '__draft_item';
-const DRAFT_AMT_ID = '__draft_amt';
-const DRAFT_E0 = '__draft_e0';
-const DRAFT_E1 = '__draft_e1';
 
 interface NodeOverlay {
   id: string;
@@ -98,11 +74,19 @@ interface NodeActionsUi {
   y: number;
 }
 
-/** Mini preview Excalidraw ao lado de um hub (banco/cartão). */
+/**
+ * Preview de próximo bloco ao hover:
+ * recebimento → banco | banco/cartão/investimento → gasto | gasto → nenhum.
+ */
 interface HubSpawnPreview {
-  hubNodeId: string;
-  accountId: number;
-  hubType: string;
+  sourceNodeId: string;
+  /** Tipo sugerido ao clicar no preview. */
+  suggest: 'bank' | 'expense';
+  title: string;
+  subtitle: string;
+  accent: string;
+  icon: string;
+  accountId: number | null;
   x: number;
   y: number;
   w: number;
@@ -129,11 +113,19 @@ interface FlowCard {
   check: { happened: boolean; busy: boolean } | null;
 }
 
+interface InlineCardEdit {
+  nodeId: string;
+  name: string;
+  amount: number;
+  saving: boolean;
+}
+
 interface LinkPortOverlay {
   nodeId: string;
   x: number;
   y: number;
-  size: number;
+  /** Escala visual (zoom do card); base do botão é 18×18. */
+  scale: number;
 }
 
 interface DeletePrompt {
@@ -144,6 +136,9 @@ interface DeletePrompt {
   kind: string;
   kindLabel: string;
   isFixed: boolean;
+  /** Banco/cartão/conta investimento no grafo. */
+  isHub?: boolean;
+  accountId?: number | null;
 }
 
 interface EdgeRewireState {
@@ -177,12 +172,32 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private api = inject(FinanceApiService);
   readonly bankMenuIcon = ICON_BANK;
+  readonly iconMaximize = ICON_MAXIMIZE;
   private cy: Core | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private viewportSaveTimer: ReturnType<typeof setTimeout> | null = null;
   private overlayRaf = 0;
   private hubHoverTimer: ReturnType<typeof setTimeout> | null = null;
   private hubPreviewPinned = false;
-  private draftAnchorKey = '';
+  private nodeTapTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Evita gravar viewport enquanto aplicamos zoom/pan programático. */
+  private applyingCamera = false;
+  /** Após arrastar da paleta, o browser dispara click — não abrir formulário de novo. */
+  private suppressBlockClick = false;
+  /** Tipo em arraste (dataTransfer falha em alguns browsers; campo é confiável). */
+  private draggingBlock: GraphBlockKind | null = null;
+
+  private static readonly GRAPH_BLOCKS = new Set<GraphBlockKind>([
+    'income',
+    'expense',
+    'investment',
+    'transfer',
+    'goal',
+    'bank',
+    'credit',
+    'investment-account',
+    'totalizer',
+  ]);
 
   year = signal(new Date().getFullYear());
   month = signal(new Date().getMonth());
@@ -215,17 +230,26 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   formAmount = signal(0);
   formColor = signal('#3b82f6');
   formInitialBalance = signal(0);
+  /** Tipo da conta hub ao editar banco/investimento (API: bank | investment). */
+  formAccountType = signal<'bank' | 'investment'>('bank');
   formCreditLimit = signal<number | null>(null);
   formClosingDay = signal<number | null>(1);
   formDueDay = signal<number | null>(10);
   formAccountId = signal<number | null>(null);
   formTargetAccountId = signal<number | null>(null);
+  /** Datas da meta (YYYY-MM-DD). */
+  formStartDate = signal('');
+  formEndDate = signal('');
   formError = signal('');
   formSaving = signal(false);
   formSpawnX = signal<number | null>(null);
   formSpawnY = signal<number | null>(null);
   formLinkAccountNodeId = signal<string | null>(null);
   editingEntryId = signal<number | null>(null);
+  /** Conta hub criada por drag — painel edita via PUT /accounts/:id. */
+  editingAccountId = signal<number | null>(null);
+  /** Hub `bank:N` sendo configurado (editar ou trocar por outro). */
+  replacingHubId = signal<string | null>(null);
 
   linkMode = signal(false);
   linkFromId = signal<string | null>(null);
@@ -244,17 +268,17 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   deleteBusy = signal(false);
   edgeRewire = signal<EdgeRewireState | null>(null);
   selectedNodeId = signal<string | null>(null);
-  readonly spawnKinds = HUB_SPAWN_KINDS;
+  inlineEdit = signal<InlineCardEdit | null>(null);
 
-  /** Lazer só no select se já existir no grafo / item em edição (dado legado/teste). */
   formKindOptions = computed(() => {
     const opts: Array<{ value: FormKind; label: string }> = [
       { value: 'income', label: 'Recebimento' },
       { value: 'expense', label: 'Gasto' },
       { value: 'investment', label: 'Investimento / aporte' },
+      { value: 'transfer', label: 'Transferência' },
     ];
-    if (this.shouldShowLeisureOption()) {
-      opts.push({ value: 'leisure', label: 'Lazer' });
+    if (this.formBlock() === 'goal' || this.formKind() === 'goal') {
+      opts.push({ value: 'goal', label: 'Meta' });
     }
     return opts;
   });
@@ -263,12 +287,22 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   unassignedCnt = computed(() => this.graph()?.unassigned.length ?? 0);
 
   panelTitle = computed(() => {
-    if (this.panelMode() === 'edit') return 'Editar item';
+    if (this.panelMode() === 'edit') {
+      if (this.formBlock() === 'bank' && this.accountMode() === 'pick') return 'Configurar banco';
+      if (this.editingAccountId() || this.replacingHubId()) {
+        return this.formBlock() === 'bank' ? 'Editar banco' : 'Editar conta';
+      }
+      return 'Editar item';
+    }
     if (this.createStep() === 'pick') return 'O que adicionar?';
     return this.blockTitle(this.formBlock());
   });
   panelKicker = computed(() => {
     if (this.panelMode() === 'edit') {
+      if (this.formBlock() === 'bank' && this.accountMode() === 'pick') {
+        return 'Editar dados ou trocar a conta';
+      }
+      if (this.editingAccountId() || this.replacingHubId()) return 'Já no grafo · ajuste e salve';
       return this.formRecurrence() === 'fixed' ? 'Atalho · item fixo' : 'Atalho · movimento do mês';
     }
     if (this.createStep() === 'pick') return 'Escolha o tipo do bloco';
@@ -283,7 +317,30 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   bankAndCreditAccounts = computed(() =>
     this.accounts().filter((a) => a.type === 'bank' || a.type === 'credit')
   );
+  /** Destino de recebimento: banco ou investimento. */
+  incomeAccounts = computed(() =>
+    this.accounts().filter((a) => a.type === 'bank' || a.type === 'investment')
+  );
+  /** Origem de gasto: banco, cartão ou investimento. */
+  paymentAccounts = computed(() =>
+    this.accounts().filter(
+      (a) => a.type === 'bank' || a.type === 'credit' || a.type === 'investment'
+    )
+  );
+  /** Contas do select principal conforme o tipo do item. */
+  primaryFormAccounts = computed(() => {
+    const kind = this.formKind();
+    if (kind === 'income') return this.incomeAccounts();
+    if (kind === 'expense') return this.paymentAccounts();
+    if (kind === 'investment') return this.bankAccounts();
+    return this.bankAndCreditAccounts();
+  });
   bankAccounts = computed(() => this.accounts().filter((a) => a.type === 'bank'));
+  /** Outros bancos para trocar no card selecionado (exclui o atual). */
+  otherBankAccounts = computed(() => {
+    const current = this.editingAccountId();
+    return this.bankAccounts().filter((a) => a.id !== current);
+  });
   investmentAccounts = computed(() => this.accounts().filter((a) => a.type === 'investment'));
 
   availableTypes = computed((): { key: string; label: string }[] => {
@@ -319,32 +376,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       this.filterTabs().size
   );
 
-  /** Preview ao vivo do bloco sendo criado no painel (movimento, conta ou totalizador). */
-  private readonly draftPreviewEffect = effect(() => {
-    const block = this.formBlock();
-    const open =
-      this.sidePanelOpen() &&
-      this.panelMode() === 'create' &&
-      this.createStep() === 'form' &&
-      !!block;
-    this.formKind();
-    this.formName();
-    this.formAmount();
-    this.formColor();
-    this.formInitialBalance();
-    this.accountMode();
-    this.formAccountId();
-    this.formTargetAccountId();
-    this.formLinkAccountNodeId();
-    this.formSpawnX();
-    this.formSpawnY();
-    if (!open) {
-      queueMicrotask(() => this.removeDraftPreview());
-      return;
-    }
-    queueMicrotask(() => this.syncDraftPreview());
-  });
-
   ngOnInit(): void {
     this.loadAccounts();
     this.load();
@@ -359,20 +390,12 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     window.removeEventListener('keydown', this.onKeyDown);
     this.untrackLinkPointer();
     if (this.saveTimer) clearTimeout(this.saveTimer);
+    if (this.viewportSaveTimer) clearTimeout(this.viewportSaveTimer);
     if (this.hubHoverTimer) clearTimeout(this.hubHoverTimer);
+    if (this.nodeTapTimer) clearTimeout(this.nodeTapTimer);
     cancelAnimationFrame(this.overlayRaf);
     this.cy?.destroy();
     this.cy = null;
-  }
-
-  private shouldShowLeisureOption(): boolean {
-    if (this.formKind() === 'leisure') return true;
-    const g = this.graph();
-    if (!g) return false;
-    return (
-      g.nodes.some((n) => n.type === 'leisure') ||
-      g.edges.some((e) => e.kind === 'leisure' || e.subKind === 'leisure')
-    );
   }
 
   private readonly onKeyDown = (ev: KeyboardEvent): void => {
@@ -398,16 +421,22 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isEmpty.set(false);
     this.nodeActions.set(null);
     this.happenedIds.set(new Set());
-    this.removeDraftPreview();
+    this.flowCards.set([]);
+    this.linkPorts.set([]);
     const y = this.year();
     const m = this.month() + 1;
     const mode = this.mode();
     this.api.getAccountFlowGraph(y, m, mode).subscribe({
       next: (g) => {
         this.graph.set(g);
-        this.loading.set(false);
         this.isEmpty.set(!g.nodes.length);
-        if (this.cy) this.renderGraph(g);
+        if (!g.nodes.length) {
+          this.loading.set(false);
+          this.cy?.elements().remove();
+          return;
+        }
+        // Mantém loading até o zoom salvo — mas nunca trava se o cy ainda não montou.
+        this.renderGraphWhenReady(g);
       },
       error: () => {
         this.graph.set(null);
@@ -416,8 +445,26 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cy?.elements().remove();
         this.nodeOverlays.set([]);
         this.flowCards.set([]);
+        this.linkPorts.set([]);
       },
     });
+  }
+
+  /** Renderiza quando o cytoscape existir; evita loading infinito se a API voltar antes do AfterViewInit. */
+  private renderGraphWhenReady(g: AccountFlowGraph, attempt = 0): void {
+    if (this.cy) {
+      try {
+        this.renderGraph(g);
+      } catch {
+        this.loading.set(false);
+      }
+      return;
+    }
+    if (attempt >= 30) {
+      this.loading.set(false);
+      return;
+    }
+    requestAnimationFrame(() => this.renderGraphWhenReady(g, attempt + 1));
   }
 
   setMode(m: ExtendedMode): void {
@@ -447,6 +494,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }): void {
     this.panelMode.set('create');
     this.editingEntryId.set(null);
+    this.editingAccountId.set(null);
     const preset = opts?.kind ?? null;
     this.createStep.set(preset ? 'form' : 'pick');
     this.formBlock.set(preset);
@@ -471,59 +519,59 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openCreateFrom(nodeId: string): void {
-    const hub = this.parseHubAccountId(nodeId);
     const n = this.graph()?.nodes.find((x) => x.id === nodeId);
-    if (hub) {
-      const isInv = n?.type === 'investment' || nodeId.startsWith('inv:');
-      this.openCreatePanel({
-        kind: isInv ? 'investment' : 'expense',
-        accountId: isInv ? null : hub,
-        linkAccountNodeId: nodeId,
-      });
-      if (isInv) this.formTargetAccountId.set(hub);
-      return;
-    }
-    let kind: FormKind = 'expense';
-    if (n?.type === 'income') kind = 'income';
-    else if (n?.type === 'investment') kind = 'investment';
-    else if (n?.type === 'leisure') kind = 'leisure';
-    this.openCreatePanel({ kind });
+    const link = spawnLinkFromNode(nodeId, n, this.graph()?.edges ?? []);
+    const source = this.cy?.getElementById(nodeId);
+    const sx = source && source.nonempty() ? source.position('x') : 160;
+    const sy = source && source.nonempty() ? source.position('y') : 120;
+    const below = link.kind === 'expense' || link.kind === 'investment';
+    this.spawnBlockImmediate(link.kind, sx + 180, sy + (below ? 110 : -110), {
+      accountId: link.accountId,
+      targetAccountId: link.targetAccountId,
+      linkAccountNodeId: link.linkAccountNodeId,
+    });
   }
 
-  /** Clique numa categoria do mini-preview ao lado do banco. */
-  spawnFromHubPreview(kind: FormKind): void {
+  canEditNode(nodeId: string): boolean {
+    return canEditGraphNode(nodeId);
+  }
+
+  /** Clique no preview: cria o bloco já ligado e abre detalhes. */
+  acceptSpawnPreview(): void {
     const prev = this.hubSpawnPreview();
     if (!prev) return;
-    const isInvHub = prev.hubNodeId.startsWith('inv:');
-    const spawnKind = isInvHub ? 'investment' : kind;
-    this.openCreatePanel({
-      kind: spawnKind,
-      accountId: isInvHub ? null : prev.accountId,
-      linkAccountNodeId: prev.hubNodeId,
-      spawnX: null,
-      spawnY: null,
-    });
-    if (isInvHub || spawnKind === 'investment') {
-      this.formTargetAccountId.set(
-        isInvHub ? prev.accountId : this.formTargetAccountId()
-      );
-      if (!isInvHub) this.formAccountId.set(prev.accountId);
+    const source = this.cy?.getElementById(prev.sourceNodeId);
+    const sx = source && source.nonempty() ? source.position('x') : null;
+    const sy = source && source.nonempty() ? source.position('y') : null;
+    const spawnX = sx != null ? sx + (prev.suggest === 'bank' ? 220 : 40) : 160;
+    const spawnY = sy != null ? sy + (prev.suggest === 'expense' ? 120 : 0) : 120;
+    this.clearHubSpawnPreview();
+
+    if (prev.suggest === 'bank') {
+      this.spawnBlockImmediate('bank', spawnX, spawnY, {
+        linkAccountNodeId: prev.sourceNodeId,
+      });
+      return;
     }
+
+    this.spawnBlockImmediate('expense', spawnX, spawnY, {
+      accountId: prev.accountId,
+      linkAccountNodeId: prev.sourceNodeId,
+    });
   }
 
+  /** Clique na paleta: cria na hora no centro do canvas (igual ao arraste). */
   chooseBlock(block: GraphBlockKind): void {
-    this.formBlock.set(block);
-    this.createStep.set('form');
-    this.formError.set('');
-    if (this.isFlowBlock(block)) this.formKind.set(block);
-    if (block === 'bank') {
-      this.formColor.set('#3b82f6');
-      this.accountMode.set(this.bankAccounts().length ? 'pick' : 'new');
-    } else {
-      this.accountMode.set('new');
+    if (this.suppressBlockClick) return;
+    if (!this.cy) {
+      this.spawnBlockImmediate(block, 160, 120);
+      return;
     }
-    if (block === 'credit') this.formColor.set('#f59e0b');
-    if (block === 'investment-account') this.formColor.set('#a371f7');
+    const pan = this.cy.pan();
+    const zoom = this.cy.zoom() || 1;
+    const x = (this.cy.width() / 2 - pan.x) / zoom;
+    const y = (this.cy.height() / 2 - pan.y) / zoom;
+    this.spawnBlockImmediate(block, x, y);
   }
 
   backToTypePick(): void {
@@ -531,13 +579,13 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.formBlock.set(null);
     this.accountMode.set('new');
     this.formError.set('');
-    this.removeDraftPreview();
   }
 
   /** Coloca no grafo um banco que já existe, na posição do arraste. */
   placeExistingBank(account: FinancialAccount): void {
     const x = this.formSpawnX() ?? 160;
     const y = this.formSpawnY() ?? 120;
+    const linkFrom = this.formLinkAccountNodeId();
     this.formSaving.set(true);
     this.formError.set('');
     this.api
@@ -549,9 +597,24 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       })
       .subscribe({
         next: () => {
-          this.formSaving.set(false);
-          this.closeSidePanel();
-          this.load();
+          const finish = () => {
+            this.formSaving.set(false);
+            this.closeSidePanel();
+            this.load();
+          };
+          if (linkFrom && (linkFrom.startsWith('inc:') || linkFrom.startsWith('tx:'))) {
+            this.api
+              .linkAccountFlowGraphNodes({
+                year: this.year(),
+                month: this.month() + 1,
+                mode: this.mode(),
+                fromNodeId: linkFrom,
+                toNodeId: `bank:${account.id}`,
+              })
+              .subscribe({ next: finish, error: finish });
+            return;
+          }
+          finish();
         },
         error: () => {
           this.formSaving.set(false);
@@ -560,16 +623,14 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  private isFlowBlock(block: GraphBlockKind | null): block is FormKind {
-    return block === 'income' || block === 'expense' || block === 'investment' || block === 'leisure';
-  }
 
   private blockTitle(block: GraphBlockKind | null): string {
     const map: Record<string, string> = {
       income: 'Novo recebimento',
       expense: 'Novo gasto',
       investment: 'Novo aporte',
-      leisure: 'Novo lazer',
+      transfer: 'Nova transferência',
+      goal: 'Nova meta',
       bank: 'Novo banco',
       credit: 'Novo cartão',
       'investment-account': 'Nova conta de investimento',
@@ -587,29 +648,33 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         id: 'income',
         label: 'Recebimento',
         hint: 'Entra numa conta',
-        icon: blockIcon('<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>'),
+        icon: ICON_INCOME,
       },
       {
         id: 'expense',
         label: 'Gasto',
         hint: 'Sai de uma conta ou cartão',
-        icon: blockIcon('<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2z"/><path d="M8 7h8"/><path d="M8 11h8"/>'),
+        icon: ICON_EXPENSE,
       },
       {
         id: 'investment',
         label: 'Aporte',
         hint: 'Da conta para um investimento',
-        icon: blockIcon('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'),
+        icon: ICON_TREND,
+      },
+      {
+        id: 'transfer',
+        label: 'Transferência',
+        hint: 'Entre duas contas',
+        icon: ICON_TRANSFER,
+      },
+      {
+        id: 'goal',
+        label: 'Meta',
+        hint: 'Objetivo com prazo e destino',
+        icon: ICON_GOAL,
       },
     ];
-    if (this.shouldShowLeisureOption()) {
-      moves.push({
-        id: 'leisure',
-        label: 'Lazer',
-        hint: 'Gasto de lazer já usado neste planejamento',
-        icon: blockIcon('<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/>'),
-      });
-    }
     return [
       { title: 'Movimentos', items: moves },
       {
@@ -619,19 +684,19 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             id: 'bank',
             label: 'Banco',
             hint: 'Conta bancária',
-            icon: blockIcon('<polygon points="12 2 20 7 4 7"/><line x1="6" x2="6" y1="11" y2="18"/><line x1="10" x2="10" y1="11" y2="18"/><line x1="14" x2="14" y1="11" y2="18"/><line x1="18" x2="18" y1="11" y2="18"/><line x1="3" x2="21" y1="22" y2="22"/>'),
+            icon: ICON_BANK,
           },
           {
             id: 'credit',
             label: 'Cartão de crédito',
             hint: 'Limite, fecha e vence',
-            icon: blockIcon('<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>'),
+            icon: ICON_CARD,
           },
           {
             id: 'investment-account',
             label: 'Conta de investimento',
-            hint: 'Destino dos aportes',
-            icon: blockIcon('<path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/>'),
+            hint: 'Aportes, recebimentos e gastos',
+            icon: ICON_INV,
           },
         ],
       },
@@ -642,7 +707,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             id: 'totalizer',
             label: 'Totalizador',
             hint: 'Soma vários itens e sai do banco como um gasto',
-            icon: blockIcon('<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'),
+            icon: ICON_TOTAL,
           },
         ],
       },
@@ -650,9 +715,19 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onBlockDragStart(block: GraphBlockKind, ev: DragEvent): void {
+    this.suppressBlockClick = true;
+    this.draggingBlock = block;
     ev.dataTransfer?.setData('application/x-graph-block', block);
     ev.dataTransfer?.setData('text/plain', block);
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'copy';
+  }
+
+  onBlockDragEnd(): void {
+    // drop dispara antes do dragend; limpa no próximo tick.
+    setTimeout(() => {
+      this.draggingBlock = null;
+      this.suppressBlockClick = false;
+    }, 80);
   }
 
   onCanvasDragOver(ev: DragEvent): void {
@@ -662,18 +737,318 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onCanvasDrop(ev: DragEvent): void {
     ev.preventDefault();
-    const raw =
+    this.suppressBlockClick = true;
+    const raw = (
+      this.draggingBlock ||
       ev.dataTransfer?.getData('application/x-graph-block') ||
-      ev.dataTransfer?.getData('text/plain');
-    if (!raw || !this.cy || !this.cyRef) return;
+      ev.dataTransfer?.getData('text/plain') ||
+      ''
+    )
+      .trim()
+      .split(/\s+/)[0];
+    this.draggingBlock = null;
+    const block = raw as GraphBlockKind;
+    if (!AccountGraphComponent.GRAPH_BLOCKS.has(block) || !this.cy || !this.cyRef) {
+      setTimeout(() => {
+        this.suppressBlockClick = false;
+      }, 80);
+      return;
+    }
     const rect = this.cyRef.nativeElement.getBoundingClientRect();
     const pan = this.cy.pan();
     const zoom = this.cy.zoom() || 1;
+    const x = (ev.clientX - rect.left - pan.x) / zoom;
+    const y = (ev.clientY - rect.top - pan.y) / zoom;
+    this.spawnBlockImmediate(block, x, y);
+    setTimeout(() => {
+      this.suppressBlockClick = false;
+    }, 80);
+  }
+
+  /** Cria o bloco de imediato no grafo e abre o painel de detalhes. */
+  spawnBlockImmediate(
+    block: GraphBlockKind,
+    x: number,
+    y: number,
+    opts?: {
+      accountId?: number | null;
+      targetAccountId?: number | null;
+      linkAccountNodeId?: string | null;
+    }
+  ): void {
+    this.cancelLinkMode();
+    this.clearHubSpawnPreview();
+    this.inlineEdit.set(null);
     this.panelMode.set('create');
+    this.createStep.set('pick');
+    this.formBlock.set(null);
     this.editingEntryId.set(null);
-    this.formSpawnX.set((ev.clientX - rect.left - pan.x) / zoom);
-    this.formSpawnY.set((ev.clientY - rect.top - pan.y) / zoom);
-    this.chooseBlock(raw as GraphBlockKind);
+    this.editingAccountId.set(null);
+    this.replacingHubId.set(null);
+    this.formSpawnX.set(x);
+    this.formSpawnY.set(y);
+    this.formLinkAccountNodeId.set(opts?.linkAccountNodeId ?? null);
+    this.formAccountId.set(opts?.accountId ?? null);
+    this.formTargetAccountId.set(opts?.targetAccountId ?? null);
+    this.formError.set('');
+    this.formSaving.set(true);
+    this.sidePanelOpen.set(true);
+
+    if (block === 'bank' || block === 'credit' || block === 'investment-account') {
+      this.createAccountImmediate(block, x, y, opts?.linkAccountNodeId ?? null);
+      return;
+    }
+    if (block === 'totalizer') {
+      this.createFlowImmediate(
+        'totalizer',
+        this.nextGenericName('Novo totalizador', this.graphNodeLabels()),
+        0,
+        x,
+        y,
+        opts
+      );
+      return;
+    }
+    if (block === 'goal') {
+      // Meta exige destino e valor final — abre o formulário (não cria genérico).
+      this.formSaving.set(false);
+      this.panelMode.set('create');
+      this.createStep.set('form');
+      this.formBlock.set('goal');
+      this.formKind.set('goal');
+      this.formRecurrence.set('variable');
+      this.formName.set(this.nextGenericName('Nova meta', this.graphNodeLabels()));
+      this.formAmount.set(0);
+      this.formStartDate.set(this.defaultGoalStartDate());
+      this.formEndDate.set(this.defaultGoalEndDate());
+      this.formAccountId.set(opts?.accountId ?? this.formAccountId());
+      this.formTargetAccountId.set(opts?.targetAccountId ?? this.formTargetAccountId());
+      return;
+    }
+    const defaults: Record<Exclude<FormKind, 'goal'>, { name: string; amount: number }> = {
+      income: { name: 'Novo recebimento', amount: 1 },
+      expense: { name: 'Novo gasto', amount: 1 },
+      investment: { name: 'Novo aporte', amount: 1 },
+      transfer: { name: 'Nova transferência', amount: 1 },
+    };
+    const d = defaults[block];
+    this.createFlowImmediate(
+      block,
+      this.nextGenericName(d.name, this.graphNodeLabels()),
+      d.amount,
+      x,
+      y,
+      opts
+    );
+  }
+
+  private defaultGoalStartDate(): string {
+    const y = this.year();
+    const m = this.month() + 1;
+    return `${y}-${String(m).padStart(2, '0')}-01`;
+  }
+
+  private defaultGoalEndDate(): string {
+    const start = new Date(this.defaultGoalStartDate() + 'T12:00:00');
+    start.setMonth(start.getMonth() + 11);
+    const y = start.getFullYear();
+    const m = start.getMonth() + 1;
+    const last = new Date(y, m, 0).getDate();
+    return `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+  }
+
+  /** Nomes já usados no grafo (para contador implícito). */
+  private graphNodeLabels(): string[] {
+    return (this.graph()?.nodes ?? []).map((n) => n.label).filter(Boolean);
+  }
+
+  /**
+   * Gera nome único: "Novo banco", depois "Novo banco 2", "Novo banco 3"…
+   * Evita erro de duplicidade na API ao criar itens genéricos.
+   */
+  private nextGenericName(base: string, taken: Iterable<string>): string {
+    const used = new Set(
+      [...taken].map((n) => n.trim().toLowerCase()).filter((n) => n.length > 0)
+    );
+    const baseKey = base.trim().toLowerCase();
+    if (!used.has(baseKey)) return base;
+    for (let i = 2; i < 1000; i++) {
+      const candidate = `${base} ${i}`;
+      if (!used.has(candidate.toLowerCase())) return candidate;
+    }
+    return `${base} ${Date.now()}`;
+  }
+
+  /** Cria conta genérica na hora (banco/cartão/investimento) e abre edição. */
+  private createAccountImmediate(
+    block: 'bank' | 'credit' | 'investment-account',
+    x: number,
+    y: number,
+    linkFrom: string | null
+  ): void {
+    const type = block === 'investment-account' ? 'investment' : block;
+    const bases = {
+      bank: 'Novo banco',
+      credit: 'Novo cartão',
+      'investment-account': 'Nova conta de investimento',
+    } as const;
+    const colors = { bank: '#3b82f6', credit: '#f59e0b', 'investment-account': '#a371f7' } as const;
+    this.formAccountType.set(type === 'investment' ? 'investment' : 'bank');
+
+    const createWithAccounts = (accountNames: string[]) => {
+      const name = this.nextGenericName(bases[block], [
+        ...accountNames,
+        ...this.graphNodeLabels(),
+      ]);
+      this.api
+        .saveAccount({
+          name,
+          type,
+          currency: 'BRL',
+          initialBalance: 0,
+          initialBalanceDate: new Date().toISOString().slice(0, 10),
+          color: colors[block],
+          creditLimit: type === 'credit' ? 0 : null,
+          closingDay: type === 'credit' ? 1 : null,
+          dueDay: type === 'credit' ? 10 : null,
+        })
+        .subscribe({
+          next: (r) => {
+            const prefix = type === 'credit' ? 'credit' : type === 'investment' ? 'inv' : 'bank';
+            const hubId = r.item?.id ? `${prefix}:${r.item.id}` : null;
+            const finish = () => {
+              this.formSaving.set(false);
+              this.loadAccounts();
+              this.api.getAccountFlowGraph(this.year(), this.month() + 1, this.mode()).subscribe({
+                next: (g) => {
+                  this.graph.set(g);
+                  this.isEmpty.set(!g.nodes.length);
+                  if (this.cy) this.renderGraph(g, { preserveView: true });
+                  if (hubId && r.item) {
+                    this.openAccountEditPanel(block, r.item, hubId);
+                  } else {
+                    this.closeSidePanel();
+                  }
+                },
+                error: () => {
+                  this.formSaving.set(false);
+                  this.closeSidePanel();
+                  this.load();
+                },
+              });
+            };
+            const afterLayout = () => {
+              if (
+                hubId &&
+                linkFrom &&
+                (linkFrom.startsWith('inc:') || linkFrom.startsWith('tx:')) &&
+                prefix === 'bank'
+              ) {
+                this.api
+                  .linkAccountFlowGraphNodes({
+                    year: this.year(),
+                    month: this.month() + 1,
+                    mode: this.mode(),
+                    fromNodeId: linkFrom,
+                    toNodeId: hubId,
+                  })
+                  .subscribe({ next: finish, error: finish });
+                return;
+              }
+              finish();
+            };
+            if (!hubId) {
+              finish();
+              return;
+            }
+            this.api
+              .saveAccountFlowGraphLayout({
+                year: this.year(),
+                month: this.month() + 1,
+                mode: this.mode(),
+                positions: [{ nodeKey: hubId, x, y }],
+              })
+              .subscribe({ next: afterLayout, error: afterLayout });
+          },
+          error: (err) => {
+            this.formSaving.set(false);
+            this.formError.set(err?.error?.error || 'Não foi possível criar a conta.');
+            this.createStep.set('pick');
+            this.panelMode.set('create');
+          },
+        });
+    };
+
+    // Lista atualizada evita colisão se this.accounts() estiver defasado.
+    this.api.getAccounts().subscribe({
+      next: (r) => {
+        const items = r.items ?? [];
+        this.accounts.set(items);
+        createWithAccounts(items.map((a) => a.name));
+      },
+      error: () => createWithAccounts(this.accounts().map((a) => a.name)),
+    });
+  }
+
+  private createFlowImmediate(
+    kind: Exclude<FormKind, 'goal'> | 'totalizer',
+    name: string,
+    amount: number,
+    x: number,
+    y: number,
+    opts?: {
+      accountId?: number | null;
+      targetAccountId?: number | null;
+      linkAccountNodeId?: string | null;
+    }
+  ): void {
+    const prevIds = new Set((this.graph()?.nodes ?? []).map((n) => n.id));
+    const viewingConfirmed = this.mode() === 'confirmed';
+    this.api
+      .createAccountFlowGraphNode({
+        year: this.year(),
+        month: this.month() + 1,
+        mode: viewingConfirmed ? 'current' : this.mode(),
+        kind,
+        recurrence: 'variable',
+        name,
+        amount,
+        currency: 'BRL',
+        accountId: opts?.accountId ?? this.formAccountId(),
+        targetAccountId: opts?.targetAccountId ?? this.formTargetAccountId(),
+        linkAccountNodeId: opts?.linkAccountNodeId ?? this.formLinkAccountNodeId(),
+        x,
+        y,
+      })
+      .subscribe({
+        next: (g) => {
+          const finish = (graph: AccountFlowGraph) => {
+            this.formSaving.set(false);
+            this.graph.set(graph);
+            this.isEmpty.set(!graph.nodes.length);
+            if (this.cy) this.renderGraph(graph, { preserveView: true });
+            const created =
+              graph.nodes.find((n) => !prevIds.has(n.id) && n.label === name) ??
+              graph.nodes.find((n) => !prevIds.has(n.id));
+            if (created && canEditGraphNode(created.id)) {
+              this.openEditPanel(created.id);
+            } else {
+              this.closeSidePanel();
+            }
+          };
+          if (viewingConfirmed) {
+            this.confirmFreshNode(g, name);
+            return;
+          }
+          finish(g);
+        },
+        error: (err) => {
+          this.formSaving.set(false);
+          this.formError.set(err?.error?.error || 'Não foi possível criar o bloco.');
+          this.createStep.set('pick');
+          this.panelMode.set('create');
+        },
+      });
   }
 
   pinHubSpawnPreview(): void {
@@ -700,29 +1075,217 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openEditPanel(nodeId: string): void {
-    const n = this.graph()?.nodes.find((x) => x.id === nodeId);
-    if (!n?.monthPlanEntryId) {
-      this.openCreateFrom(nodeId);
+    if (!canEditGraphNode(nodeId)) return;
+    const g = this.graph();
+    const n = g?.nodes.find((x) => x.id === nodeId);
+    const draft = n ? editDraftForNode(n, g?.edges ?? []) : null;
+    const entryId = n?.monthPlanEntryId ?? this.parseEntryId(nodeId);
+    if (!n || !entryId || !draft) {
+      // Sem preview: não abre formulário de criação fantasma.
       return;
     }
     this.panelMode.set('edit');
-    this.editingEntryId.set(n.monthPlanEntryId);
+    this.editingEntryId.set(entryId);
+    this.editingAccountId.set(null);
     this.formName.set(n.label);
-    this.formKind.set(
-      n.type === 'income' ? 'income' : n.type === 'investment' ? 'investment' : n.type === 'leisure' ? 'leisure' : 'expense'
-    );
-    this.formBlock.set(this.formKind());
+    this.formKind.set(draft.kind);
+    this.formBlock.set(draft.kind);
     this.createStep.set('form');
-    this.formRecurrence.set(n.isVariable ? 'variable' : 'fixed');
-    this.formAmount.set(0);
+    this.formRecurrence.set(draft.recurrence);
+    this.formAmount.set(draft.amount);
+    this.formAccountId.set(draft.accountId);
+    this.formTargetAccountId.set(draft.targetAccountId);
     this.formError.set('');
+    this.formSaving.set(false);
     this.selectedNodeId.set(nodeId);
     this.sidePanelOpen.set(true);
   }
 
+  /** Painel para editar banco/cartão/investimento recém-criado (ou selecionado). */
+  openAccountEditPanel(
+    block: 'bank' | 'credit' | 'investment-account',
+    account: FinancialAccount,
+    hubId: string
+  ): void {
+    this.panelMode.set('edit');
+    this.editingEntryId.set(null);
+    this.editingAccountId.set(account.id);
+    this.replacingHubId.set(block === 'bank' || block === 'investment-account' ? hubId : null);
+    this.formBlock.set(block);
+    this.createStep.set('form');
+    this.accountMode.set('new');
+    this.formName.set(account.name);
+    this.formAccountType.set(
+      account.type === 'investment' || block === 'investment-account' ? 'investment' : 'bank'
+    );
+    this.formColor.set(account.color || (block === 'credit' ? '#f59e0b' : block === 'investment-account' ? '#a371f7' : '#3b82f6'));
+    this.formInitialBalance.set(Number(account.initialBalanceBrl ?? account.initialBalance ?? 0) || 0);
+    this.formCreditLimit.set(account.creditLimit != null ? Number(account.creditLimit) : null);
+    this.formClosingDay.set(account.closingDay ?? 1);
+    this.formDueDay.set(account.dueDay ?? 10);
+    this.formError.set('');
+    this.formSaving.set(false);
+    this.selectedNodeId.set(hubId);
+    this.sidePanelOpen.set(true);
+  }
+
+  /** Clique no card de banco: escolher editar ou trocar a conta. */
+  openBankConfigPanel(account: FinancialAccount, hubId: string): void {
+    this.panelMode.set('edit');
+    this.editingEntryId.set(null);
+    this.editingAccountId.set(account.id);
+    this.replacingHubId.set(hubId);
+    this.formBlock.set('bank');
+    this.createStep.set('form');
+    this.accountMode.set('pick');
+    this.formName.set(account.name);
+    this.formAccountType.set(account.type === 'investment' ? 'investment' : 'bank');
+    this.formColor.set(account.color || '#3b82f6');
+    this.formInitialBalance.set(Number(account.initialBalanceBrl ?? account.initialBalance ?? 0) || 0);
+    this.formError.set('');
+    this.formSaving.set(false);
+    this.selectedNodeId.set(hubId);
+    const node = this.cy?.getElementById(hubId);
+    if (node && node.nonempty()) {
+      this.formSpawnX.set(node.position('x'));
+      this.formSpawnY.set(node.position('y'));
+    }
+    this.sidePanelOpen.set(true);
+  }
+
+  beginEditBankDetails(): void {
+    this.accountMode.set('new');
+    this.formError.set('');
+  }
+
+  /** Volta da ficha do banco para a escolha editar/trocar. */
+  backToBankConfig(): void {
+    const hub = this.replacingHubId();
+    if (!hub?.startsWith('bank:')) {
+      this.closeSidePanel();
+      return;
+    }
+    const id = Number(/^bank:(\d+)$/.exec(hub)?.[1] ?? 0);
+    const account = this.accounts().find((a) => a.id === id);
+    if (!account) {
+      this.closeSidePanel();
+      return;
+    }
+    this.openBankConfigPanel(account, hub);
+  }
+
+  startCreateReplacementBank(): void {
+    this.editingAccountId.set(null);
+    this.accountMode.set('new');
+    this.formName.set('');
+    this.formColor.set('#3b82f6');
+    this.formInitialBalance.set(0);
+    this.formError.set('');
+  }
+
+  /** Troca o hub do grafo por outro banco, mantendo ligações e posição. */
+  replaceBankHub(account: FinancialAccount): void {
+    const fromHub = this.replacingHubId();
+    if (!fromHub?.startsWith('bank:')) return;
+    const toHub = `bank:${account.id}`;
+    if (fromHub === toHub) {
+      this.beginEditBankDetails();
+      return;
+    }
+    const g = this.graph();
+    const flowIds = [
+      ...new Set(
+        (g?.edges ?? [])
+          .filter((e) => e.from === fromHub || e.to === fromHub)
+          .map((e) => (e.from === fromHub ? e.to : e.from))
+          .filter(
+            (id) =>
+              !isHubNodeId(id) &&
+              !id.startsWith('__') &&
+              (isFlowGraphId(id) || id.startsWith('tot:') || id.startsWith('tx'))
+          )
+      ),
+    ];
+    const fromEl = this.cy?.getElementById(fromHub);
+    const x =
+      this.formSpawnX() ??
+      (fromEl && fromEl.nonempty() ? fromEl.position('x') : 160);
+    const y =
+      this.formSpawnY() ??
+      (fromEl && fromEl.nonempty() ? fromEl.position('y') : 120);
+    const year = this.year();
+    const month = this.month() + 1;
+    const mode = this.mode();
+
+    this.formSaving.set(true);
+    this.formError.set('');
+
+    const finish = () => {
+      this.formSaving.set(false);
+      this.closeSidePanel();
+      this.loadAccounts();
+      this.load();
+    };
+
+    const saveLayoutThenFinish = () => {
+      this.api
+        .saveAccountFlowGraphLayout({
+          year,
+          month,
+          mode,
+          positions: [{ nodeKey: toHub, x, y }],
+        })
+        .subscribe({ next: finish, error: finish });
+    };
+
+    const linkNext = (i: number) => {
+      if (i >= flowIds.length) {
+        saveLayoutThenFinish();
+        return;
+      }
+      this.api
+        .linkAccountFlowGraphNodes({
+          year,
+          month,
+          mode,
+          fromNodeId: flowIds[i],
+          toNodeId: toHub,
+        })
+        .subscribe({
+          next: () => linkNext(i + 1),
+          error: () => linkNext(i + 1),
+        });
+    };
+
+    linkNext(0);
+  }
+
   requestDeleteNode(nodeId: string): void {
-    if (isHubNodeId(nodeId)) return;
+    if (nodeId.startsWith('__') || nodeId.startsWith('balance:')) return;
     const n = this.graph()?.nodes.find((x) => x.id === nodeId);
+
+    if (isHubNodeId(nodeId)) {
+      const m = /^(bank|credit|inv):(\d+)$/.exec(nodeId);
+      if (!m) return;
+      const hubLabels: Record<string, string> = {
+        bank: 'banco',
+        credit: 'cartão',
+        inv: 'conta de investimento',
+      };
+      this.deletePrompt.set({
+        nodeId,
+        entryId: 0,
+        recurringItemId: null,
+        name: n?.label ?? 'Conta',
+        kind: m[1],
+        kindLabel: hubLabels[m[1]] ?? 'conta',
+        isFixed: false,
+        isHub: true,
+        accountId: Number(m[2]),
+      });
+      return;
+    }
+
     if (!n) return;
     const entryId = n.monthPlanEntryId ?? this.parseEntryId(nodeId);
     if (!entryId) return;
@@ -730,9 +1293,9 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       income: 'recebimento',
       expense: 'gasto',
       investment: 'investimento',
-      leisure: 'lazer',
       goal: 'meta',
       installment: 'parcela',
+      totalizer: 'totalizador',
     };
     this.deletePrompt.set({
       nodeId,
@@ -766,12 +1329,28 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedNodeId.set(null);
       this.nodeActions.set(null);
       this.closeSidePanel();
+      this.loadAccounts();
       this.load();
     };
     const fail = (err: { error?: { error?: string } }) => {
       this.deleteBusy.set(false);
       alert(err?.error?.error || 'Não foi possível excluir.');
     };
+    if (prompt.isHub && prompt.accountId) {
+      this.api.deleteAccount(prompt.accountId).subscribe({ next: done, error: fail });
+      return;
+    }
+    if (this.mode() === 'confirmed') {
+      const node = this.graph()?.nodes.find((n) => n.id === prompt.nodeId);
+      const txId = node?.transactionId ?? this.parseTxId(prompt.nodeId);
+      if (!txId) {
+        this.deleteBusy.set(false);
+        alert('Não foi possível desfazer este lançamento.');
+        return;
+      }
+      this.api.unconfirmTransaction(txId).subscribe({ next: done, error: fail });
+      return;
+    }
     if (scope === 'upcoming' && prompt.recurringItemId) {
       this.api.deleteRecurringItem(prompt.recurringItemId).subscribe({ next: done, error: fail });
       return;
@@ -789,27 +1368,37 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.formBlock.set(null);
     this.accountMode.set('new');
     this.editingEntryId.set(null);
+    this.editingAccountId.set(null);
+    this.replacingHubId.set(null);
     this.formName.set('');
     this.formAmount.set(0);
     this.formAccountId.set(null);
     this.formTargetAccountId.set(null);
+    this.formStartDate.set('');
+    this.formEndDate.set('');
     this.formLinkAccountNodeId.set(null);
     this.formSpawnX.set(null);
     this.formSpawnY.set(null);
     this.formInitialBalance.set(0);
     this.formError.set('');
-    this.removeDraftPreview();
     this.sidePanelOpen.set(true);
   }
 
   submitCreate(): void {
     const block = this.formBlock();
-    if (this.panelMode() === 'create' && (block === 'bank' || block === 'credit' || block === 'investment-account')) {
+    if (
+      (block === 'bank' || block === 'credit' || block === 'investment-account') &&
+      (this.editingAccountId() || this.replacingHubId() || this.panelMode() === 'create')
+    ) {
       this.submitAccount(block);
       return;
     }
     if (this.panelMode() === 'create' && block === 'totalizer') {
       this.submitTotalizer();
+      return;
+    }
+    if (this.panelMode() === 'create' && (block === 'goal' || this.formKind() === 'goal')) {
+      this.submitGoal();
       return;
     }
     const name = this.formName().trim();
@@ -822,13 +1411,50 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       this.formError.set('Informe um valor maior que zero.');
       return;
     }
+    if (this.formKind() === 'transfer') {
+      const from = this.formAccountId();
+      const to = this.formTargetAccountId();
+      if (from && to && from === to) {
+        this.formError.set('Conta de saída e entrada devem ser diferentes.');
+        return;
+      }
+    }
     if (this.panelMode() === 'edit' && this.editingEntryId()) {
+      const editing = this.graph()?.nodes.find((n) => n.monthPlanEntryId === this.editingEntryId());
+      const draft = editing ? editDraftForNode(editing, this.graph()?.edges ?? []) : null;
+      const nameOnly = draft?.mode === 'goal' || draft?.mode === 'totalizer';
+      if (!nameOnly && !(amount > 0)) {
+        this.formError.set('Informe um valor maior que zero.');
+        return;
+      }
+      if (
+        draft?.mode === 'flow' &&
+        this.formRecurrence() === 'fixed' &&
+        this.formKind() === 'investment' &&
+        !this.formTargetAccountId()
+      ) {
+        this.formError.set('Investimento fixo precisa da conta de destino.');
+        return;
+      }
       this.formSaving.set(true);
       this.api
-        .updateMonthPlanEntry(this.editingEntryId()!, {
+        .updateAccountFlowGraphNode({
+          year: this.year(),
+          month: this.month() + 1,
+          mode: this.mode(),
+          entryId: this.editingEntryId()!,
+          nodeId: editing?.id,
           name,
-          suggestedAmount: amount,
-          kind: this.formKind(),
+          amount: nameOnly ? undefined : amount,
+          kind: (() => {
+            const k = this.formKind();
+            if (draft?.mode !== 'flow' || k === 'goal') return undefined;
+            return k;
+          })(),
+          recurrence: draft?.mode === 'flow' ? this.formRecurrence() : undefined,
+          currency: 'BRL',
+          accountId: draft?.mode === 'flow' ? this.formAccountId() : null,
+          targetAccountId: draft?.mode === 'flow' ? this.formTargetAccountId() : null,
         })
         .subscribe({
           next: () => {
@@ -846,17 +1472,18 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.formSaving.set(true);
     this.formError.set('');
-    const draftPos = this.cy?.getElementById(DRAFT_ITEM_ID);
-    const draftXY =
-      draftPos && draftPos.nonempty()
-        ? { x: draftPos.position('x'), y: draftPos.position('y') }
-        : { x: this.formSpawnX(), y: this.formSpawnY() };
+    const viewingConfirmed = this.mode() === 'confirmed';
+    const flowKind = this.formKind();
+    if (flowKind === 'goal') {
+      this.submitGoal();
+      return;
+    }
     this.api
       .createAccountFlowGraphNode({
         year: this.year(),
         month: this.month() + 1,
-        mode: this.mode(),
-        kind: this.formKind(),
+        mode: viewingConfirmed ? 'current' : this.mode(),
+        kind: flowKind,
         recurrence: this.formRecurrence(),
         name,
         amount,
@@ -864,14 +1491,17 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         accountId: this.formAccountId(),
         targetAccountId: this.formTargetAccountId(),
         linkAccountNodeId: this.formLinkAccountNodeId(),
-        x: draftXY.x ?? undefined,
-        y: draftXY.y ?? undefined,
+        x: this.formSpawnX() ?? undefined,
+        y: this.formSpawnY() ?? undefined,
       })
       .subscribe({
         next: (g) => {
+          if (viewingConfirmed) {
+            this.confirmFreshNode(g, name);
+            return;
+          }
           this.formSaving.set(false);
           const firstBlock = this.canvasIsStarter();
-          this.removeDraftPreview();
           this.closeSidePanel();
           this.graph.set(g);
           this.isEmpty.set(!g.nodes.length);
@@ -890,40 +1520,151 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
+  /** Cria no plano do mês e confirma, para o item aparecer em Apenas confirmados. */
+  private confirmFreshNode(planned: AccountFlowGraph, name: string): void {
+    const prev = new Set((this.graph()?.nodes ?? []).map((n) => n.id));
+    const created =
+      planned.nodes.find((n) => n.monthPlanEntryId && !prev.has(n.id) && n.label === name) ??
+      planned.nodes.find((n) => n.monthPlanEntryId && !prev.has(n.id));
+    const finish = () => {
+      this.formSaving.set(false);
+      this.closeSidePanel();
+      this.load();
+    };
+    if (!created?.monthPlanEntryId) {
+      finish();
+      return;
+    }
+    this.api
+      .confirmMonthPlanEntry(created.monthPlanEntryId, {
+        accountId: this.formAccountId() ?? undefined,
+        targetAccountId: this.formTargetAccountId() ?? undefined,
+        amount: Number(this.formAmount()),
+      })
+      .subscribe({
+        next: finish,
+        error: (err) => {
+          this.formSaving.set(false);
+          this.formError.set(err?.error?.error || 'Criado no plano, mas não entrou em Apenas confirmados.');
+          this.load();
+        },
+      });
+  }
+
+  private removeNodeFromGraph(nodeId: string): void {
+    const g = this.graph();
+    if (!g || !this.cy) {
+      this.refreshOverlays();
+      return;
+    }
+    const next: AccountFlowGraph = {
+      ...g,
+      nodes: g.nodes.filter((n) => n.id !== nodeId),
+      edges: g.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+    };
+    this.graph.set(next);
+    this.renderGraph(next, { preserveView: true });
+  }
+
   private submitAccount(block: 'bank' | 'credit' | 'investment-account'): void {
     const name = this.formName().trim();
     if (!name) {
       this.formError.set('Informe o nome.');
       return;
     }
-    const type = block === 'investment-account' ? 'investment' : block;
+    const type: 'bank' | 'credit' | 'investment' =
+      block === 'credit' ? 'credit' : this.formAccountType();
+    const editingId = this.editingAccountId();
+    const prevHub = this.selectedNodeId() ?? this.replacingHubId();
     this.formSaving.set(true);
     this.formError.set('');
     this.api
-      .saveAccount({
-        name,
-        type,
-        currency: 'BRL',
-        initialBalance: Number(this.formInitialBalance()) || 0,
-        initialBalanceDate: new Date().toISOString().slice(0, 10),
-        color: this.formColor(),
-        creditLimit: type === 'credit' ? this.formCreditLimit() : null,
-        closingDay: type === 'credit' ? this.formClosingDay() : null,
-        dueDay: type === 'credit' ? this.formDueDay() : null,
-      })
+      .saveAccount(
+        {
+          name,
+          type,
+          currency: 'BRL',
+          initialBalance: Number(this.formInitialBalance()) || 0,
+          initialBalanceDate: new Date().toISOString().slice(0, 10),
+          color: this.formColor(),
+          creditLimit: type === 'credit' ? this.formCreditLimit() : null,
+          closingDay: type === 'credit' ? this.formClosingDay() : null,
+          dueDay: type === 'credit' ? this.formDueDay() : null,
+        },
+        editingId ?? undefined
+      )
       .subscribe({
         next: (r) => {
+          if (editingId) {
+            const prefix = type === 'credit' ? 'credit' : type === 'investment' ? 'inv' : 'bank';
+            const newHub = `${prefix}:${editingId}`;
+            const finishEdit = () => {
+              this.formSaving.set(false);
+              this.closeSidePanel();
+              this.loadAccounts();
+              this.load();
+            };
+            // Se mudou banco ↔ investimento, migra posição e remove a chave antiga.
+            if (prevHub && prevHub !== newHub) {
+              const el = this.cy?.getElementById(prevHub);
+              const x =
+                el && el.nonempty() ? el.position('x') : this.formSpawnX() ?? 160;
+              const y =
+                el && el.nonempty() ? el.position('y') : this.formSpawnY() ?? 120;
+              // Conta investimento não tem totalizador — remove saldo do hub antigo.
+              const oldSaldo = `__saldo_${prevHub}`;
+              this.api
+                .saveAccountFlowGraphLayout({
+                  year: this.year(),
+                  month: this.month() + 1,
+                  mode: this.mode(),
+                  positions: [{ nodeKey: newHub, x, y }],
+                  removeNodeKeys: [prevHub, oldSaldo],
+                })
+                .subscribe({ next: finishEdit, error: finishEdit });
+              return;
+            }
+            finishEdit();
+            return;
+          }
+          // Cadastrou outro banco no lugar do hub selecionado.
+          if (block === 'bank' && this.replacingHubId()?.startsWith('bank:') && r.item) {
+            this.replaceBankHub(r.item);
+            return;
+          }
           const prefix = type === 'credit' ? 'credit' : type === 'investment' ? 'inv' : 'bank';
           const x = this.formSpawnX();
           const y = this.formSpawnY();
+          const linkFrom = this.formLinkAccountNodeId();
+          const hubId = r.item?.id ? `${prefix}:${r.item.id}` : null;
           const finish = () => {
             this.formSaving.set(false);
             this.closeSidePanel();
             this.loadAccounts();
             this.load();
           };
-          if (x == null || y == null || !r.item?.id) {
+          const maybeLinkThenFinish = () => {
+            if (
+              hubId &&
+              linkFrom &&
+              (linkFrom.startsWith('inc:') || linkFrom.startsWith('tx:')) &&
+              prefix === 'bank'
+            ) {
+              this.api
+                .linkAccountFlowGraphNodes({
+                  year: this.year(),
+                  month: this.month() + 1,
+                  mode: this.mode(),
+                  fromNodeId: linkFrom,
+                  toNodeId: hubId,
+                })
+                .subscribe({ next: finish, error: finish });
+              return;
+            }
             finish();
+          };
+          if (x == null || y == null || !hubId) {
+            maybeLinkThenFinish();
             return;
           }
           this.api
@@ -931,13 +1672,75 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
               year: this.year(),
               month: this.month() + 1,
               mode: this.mode(),
-              positions: [{ nodeKey: `${prefix}:${r.item.id}`, x, y }],
+              positions: [{ nodeKey: hubId, x, y }],
             })
-            .subscribe({ next: finish, error: finish });
+            .subscribe({ next: maybeLinkThenFinish, error: maybeLinkThenFinish });
         },
         error: (err) => {
           this.formSaving.set(false);
           this.formError.set(err?.error?.error || 'Não foi possível criar a conta.');
+        },
+      });
+  }
+
+  private submitGoal(): void {
+    const name = this.formName().trim();
+    const target = Number(this.formAmount());
+    const start = this.formStartDate() || this.defaultGoalStartDate();
+    const end = this.formEndDate() || this.defaultGoalEndDate();
+    if (!name) {
+      this.formError.set('Informe o nome.');
+      return;
+    }
+    if (!(target > 0)) {
+      this.formError.set('Informe o valor final da meta.');
+      return;
+    }
+    if (!this.formTargetAccountId()) {
+      this.formError.set('Selecione a conta de investimento de destino.');
+      return;
+    }
+    if (start > end) {
+      this.formError.set('A data de início deve ser anterior à data de fim.');
+      return;
+    }
+    this.formSaving.set(true);
+    this.formError.set('');
+    const firstBlock = this.canvasIsStarter();
+    this.api
+      .createAccountFlowGraphNode({
+        year: this.year(),
+        month: this.month() + 1,
+        mode: this.mode() === 'confirmed' ? 'current' : this.mode(),
+        kind: 'goal',
+        name,
+        amount: target,
+        targetAmountBrl: target,
+        startDate: start,
+        endDate: end,
+        accountId: this.formAccountId(),
+        targetAccountId: this.formTargetAccountId(),
+        color: this.formColor() || '#00AB55',
+        x: this.formSpawnX() ?? undefined,
+        y: this.formSpawnY() ?? undefined,
+      })
+      .subscribe({
+        next: (g) => {
+          this.formSaving.set(false);
+          this.closeSidePanel();
+          this.graph.set(g);
+          this.isEmpty.set(!g.nodes.length);
+          if (!this.cy) return;
+          if (firstBlock) {
+            this.renderGraph(g, { skipAutoFit: true });
+            this.autoOrganize();
+            return;
+          }
+          this.renderGraph(g, { preserveView: true });
+        },
+        error: (err) => {
+          this.formSaving.set(false);
+          this.formError.set(err?.error?.error || 'Não foi possível criar a meta.');
         },
       });
   }
@@ -968,7 +1771,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (g) => {
           this.formSaving.set(false);
-          this.removeDraftPreview();
           this.closeSidePanel();
           this.graph.set(g);
           this.isEmpty.set(!g.nodes.length);
@@ -1127,17 +1929,16 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     this.linkArrow.set(null);
     this.cy?.nodes().removeClass('link-hover');
     if (rewire) {
-      if (!hit) {
+      const decision = rewireDrop(rewire.from, rewire.to, hit);
+      if (decision.action === 'cancel') {
         this.cancelLinkMode();
         return;
       }
-      const nextFrom = rewire.moving === 'from' ? hit : rewire.from;
-      const nextTo = rewire.moving === 'to' ? hit : rewire.to;
-      if (nextFrom === rewire.from && nextTo === rewire.to) {
-        this.cancelLinkMode();
+      if (decision.action === 'unlink') {
+        this.unlinkEdge(rewire.from, rewire.to);
         return;
       }
-      this.commitLink(nextFrom, nextTo);
+      this.commitLink(decision.from, decision.to);
       return;
     }
     const from = this.linkFromId();
@@ -1204,6 +2005,28 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     const left = `${x2 - len * Math.cos(ang - spread)},${y2 - len * Math.sin(ang - spread)}`;
     const right = `${x2 - len * Math.cos(ang + spread)},${y2 - len * Math.sin(ang + spread)}`;
     return `${tip} ${left} ${right}`;
+  }
+
+  private unlinkEdge(from: string, to: string): void {
+    this.api
+      .unlinkAccountFlowGraphNodes({
+        year: this.year(),
+        month: this.month() + 1,
+        mode: this.mode(),
+        fromNodeId: from,
+        toNodeId: to,
+      })
+      .subscribe({
+        next: (graph) => {
+          this.cancelLinkMode();
+          this.graph.set(graph);
+          if (this.cy) this.renderGraph(graph, { preserveView: true });
+        },
+        error: (err) => {
+          this.cancelLinkMode();
+          alert(err?.error?.error || 'Não foi possível desligar.');
+        },
+      });
   }
 
   private commitLink(from: string, to: string): void {
@@ -1320,7 +2143,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       this.api.unconfirmTransaction(txId).subscribe({
         next: () => {
           this.clearBusy(nodeId);
-          this.refreshOverlays();
+          this.removeNodeFromGraph(nodeId);
         },
         error: (err) => {
           revert();
@@ -1445,7 +2268,12 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
             'line-opacity': 0.55,
             width: 1.5,
             'overlay-padding': 12,
-            content: '',
+            content: 'data(amountLabel)',
+            'font-size': 11,
+            color: edgeClr,
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 1,
+            'text-background-padding': '3px',
             'z-index': 5,
           } as any,
         },
@@ -1493,22 +2321,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       if (ev.target === this.cy) {
         if (this.linkMode()) {
-          const pos = ev.position;
-          const from = this.linkFromId();
           this.cancelLinkMode();
-          if (from && isHubNodeId(from)) {
-            const hub = this.parseHubAccountId(from);
-            this.openCreatePanel({
-              spawnX: pos.x,
-              spawnY: pos.y,
-              accountId: hub,
-              linkAccountNodeId: from,
-              kind: from.startsWith('inv:') ? 'investment' : 'expense',
-            });
-            if (from.startsWith('inv:') && hub) this.formTargetAccountId.set(hub);
-          } else {
-            this.openCreatePanel({ spawnX: pos.x, spawnY: pos.y });
-          }
           return;
         }
         this.clearLinkHighlight();
@@ -1519,10 +2332,14 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.cy.on('dbltap', 'node', (ev) => {
+      if (this.nodeTapTimer) {
+        clearTimeout(this.nodeTapTimer);
+        this.nodeTapTimer = null;
+      }
       const node = ev.target;
       if (node.hasClass('amount-node') || node.hasClass('balance-node') || node.hasClass('draft-node')) return;
       if (isHubNodeId(node.id())) return;
-      this.openEditPanel(node.id());
+      this.startInlineEdit(node.id());
     });
 
     this.cy.on('dbltap', (ev) => {
@@ -1536,25 +2353,22 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.cy.on('dragfree', 'node', (ev) => {
       const node = ev.target;
-      if (node.id() === DRAFT_ITEM_ID) {
-        const p = node.position();
-        this.formSpawnX.set(p.x);
-        this.formSpawnY.set(p.y);
-        this.refreshOverlays();
-        return;
-      }
-      if (node.hasClass('amount-node') || node.hasClass('balance-node') || node.hasClass('draft-node')) return;
-      this.queueSavePositions();
+      if (node.hasClass('amount-node') || node.hasClass('draft-node')) return;
+      // Persiste na hora: estado local + API (qualquer bloco que o usuário moveu).
+      this.persistNodePosition(node);
       this.refreshOverlays();
     });
 
-    this.cy.on('pan zoom position', () => {
+    this.cy.on('position', () => this.scheduleOverlayRefresh());
+    this.cy.on('pan zoom', () => {
       this.zoomPct.set(Math.round((this.cy?.zoom() ?? 1) * 100));
       this.scheduleOverlayRefresh();
+      if (!this.applyingCamera) this.queueSaveViewport();
     });
 
     const g = this.graph();
-    if (g?.nodes.length) this.renderGraph(g);
+    if (g?.nodes.length) this.renderGraphWhenReady(g);
+    else if (!this.loading()) this.loading.set(false);
   }
 
   private onNodeTap(ev: EventObject): void {
@@ -1590,40 +2404,244 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       x: (rp.x1 + rp.x2) / 2,
       y: rp.y1,
     });
+
+    if (this.nodeTapTimer) clearTimeout(this.nodeTapTimer);
+    this.nodeTapTimer = setTimeout(() => {
+      this.nodeTapTimer = null;
+      if (this.inlineEdit()?.nodeId === id) return;
+      if (canEditGraphNode(id)) {
+        this.openEditPanel(id);
+        return;
+      }
+      if (isHubNodeId(id)) {
+        this.openHubAccountEdit(id);
+        return;
+      }
+      this.closeSidePanel();
+    }, 260);
+  }
+
+  /** Clique em banco/cartão/investimento: painel de edição da conta. */
+  openHubAccountEdit(hubId: string): void {
+    const m = /^(bank|credit|inv):(\d+)$/.exec(hubId);
+    if (!m) return;
+    const accountId = Number(m[2]);
+    const account = this.accounts().find((a) => a.id === accountId);
+    if (!account) {
+      this.api.getAccounts().subscribe({
+        next: (r) => {
+          this.accounts.set(r.items ?? []);
+          const found = (r.items ?? []).find((a) => a.id === accountId);
+          if (found) this.openHubAccountEdit(hubId);
+        },
+      });
+      return;
+    }
+    if (m[1] === 'bank') {
+      this.openBankConfigPanel(account, hubId);
+      return;
+    }
+    if (m[1] === 'inv') {
+      // Mesmo fluxo de edição do banco, com tipo investimento pré-selecionado.
+      this.openAccountEditPanel('investment-account', account, hubId);
+      return;
+    }
+    this.openAccountEditPanel('credit', account, hubId);
+  }
+
+  startInlineEdit(nodeId: string): void {
+    if (!canEditGraphNode(nodeId)) return;
+    const g = this.graph();
+    const n = g?.nodes.find((x) => x.id === nodeId);
+    if (!n?.monthPlanEntryId) {
+      this.openEditPanel(nodeId);
+      return;
+    }
+    const draft = editDraftForNode(n, g?.edges ?? []);
+    this.inlineEdit.set({
+      nodeId,
+      name: n.label,
+      amount: draft?.amount ?? n.amountBrl ?? 0,
+      saving: false,
+    });
+    this.nodeActions.set(null);
+    this.clearHubSpawnPreview();
+    setTimeout(() => {
+      const input = document.querySelector('.flow-card--editing .flow-card-input--title') as HTMLInputElement | null;
+      input?.focus();
+      input?.select();
+    }, 0);
+  }
+
+  onInlineName(value: string): void {
+    const cur = this.inlineEdit();
+    if (!cur) return;
+    this.inlineEdit.set({ ...cur, name: value });
+  }
+
+  onInlineAmount(value: number): void {
+    const cur = this.inlineEdit();
+    if (!cur) return;
+    this.inlineEdit.set({ ...cur, amount: value });
+  }
+
+  commitInlineEdit(): void {
+    const edit = this.inlineEdit();
+    if (!edit || edit.saving) return;
+    const g = this.graph();
+    const n = g?.nodes.find((x) => x.id === edit.nodeId);
+    if (!n?.monthPlanEntryId) {
+      this.inlineEdit.set(null);
+      return;
+    }
+    const name = edit.name.trim();
+    if (!name) {
+      this.inlineEdit.set(null);
+      return;
+    }
+    const draft = editDraftForNode(n, g?.edges ?? []);
+    const nameOnly = draft?.mode === 'goal' || draft?.mode === 'totalizer';
+    const amount = Number(edit.amount);
+    if (!nameOnly && !(amount > 0)) {
+      this.inlineEdit.set(null);
+      return;
+    }
+    this.inlineEdit.set({ ...edit, saving: true });
+    this.api
+      .updateAccountFlowGraphNode({
+        year: this.year(),
+        month: this.month() + 1,
+        mode: this.mode(),
+        entryId: n.monthPlanEntryId,
+        nodeId: n.id,
+        name,
+        amount: nameOnly ? amount : amount,
+        kind: draft?.mode === 'flow' ? draft.kind : undefined,
+        currency: 'BRL',
+        accountId: draft?.mode === 'flow' ? draft.accountId : null,
+        targetAccountId: draft?.mode === 'flow' ? draft.targetAccountId : null,
+      })
+      .subscribe({
+        next: (graph) => {
+          this.inlineEdit.set(null);
+          this.graph.set(graph);
+          if (this.cy) this.renderGraph(graph, { preserveView: true });
+          if (this.editingEntryId() === n.monthPlanEntryId) {
+            this.formName.set(name);
+            this.formAmount.set(amount);
+          }
+        },
+        error: () => this.inlineEdit.set(null),
+      });
+  }
+
+  cancelInlineEdit(): void {
+    this.inlineEdit.set(null);
+  }
+
+  onInlineFocusOut(ev: FocusEvent): void {
+    const box = ev.currentTarget as HTMLElement | null;
+    const next = ev.relatedTarget as Node | null;
+    if (box && next && box.contains(next)) return;
+    // Deixa o foco migrar entre os dois inputs antes de salvar.
+    setTimeout(() => {
+      if (!this.inlineEdit()) return;
+      const active = document.activeElement;
+      if (box && active && box.contains(active)) return;
+      this.commitInlineEdit();
+    }, 0);
   }
 
   private onNodeMouseOver(ev: EventObject): void {
     const node = ev.target;
-    if (node.hasClass('amount-node') || node.hasClass('balance-node')) return;
-    if (this.linkMode() || this.createStep() === 'form') return;
-    const id = node.id();
-    if (!isHubNodeId(id)) return;
-    const accountId = this.parseHubAccountId(id);
-    if (!accountId) return;
+    if (node.hasClass('amount-node') || node.hasClass('balance-node') || node.hasClass('draft-node')) {
+      return;
+    }
+    // Não bloquear com o painel aberto — senão o preview recebimento→banco some.
+    if (this.linkMode() || this.formSaving()) return;
     if (this.hubHoverTimer) {
       clearTimeout(this.hubHoverTimer);
       this.hubHoverTimer = null;
     }
-    this.showHubSpawnPreview(node, accountId);
+    this.showSpawnPreviewFor(node);
   }
 
   private onNodeMouseOut(ev: EventObject): void {
     const node = ev.target;
-    if (node.hasClass('amount-node') || node.hasClass('balance-node')) return;
-    if (!isHubNodeId(node.id())) return;
+    if (node.hasClass('amount-node') || node.hasClass('balance-node') || node.hasClass('draft-node')) {
+      return;
+    }
     if (this.hubPreviewPinned) return;
     this.scheduleClearHubSpawnPreview();
   }
 
-  private showHubSpawnPreview(node: cytoscape.NodeSingular, accountId: number): void {
+  /** Sugestão: recebimento→banco, banco/cartão/investimento→gasto; gasto→nenhum. */
+  private spawnSuggestionFor(node: cytoscape.NodeSingular): {
+    suggest: 'bank' | 'expense';
+    title: string;
+    subtitle: string;
+    accent: string;
+    icon: string;
+    accountId: number | null;
+  } | null {
+    const id = node.id();
+    const type = String(node.data('type') || '');
+    if (type === 'goal') return null;
+    if (id.startsWith('exp:') || type === 'expense' || type === 'installment') {
+      return null;
+    }
+    if (id.startsWith('inc:') || type === 'income') {
+      return {
+        suggest: 'bank',
+        title: 'Banco',
+        subtitle: 'Clique para vincular',
+        accent: '#3b82f6',
+        icon: ICON_BANK,
+        accountId: null,
+      };
+    }
+    if (
+      id.startsWith('bank:') ||
+      id.startsWith('credit:') ||
+      id.startsWith('inv:') ||
+      type === 'bank' ||
+      type === 'credit' ||
+      (type === 'investment' && id.startsWith('inv:'))
+    ) {
+      const accountId = this.parseHubAccountId(id);
+      if (!accountId) return null;
+      const isCredit = id.startsWith('credit:') || type === 'credit';
+      const isInv = id.startsWith('inv:');
+      return {
+        suggest: 'expense',
+        title: 'Gasto',
+        subtitle: isCredit ? 'Saindo do cartão' : isInv ? 'Saindo do investimento' : 'Saindo do banco',
+        accent: '#E5342B',
+        icon: ICON_EXPENSE,
+        accountId,
+      };
+    }
+    return null;
+  }
+
+  private showSpawnPreviewFor(node: cytoscape.NodeSingular): void {
+    const suggestion = this.spawnSuggestionFor(node);
+    if (!suggestion) {
+      this.clearHubSpawnPreview();
+      return;
+    }
     const bb = node.renderedBoundingBox({ includeLabels: false, includeOverlays: false });
     const gap = 14;
-    const w = Math.max(132, (bb.x2 - bb.x1) * 0.92);
-    const h = Math.max(88, (bb.y2 - bb.y1) * 1.35);
+    const w = Math.max(148, Math.min(200, bb.x2 - bb.x1));
+    const h = Math.max(76, Math.min(96, bb.y2 - bb.y1));
     this.hubSpawnPreview.set({
-      hubNodeId: node.id(),
-      accountId,
-      hubType: String(node.data('type') || 'bank'),
+      sourceNodeId: node.id(),
+      suggest: suggestion.suggest,
+      title: suggestion.title,
+      subtitle: suggestion.subtitle,
+      accent: suggestion.accent,
+      icon: suggestion.icon,
+      accountId: suggestion.accountId,
       x: bb.x2 + gap,
       y: (bb.y1 + bb.y2) / 2 - h / 2,
       w,
@@ -1634,12 +2652,12 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   private updateHubSpawnPreviewPos(): void {
     const prev = this.hubSpawnPreview();
     if (!prev || !this.cy) return;
-    const node = this.cy.getElementById(prev.hubNodeId);
+    const node = this.cy.getElementById(prev.sourceNodeId);
     if (node.empty() || node.hidden()) {
       this.clearHubSpawnPreview();
       return;
     }
-    this.showHubSpawnPreview(node, prev.accountId);
+    this.showSpawnPreviewFor(node);
   }
 
   private renderGraph(g: AccountFlowGraph, opts?: { preserveView?: boolean; skipAutoFit?: boolean }): void {
@@ -1650,13 +2668,12 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       : null;
     const edgeClr = isDark() ? '#9A9DAC' : '#14151A';
     const elements: cytoscape.ElementDefinition[] = [];
-    const nodeById = new Map(g.nodes.map((n) => [n.id, n]));
-    const amounts = this.amountsOnCards(g);
+    const amounts = cardAmounts(g.nodes, g.edges);
     const happenedMode = this.mode() === 'confirmed';
     const happenedLocal = this.happenedIds();
 
     for (const n of g.nodes) {
-      const money = amounts.get(n.id) ?? (typeof n.amountBrl === 'number' ? n.amountBrl : null);
+      const money = amounts.byNode.get(n.id) ?? (typeof n.amountBrl === 'number' ? n.amountBrl : null);
       const hub = isHubNodeId(n.id);
       const meta: Record<string, unknown> = {
         id: n.id,
@@ -1671,7 +2688,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         editable: !!n.editable || this.isFlowNodeId(n.id),
         monthPlanEntryId: n.monthPlanEntryId ?? null,
         recurringItemId: n.recurringItemId ?? null,
-        happened: happenedMode || happenedLocal.has(n.id),
+        happened: happenedMode || !!n.occurred || happenedLocal.has(n.id),
       };
       elements.push({
         data: meta,
@@ -1697,6 +2714,9 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
           kind: e.kind || '',
           subKind: e.subKind || '',
           refId: e.refId,
+          amountLabel: amounts.hubEdgeAmounts.has(edgeAmountKey(e))
+            ? this.fmtAmt(amounts.hubEdgeAmounts.get(edgeAmountKey(e))!)
+            : '',
           origFrom: e.from,
           origTo: e.to,
           itemCategoryId: e.itemCategoryId != null ? String(e.itemCategoryId) : 'geral',
@@ -1706,47 +2726,33 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // Saldos
-    const bankBal = new Map<string, { label: string; inflow: number; outflow: number; destIds: Set<string> }>();
-    for (const n of g.nodes.filter((n) => n.type === 'bank')) {
-      bankBal.set(n.id, { label: n.label, inflow: 0, outflow: 0, destIds: new Set() });
-    }
-    for (const e of g.edges) {
-      const srcType = nodeById.get(e.from)?.type;
-      const tgtType = nodeById.get(e.to)?.type;
-      if (srcType === 'income' && tgtType === 'bank') bankBal.get(e.to)!.inflow += e.amountBrl;
-      if (srcType === 'bank' && bankBal.has(e.from)) {
-        const b = bankBal.get(e.from)!;
-        b.outflow += e.amountBrl;
-        if (tgtType && ['expense', 'investment', 'goal', 'installment'].includes(tgtType)) {
-          b.destIds.add(e.to);
-        }
-      }
-    }
-
-    for (const [bankId, b] of bankBal.entries()) {
-      const bal = b.inflow - b.outflow;
+    const syn = g.syntheticLayout ?? {};
+    const accountBals = accountFlowBalances(g.nodes, g.edges);
+    for (const b of accountBals) {
+      const balId = `__saldo_${b.accountId}`;
+      const pinned = syn[balId];
       elements.push({
         data: {
-          id: `__saldo_${bankId}`,
+          id: balId,
           label: '',
-          cardTitle: this.trunc(b.label, 26),
-          cardValue: `${bal >= 0 ? '+' : ''}${this.fmtAmt(bal)}`,
+          cardTitle: this.trunc(`Total: ${b.label}`, 28),
+          cardValue: `${b.balance >= 0 ? '+' : ''}${this.fmtAmt(b.balance)}`,
           cardMeta: false,
-          cardAccent: bal >= 0 ? '#1BAA5C' : '#E5342B',
+          cardAccent: b.balance >= 0 ? '#1BAA5C' : '#E5342B',
           cardIcon: ICON_BALANCE,
           type: 'balance',
           isBalance: true,
         },
         classes: 'balance-node',
+        ...(pinned ? { position: { x: pinned.x, y: pinned.y } } : {}),
       });
-      if (b.destIds.size > 0) {
+      if (b.destIds.length > 0) {
         for (const destId of b.destIds) {
           elements.push({
             data: {
-              id: `__bl_${bankId}_${destId}`,
+              id: `__bl_${b.accountId}_${destId}`,
               source: destId,
-              target: `__saldo_${bankId}`,
+              target: balId,
               color: edgeClr,
             },
             classes: 'balance-link',
@@ -1754,13 +2760,14 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       } else {
         elements.push({
-          data: { id: `__bl_${bankId}`, source: bankId, target: `__saldo_${bankId}`, color: edgeClr },
+          data: { id: `__bl_${b.accountId}`, source: b.accountId, target: balId, color: edgeClr },
           classes: 'balance-link',
         });
       }
     }
 
     const apiTotal = (g.totals?.inflowBrl ?? 0) - (g.totals?.outflowBrl ?? 0);
+    const totalPinned = syn['__saldo_total__'];
     elements.push({
       data: {
         id: '__saldo_total__',
@@ -1774,12 +2781,13 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         isBalance: true,
       },
       classes: 'balance-node',
+      ...(totalPinned ? { position: { x: totalPinned.x, y: totalPinned.y } } : {}),
     });
-    for (const [bankId] of bankBal.entries()) {
+    for (const b of accountBals) {
       elements.push({
         data: {
-          id: `__totbl_${bankId}`,
-          source: `__saldo_${bankId}`,
+          id: `__totbl_${b.accountId}`,
+          source: `__saldo_${b.accountId}`,
           target: '__saldo_total__',
           color: edgeClr,
         },
@@ -1787,259 +2795,83 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    this.cy.elements().remove();
-    this.cy.add(elements);
+    try {
+      this.cy.elements().remove();
+      this.cy.add(elements);
+    } catch {
+      this.loading.set(false);
+      return;
+    }
 
     if (opts?.skipAutoFit) {
       this.cy.layout({ name: 'preset', fit: false, padding: 36 } as any).run();
-      this.placeSyntheticNodes();
+      this.placeSyntheticNodes(g);
+      this.applySavedOrFitCamera(g, { preserveView, camera });
       this.applyFilters();
       this.refreshOverlays();
+      this.loading.set(false);
       return;
     }
 
     const finishView = () => {
-      if (preserveView && camera && this.cy) {
-        this.cy.zoom(camera.zoom);
-        this.cy.pan(camera.pan);
-      } else {
-        this.fitGraph();
-      }
-      this.applyFilters();
-      this.refreshOverlays();
-      if (
-        this.sidePanelOpen() &&
-        this.panelMode() === 'create' &&
-        this.createStep() === 'form' &&
-        this.formBlock()
-      ) {
-        this.syncDraftPreview();
+      try {
+        this.applySavedOrFitCamera(g, { preserveView, camera });
+        this.applyFilters();
+        this.refreshOverlays();
+      } finally {
+        this.loading.set(false);
       }
     };
 
-    const anySaved = g.nodes.some((n) => n.positionSaved);
+    // Só reorganiza automaticamente se NENHUMA posição foi salva pelo usuário.
+    // Qualquer layout persistido (nós ou sintéticos) deve ser respeitado no F5.
+    const anySaved =
+      g.nodes.some((n) => n.positionSaved) ||
+      Object.keys(g.syntheticLayout ?? {}).length > 0 ||
+      !!g.viewport;
     if (anySaved || preserveView) {
-      // Mantém posições salvas dos hubs/itens; amount/saldo sem coords vão para (0,0) —
-      // reposiciona só esses sintéticos relativo aos nós âncora.
       this.cy.layout({ name: 'preset', fit: false, padding: 36 } as any).run();
-      this.placeSyntheticNodes();
-      setTimeout(finishView, preserveView ? 0 : 50);
+      this.placeSyntheticNodes(g);
+      // Aplica zoom salvo na hora (sem setTimeout) para não piscar zoom alto → baixo.
+      finishView();
     } else {
       this.runDagreTopDown(true);
     }
   }
 
-  // ── Preview de criação (rascunho no canvas) ─────────────────────────────
-
-  private removeDraftPreview(): void {
-    this.draftAnchorKey = '';
+  /** Zoom/pan salvos do usuário, câmera atual, ou fit automático. */
+  private applySavedOrFitCamera(
+    g: AccountFlowGraph,
+    opts?: {
+      preserveView?: boolean;
+      camera?: { zoom: number; pan: { x: number; y: number } } | null;
+    }
+  ): void {
     if (!this.cy) return;
-    this.cy.getElementById(DRAFT_ITEM_ID).remove();
-    this.cy.getElementById(DRAFT_AMT_ID).remove();
-    this.cy.getElementById(DRAFT_E0).remove();
-    this.cy.getElementById(DRAFT_E1).remove();
-  }
-
-  private syncDraftPreview(): void {
-    const block = this.formBlock();
-    if (!this.cy || !this.sidePanelOpen() || this.panelMode() !== 'create' || this.createStep() !== 'form' || !block) {
-      this.removeDraftPreview();
-      this.refreshOverlays();
-      return;
-    }
-
-    const visual = this.draftVisual(block);
-    const kind = this.isFlowBlock(block) ? this.formKind() : 'expense';
-    const hubId = this.isFlowBlock(block) ? this.resolveDraftHubId() : null;
-    const pos = this.resolveDraftPosition(kind);
-    const card = {
-      label: '',
-      type: visual.type,
-      draft: true,
-      cardTitle: visual.title,
-      cardValue: visual.value,
-      cardMeta: visual.meta,
-      cardAccent: visual.accent,
-      cardIcon: visual.icon,
-    };
-
-    let item = this.cy.getElementById(DRAFT_ITEM_ID);
-    const anchorKey = `${kind}|${hubId ?? ''}|${this.formSpawnX() ?? ''}|${this.formSpawnY() ?? ''}`;
-    const shouldReposition = item.empty() || anchorKey !== this.draftAnchorKey;
-    this.draftAnchorKey = anchorKey;
-
-    if (item.empty()) {
-      this.cy.add({
-        group: 'nodes',
-        data: { id: DRAFT_ITEM_ID, ...card },
-        classes: 'draft-node',
-        position: pos,
-      });
-      item = this.cy.getElementById(DRAFT_ITEM_ID);
-    } else {
-      item.data(card);
-      if (shouldReposition) item.position(pos);
-    }
-
-    this.cy.getElementById(DRAFT_AMT_ID).remove();
-    this.cy.getElementById(DRAFT_E0).remove();
-    this.cy.getElementById(DRAFT_E1).remove();
-
-    if (this.isFlowBlock(block) && hubId && this.cy.getElementById(hubId).nonempty()) {
-      const hubIsSource = kind === 'expense' || kind === 'leisure' || kind === 'investment';
-      this.cy.add({
-        group: 'edges',
-        data: {
-          id: DRAFT_E0,
-          source: hubIsSource ? hubId : DRAFT_ITEM_ID,
-          target: hubIsSource ? DRAFT_ITEM_ID : hubId,
-        },
-        classes: 'draft-edge',
-      });
-    }
-
-    this.refreshOverlays();
-    if (shouldReposition && this.formSpawnX() == null && this.formSpawnY() == null && !hubId) {
-      this.frameFirstDraft();
-    }
-  }
-
-  private draftVisual(block: GraphBlockKind): {
-    type: string;
-    title: string;
-    value: string;
-    meta: boolean;
-    accent: string;
-    icon: string;
-  } {
-    if (this.isFlowBlock(block)) {
-      const kind = this.formKind();
-      const amount = Number(this.formAmount()) || 0;
-      return {
-        type: kind,
-        title: this.trunc(this.formName().trim() || 'Novo item', 26),
-        value: amount > 0 ? this.fmtAmt(amount) : 'R$ —',
-        meta: false,
-        accent: this.cardAccent(DRAFT_ITEM_ID, kind, null),
-        icon: nodeCardIcon(DRAFT_ITEM_ID, kind),
-      };
-    }
-    if (block === 'totalizer') {
-      const amount = Number(this.formAmount()) || 0;
-      return {
-        type: 'totalizer',
-        title: this.trunc(this.formName().trim() || 'Totalizador', 26),
-        value: amount > 0 ? this.fmtAmt(amount) : 'R$ —',
-        meta: false,
-        accent: this.cardAccent('tot:0', 'totalizer', null),
-        icon: nodeCardIcon('tot:0', 'totalizer'),
-      };
-    }
-    const type = block === 'investment-account' ? 'investment' : block;
-    const id = block === 'credit' ? 'credit:0' : block === 'investment-account' ? 'inv:0' : 'bank:0';
-    const balance = Number(this.formInitialBalance()) || 0;
-    const color = this.formColor();
-    return {
-      type,
-      title: this.trunc(this.formName().trim() || this.blockTitle(block), 26),
-      value: balance !== 0 ? this.fmtAmt(balance) : this.hubSubtitle(type),
-      meta: balance === 0,
-      accent: this.cardAccent(id, type, color),
-      icon: nodeCardIcon(id, type),
-    };
-  }
-
-  private resolveDraftHubId(): string | null {
-    const link = this.formLinkAccountNodeId();
-    if (link && isHubNodeId(link)) return link;
-    const accountId = this.formAccountId();
-    if (accountId == null || !this.cy) return null;
-    for (const prefix of ['bank', 'credit'] as const) {
-      const id = `${prefix}:${accountId}`;
-      if (this.cy.getElementById(id).nonempty()) return id;
-    }
-    const target = this.formTargetAccountId();
-    if (target != null) {
-      const inv = `inv:${target}`;
-      if (this.cy.getElementById(inv).nonempty()) return inv;
-    }
-    return null;
-  }
-
-  private resolveDraftPosition(kind: FormKind): { x: number; y: number } {
-    const sx = this.formSpawnX();
-    const sy = this.formSpawnY();
-    if (sx != null && sy != null) return { x: sx, y: sy };
-
-    const existing = this.cy?.getElementById(DRAFT_ITEM_ID);
-    if (existing && existing.nonempty()) {
-      return { x: existing.position('x'), y: existing.position('y') };
-    }
-
-    const hubId = this.resolveDraftHubId();
-    if (hubId && this.cy) {
-      const hub = this.cy.getElementById(hubId);
-      if (hub.nonempty()) {
-        const p = hub.position();
-        const below = kind === 'expense' || kind === 'leisure' || kind === 'investment';
-        return this.placeDraftClear({ x: p.x + 180, y: p.y + (below ? 110 : -110) });
+    this.applyingCamera = true;
+    try {
+      if (opts?.preserveView && opts.camera) {
+        this.cy.zoom(opts.camera.zoom);
+        this.cy.pan(opts.camera.pan);
+      } else if (
+        g.viewport &&
+        Number.isFinite(g.viewport.zoom) &&
+        g.viewport.zoom > 0
+      ) {
+        this.cy.zoom(g.viewport.zoom);
+        this.cy.pan({ x: g.viewport.x, y: g.viewport.y });
+      } else {
+        this.fitGraph();
       }
+      this.zoomPct.set(Math.round((this.cy.zoom() ?? 1) * 100));
+    } finally {
+      // Libera no próximo tick para ignorar eventos pan/zoom do apply.
+      setTimeout(() => {
+        this.applyingCamera = false;
+      }, 0);
     }
-
-    return this.placeDraftClear(this.defaultDraftAnchor());
   }
 
-  /** À esquerda do total, com uma folga curta entre as bordas. */
-  private defaultDraftAnchor(): { x: number; y: number } {
-    if (!this.cy) return { x: 0, y: 0 };
-    const total = this.cy.getElementById('__saldo_total__');
-    if (total.nonempty()) {
-      const p = total.position();
-      // meia largura do total + folga + meia largura do rascunho
-      return { x: p.x - (CARD_W + 40), y: p.y };
-    }
-    const ext = this.cy.extent();
-    return { x: (ext.x1 + ext.x2) / 2 - 180, y: (ext.y1 + ext.y2) / 2 };
-  }
-
-  /** O rascunho não pode encostar nos blocos já existentes. */
-  private placeDraftClear(start: { x: number; y: number }): { x: number; y: number } {
-    if (!this.cy) return start;
-    let pos = { ...start };
-    for (let i = 0; i < 6; i++) {
-      if (!this.draftFootprintHits(pos.x, pos.y)) return pos;
-      pos = { x: pos.x - 48, y: pos.y };
-    }
-    return pos;
-  }
-
-  private draftFootprintHits(x: number, y: number): boolean {
-    if (!this.cy) return false;
-    const box = { x1: x - CARD_W / 2, y1: y - CARD_H / 2, x2: x + CARD_W / 2, y2: y + CARD_H / 2 };
-    const pad = 28;
-    let hit = false;
-    this.cy.nodes().forEach((n) => {
-      if (hit || n.hasClass('draft-node')) return;
-      const b = n.boundingBox();
-      if (box.x1 < b.x2 + pad && box.x2 > b.x1 - pad && box.y1 < b.y2 + pad && box.y2 > b.y1 - pad) {
-        hit = true;
-      }
-    });
-    return hit;
-  }
-
-  /** Enquadra o primeiro rascunho junto com o total. Zoom máximo: 140%. */
-  private frameFirstDraft(): void {
-    if (!this.cy) return;
-    const others = this.cy.nodes().filter((n) => !n.hasClass('draft-node'));
-    if (others.empty() || others.filter('.balance-node').length !== others.length) return;
-    const focus = others.union(this.cy.nodes('.draft-node'));
-    this.cy.maxZoom(1.4);
-    this.cy.fit(focus, 64);
-    this.cy.center(focus);
-    this.zoomPct.set(Math.round(this.cy.zoom() * 100));
-    this.refreshOverlays();
-  }
 
   /** Tela só com o total (ainda sem blocos de fluxo). */
   private canvasIsStarter(): boolean {
@@ -2051,10 +2883,32 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Layout clássico TB: recebimentos → bancos → gastos → saldos.
+   * Layout clássico TB: recebimentos → bancos → gastos.
+   * Saldos/Total ficam travados — posição só muda se o usuário arrastar.
    */
   private runDagreTopDown(persist: boolean): void {
-    if (!this.cy) return;
+    if (!this.cy) {
+      this.loading.set(false);
+      return;
+    }
+    const locked = this.cy.nodes('.balance-node');
+    locked.lock();
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      locked.unlock();
+      this.placeSyntheticNodes(this.graph());
+      const g = this.graph();
+      if (g) this.applySavedOrFitCamera(g);
+      else this.fitGraph();
+      this.applyFilters();
+      this.refreshOverlays();
+      this.loading.set(false);
+      if (persist) this.savePositionsNow();
+    };
+    // Se o stop do dagre não disparar, não deixa a tela em loading eterno.
+    setTimeout(finish, 1200);
     this.cy
       .layout({
         name: 'dagre',
@@ -2067,58 +2921,186 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
         animationDuration: 450,
         animationEasing: 'ease-in-out-cubic',
         fit: false,
-        stop: () => {
-          this.fitGraph();
-          this.applyFilters();
-          this.refreshOverlays();
-          if (persist) this.savePositionsNow();
-        },
+        stop: finish,
       } as any)
       .run();
   }
 
-  /** Posiciona saldos quando o layout salvo só cobre os nós da API. */
-  private placeSyntheticNodes(): void {
+  /**
+   * Saldos automáticos (banco×gastos) e Total final:
+   * - se já tem posição salva → aplica e NÃO recalcula
+   * - senão → coloca uma vez, grava no syntheticLayout e persiste
+   * Assim o auto-layout deixa de empurrar Total/totalizador a cada render.
+   */
+  private placeSyntheticNodes(graph?: AccountFlowGraph | null): void {
     if (!this.cy) return;
+    // API + local: não deixar um syntheticLayout vazio do reload apagar pins locais.
+    const saved: Record<string, { x: number; y: number }> = {
+      ...(this.graph()?.syntheticLayout ?? {}),
+      ...(graph?.syntheticLayout ?? {}),
+    };
     const bandGap = 96;
-    this.cy.nodes('.balance-node').forEach((bal) => {
+    let changed = false;
+
+    const placeOnce = (bal: cytoscape.NodeSingular, preferNonBalanceAnchors: boolean) => {
+      const id = bal.id();
+      const pinned = saved[id];
+      if (pinned && Number.isFinite(pinned.x) && Number.isFinite(pinned.y)) {
+        bal.position({ x: pinned.x, y: pinned.y });
+        return;
+      }
+
       const incoming = bal.incomers('node');
-      if (incoming.empty()) return;
-      let maxY = -Infinity;
-      let sumX = 0;
-      let n = 0;
-      incoming.forEach((src) => {
-        const p = src.position();
-        maxY = Math.max(maxY, p.y);
-        sumX += p.x;
-        n++;
-      });
-      bal.position({ x: n ? sumX / n : 0, y: maxY + bandGap });
+      let x = bal.position('x');
+      let y = bal.position('y');
+      const alreadyPlaced = Math.abs(x) > 0.5 || Math.abs(y) > 0.5;
+
+      if (!incoming.empty() && !alreadyPlaced) {
+        const anchors = preferNonBalanceAnchors
+          ? incoming.filter((n) => !n.hasClass('balance-node'))
+          : incoming;
+        const use = anchors.nonempty() ? anchors : incoming;
+        let maxY = -Infinity;
+        let sumX = 0;
+        let n = 0;
+        use.forEach((src) => {
+          const p = src.position();
+          maxY = Math.max(maxY, p.y);
+          sumX += p.x;
+          n++;
+        });
+        if (n > 0) {
+          x = sumX / n;
+          y = maxY + bandGap;
+          bal.position({ x, y });
+        }
+      }
+
+      const p = bal.position();
+      saved[id] = { x: p.x, y: p.y };
+      changed = true;
+    };
+
+    // 1) Saldos por conta (âncora = banco/fluxo, não outro saldo)
+    this.cy.nodes('.balance-node').forEach((bal) => {
+      if (bal.id() === '__saldo_total__') return;
+      placeOnce(bal, true);
     });
+    // 2) Total final (âncora = saldos das contas), só se ainda não estiver fixo
+    const total = this.cy.getElementById('__saldo_total__');
+    if (total.nonempty()) placeOnce(total, false);
+
+    if (!changed) return;
+
+    const g = this.graph();
+    if (g) {
+      this.graph.set({ ...g, syntheticLayout: { ...saved } });
+    }
+    this.queueSavePositions();
+  }
+
+  /** Atualiza um nó movido no estado local e agenda o save completo. */
+  private persistNodePosition(node: cytoscape.NodeSingular): void {
+    const id = node.id();
+    const p = node.position();
+    const g = this.graph();
+    if (g && !id.startsWith('__')) {
+      this.graph.set({
+        ...g,
+        nodes: g.nodes.map((n) =>
+          n.id === id ? { ...n, x: p.x, y: p.y, positionSaved: true } : n
+        ),
+      });
+    } else if (g && (id.startsWith('__saldo') || id.startsWith('__amt_'))) {
+      this.graph.set({
+        ...g,
+        syntheticLayout: {
+          ...(g.syntheticLayout ?? {}),
+          [id]: { x: p.x, y: p.y },
+        },
+      });
+    }
+    this.queueSavePositions();
   }
 
   private queueSavePositions(): void {
     if (!this.cy) return;
     if (this.saveTimer) clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.savePositionsNow(), 400);
+    this.saveTimer = setTimeout(() => this.savePositionsNow(), 250);
+  }
+
+  private queueSaveViewport(): void {
+    if (!this.cy || this.applyingCamera) return;
+    if (this.viewportSaveTimer) clearTimeout(this.viewportSaveTimer);
+    this.viewportSaveTimer = setTimeout(() => this.saveViewportNow(), 400);
+  }
+
+  private currentViewport(): { zoom: number; x: number; y: number } | null {
+    if (!this.cy) return null;
+    const pan = this.cy.pan();
+    return { zoom: this.cy.zoom(), x: pan.x, y: pan.y };
+  }
+
+  private saveViewportNow(): void {
+    if (!this.cy || this.applyingCamera) return;
+    const viewport = this.currentViewport();
+    if (!viewport) return;
+    const g = this.graph();
+    if (g) this.graph.set({ ...g, viewport });
+    this.api
+      .saveAccountFlowGraphLayout({
+        year: this.year(),
+        month: this.month() + 1,
+        mode: this.mode(),
+        positions: [],
+        viewport,
+      })
+      .subscribe({ error: () => undefined });
   }
 
   private savePositionsNow(): void {
     if (!this.cy) return;
     const positions: Array<{ nodeKey: string; x: number; y: number }> = [];
+    const byId = new Map<string, { x: number; y: number }>();
+    const synthetics: Record<string, { x: number; y: number }> = {
+      ...(this.graph()?.syntheticLayout ?? {}),
+    };
     this.cy.nodes().forEach((n) => {
       const id = n.id();
-      if (id.startsWith('__') || n.hasClass('amount-node') || n.hasClass('balance-node')) return;
+      if (n.hasClass('draft-node') || n.hasClass('amount-node')) return;
+      const synthetic = id.startsWith('__saldo') || id.startsWith('__amt_');
+      if (id.startsWith('__') && !synthetic) return;
       const p = n.position();
-      positions.push({ nodeKey: id, x: p.x, y: p.y });
+      const xy = { x: p.x, y: p.y };
+      positions.push({ nodeKey: id, x: xy.x, y: xy.y });
+      byId.set(id, xy);
+      if (synthetic) synthetics[id] = xy;
     });
     if (!positions.length) return;
+
+    const viewport = this.currentViewport();
+    // Atualiza o estado local imediatamente — senão um re-render volta à posição antiga
+    // e pode inclusive regravar o layout errado no servidor.
+    const g = this.graph();
+    if (g) {
+      this.graph.set({
+        ...g,
+        syntheticLayout: synthetics,
+        viewport: viewport ?? g.viewport,
+        nodes: g.nodes.map((n) => {
+          const p = byId.get(n.id);
+          return p ? { ...n, x: p.x, y: p.y, positionSaved: true } : n;
+        }),
+      });
+    }
+
     this.api
       .saveAccountFlowGraphLayout({
         year: this.year(),
         month: this.month() + 1,
         mode: this.mode(),
         positions,
+        ...(viewport ? { viewport } : {}),
       })
       .subscribe({ error: () => undefined });
   }
@@ -2147,7 +3129,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       const w = Math.max(1, bb.x2 - bb.x1);
       const h = Math.max(1, bb.y2 - bb.y1);
       const scale = w / CARD_W;
-      const portSize = Math.round(18 * Math.max(scale, 0.35));
 
       cards.push({
         id,
@@ -2180,7 +3161,7 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
           nodeId: id,
           x: bb.x2,
           y: (bb.y1 + bb.y2) / 2,
-          size: portSize,
+          scale: Math.max(scale, 0.35),
         });
       }
     });
@@ -2198,17 +3179,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** Categorias do preview: conta de investimento só oferece aporte. */
-  spawnKindsForPreview(): Array<{ kind: FormKind; label: string }> {
-    const prev = this.hubSpawnPreview();
-    if (prev?.hubNodeId.startsWith('inv:')) {
-      return HUB_SPAWN_KINDS.filter((k) => k.kind === 'investment');
-    }
-    const kinds: Array<{ kind: FormKind; label: string }> = [...HUB_SPAWN_KINDS];
-    if (this.shouldShowLeisureOption()) kinds.push(HUB_SPAWN_KIND_LEISURE);
-    return kinds;
-  }
-
   onPortPointerDown(nodeId: string, ev: PointerEvent): void {
     ev.preventDefault();
     ev.stopPropagation();
@@ -2220,12 +3190,15 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   fitView(): void {
     this.fitGraph();
+    this.queueSaveViewport();
   }
   zoomIn(): void {
     this.zoom(1.3);
+    this.queueSaveViewport();
   }
   zoomOut(): void {
     this.zoom(1 / 1.3);
+    this.queueSaveViewport();
   }
 
   /**
@@ -2303,35 +3276,44 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   applyFilters(): void {
     if (!this.cy) return;
-    const types = this.filterTypes();
-    const accs = this.filterAccounts();
-    const noFilter = !types.size && !accs.size;
+    const filters = {
+      types: this.filterTypes(),
+      accounts: this.filterAccounts(),
+      categories: this.filterCategories(),
+      tabs: this.filterTabs(),
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cy = this.cy as any;
-    if (noFilter) {
+    if (!filters.types.size && !filters.accounts.size && !filters.categories.size && !filters.tabs.size) {
       cy.elements().show();
       this.refreshOverlays();
       return;
     }
+    const typeOf = (id: string) => cy.getElementById(id).data('type') || '';
     cy.edges().forEach((e: any) => {
-      if (e.hasClass('balance-link')) return;
+      if (e.hasClass('balance-link') || e.hasClass('draft-edge')) return;
       const d = e.data();
-      const typeOk = !types.size || types.has(d.kind) || types.has(d.subKind);
-      const accOk =
-        !accs.size ||
-        accs.has(d.origFrom) ||
-        accs.has(d.origTo) ||
-        accs.has(e.source().id()) ||
-        accs.has(e.target().id());
-      typeOk && accOk ? e.show() : e.hide();
+      const edge = {
+        from: d.origFrom || e.source().id(),
+        to: d.origTo || e.target().id(),
+        amountBrl: Number(d.amountBrl) || 0,
+        kind: d.kind || 'expense',
+        label: '',
+        subKind: d.subKind || '',
+        color: '',
+        refId: Number(d.refId) || 0,
+        itemCategoryId: d.itemCategoryId && d.itemCategoryId !== 'geral' ? Number(d.itemCategoryId) : null,
+        customTabId: d.customTabId && d.customTabId !== 'geral' ? Number(d.customTabId) : null,
+      } as AccountFlowGraphEdge;
+      edgeVisibleForFilters(edge, filters, typeOf) ? e.show() : e.hide();
     });
     cy.nodes().forEach((n: any) => {
-      if (n.hasClass('balance-node')) return;
-      const visible = n
+      if (n.hasClass('balance-node') || n.hasClass('amount-node') || n.hasClass('draft-node')) return;
+      const flowEdges = n
         .connectedEdges()
-        .filter((e: any) => !e.hasClass('balance-link'))
-        .some((e: any) => !e.hidden());
-      visible ? n.show() : n.hide();
+        .filter((e: any) => !e.hasClass('balance-link') && !e.hasClass('draft-edge'))
+        .map((e: any) => ({ hidden: e.hidden() }));
+      nodeVisibleForFilters(n.id(), n.data('type') || '', flowEdges, filters) ? n.show() : n.hide();
     });
     this.refreshOverlays();
   }
@@ -2357,29 +3339,6 @@ export class AccountGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.cy) return;
     const center = { x: this.cy.width() / 2, y: this.cy.height() / 2 };
     this.cy.zoom({ level: this.cy.zoom() * factor, renderedPosition: center });
-  }
-
-  /** Valor que aparece dentro do cartão do item (não no banco). */
-  private amountsOnCards(g: AccountFlowGraph): Map<string, number> {
-    const types = new Map(g.nodes.map((n) => [n.id, n.type]));
-    const map = new Map<string, number>();
-    for (const n of g.nodes) {
-      if (typeof n.amountBrl === 'number' && n.amountBrl > 0 && !isHubNodeId(n.id)) {
-        map.set(n.id, n.amountBrl);
-      }
-    }
-    for (const e of g.edges) {
-      if (e.subKind === 'totalizer') continue;
-      const placement = amountPlacement(types.get(e.from) ?? '', types.get(e.to) ?? '', e.from, e.to);
-      const owner =
-        placement === 'after-target'
-          ? e.to
-          : isFlowGraphId(e.from) || e.from.startsWith('tot:')
-            ? e.from
-            : e.to;
-      if (!isHubNodeId(owner)) map.set(owner, e.amountBrl);
-    }
-    return map;
   }
 
   /** Cor do quadrado do ícone: cor da conta, ou a cor do tipo. */

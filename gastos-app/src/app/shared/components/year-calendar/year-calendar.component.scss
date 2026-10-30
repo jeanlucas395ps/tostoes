@@ -2,6 +2,17 @@
   display: block;
 }
 
+/* SVG via innerHTML: força tamanho pequeno e herança de cor */
+:host ::ng-deep .prev-ico svg,
+:host ::ng-deep .leg-sym svg {
+  width: 10px !important;
+  height: 10px !important;
+  display: block;
+  color: inherit;
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
 :host.fill-height {
   display: flex;
   flex: 1;
@@ -105,12 +116,26 @@
       justify-content: center;
 
       .prev-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
         font-size: 0.62rem;
         line-height: 1.25;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
+      }
+
+      .prev-ico {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 10px;
+        height: 10px;
+        flex-shrink: 0;
+        line-height: 0;
+        overflow: hidden;
       }
     }
 
@@ -141,15 +166,22 @@
       font-size: 0.58rem;
 
       .leg-sym {
-        font-weight: 800;
-        font-family: 'JetBrains Mono', monospace;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 10px;
+        height: 10px;
+        line-height: 0;
+        overflow: hidden;
+        flex-shrink: 0;
+        vertical-align: middle;
 
         &.income {
-          color: #3fb950;
+          color: #1baa5c;
         }
 
         &.expense {
-          color: #f85149;
+          color: #e5342b;
         }
 
         &.balance {
@@ -296,12 +328,26 @@
 }
 
 .prev-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--text-faint);
+
+  .prev-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    line-height: 0;
+    overflow: hidden;
+  }
 
   &.income {
     color: #3fb950;

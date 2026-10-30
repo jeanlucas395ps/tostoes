@@ -18,7 +18,7 @@
     } @else if (done()) {
 
       <div class="invite-done">
-        <div class="done-icon">✓</div>
+        <div class="done-icon" aria-hidden="true" [innerHTML]="iconCheck | safeHtml"></div>
         <h1>Pronto!</h1>
         <p>{{ doneMessage() }}</p>
         <a routerLink="/home" class="btn-submit">Ir para o app</a>
@@ -27,7 +27,7 @@
     } @else if (error() && !invite()) {
 
       <div class="invite-error-state">
-        <div class="error-icon">✕</div>
+        <div class="error-icon" aria-hidden="true" [innerHTML]="iconClose | safeHtml"></div>
         <h1>Convite indisponível</h1>
         <p class="error">{{ error() }}</p>
         <a routerLink="/login" class="btn-muted-link">Entrar</a>

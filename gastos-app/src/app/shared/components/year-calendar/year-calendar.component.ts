@@ -1,7 +1,9 @@
 import { Component, input, output, computed } from '@angular/core';
 import { CurrencyBrlPipe } from '../../../core/pipes/currency-brl.pipe';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 import { MONTH_LABELS, MonthSummary, PlanningUsageStart } from '../../../core/models/api.models';
 import { isBeforePlanningUsageStart } from '../../../core/utils/planning-usage.util';
+import { ICON_PATHS, strokeIcon } from '../../../core/utils/flow-icons';
 
 export interface CalendarMonthCell {
   index: number;
@@ -20,7 +22,7 @@ export interface CalendarMonthCell {
 @Component({
   selector: 'app-year-calendar',
   standalone: true,
-  imports: [CurrencyBrlPipe],
+  imports: [CurrencyBrlPipe, SafeHtmlPipe],
   templateUrl: './year-calendar.component.html',
   styleUrl: './year-calendar.component.scss',
   host: {
@@ -29,6 +31,14 @@ export interface CalendarMonthCell {
   },
 })
 export class YearCalendarComponent {
+  /** Ícones pequenos (atributo width no SVG) — CSS encapsulado não atinge innerHTML. */
+  readonly iconIncome = strokeIcon(ICON_PATHS.income, 10);
+  readonly iconExpense = strokeIcon(
+    '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+    10
+  );
+  readonly iconBalance = strokeIcon(ICON_PATHS.equals, 10);
+
   year = input.required<number>();
   selectedMonth = input.required<number>();
   months = input<MonthSummary[]>([]);

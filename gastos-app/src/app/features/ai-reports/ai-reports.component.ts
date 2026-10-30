@@ -9,17 +9,23 @@ import {
   MONTH_LABELS,
   MonthSummary,
 } from '../../core/models/api.models';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+import { ICON_ARROW_DOWN, ICON_ARROW_UP, ICON_SPARK } from '../../core/utils/flow-icons';
 
 @Component({
   selector: 'app-ai-reports',
   standalone: true,
-  imports: [CurrencyBrlPipe],
+  imports: [CurrencyBrlPipe, SafeHtmlPipe],
   templateUrl: './ai-reports.component.html',
   styleUrl: './ai-reports.component.scss',
 })
 export class AiReportsComponent implements OnInit, OnDestroy {
   private api = inject(FinanceApiService);
   private generateSub: Subscription | null = null;
+
+  readonly iconSpark = ICON_SPARK;
+  readonly iconIncome = ICON_ARROW_UP;
+  readonly iconExpense = ICON_ARROW_DOWN;
 
   items = signal<AiReportListItem[]>([]);
   loading = signal(true);
@@ -292,29 +298,31 @@ export class AiReportsComponent implements OnInit, OnDestroy {
     const isFuture =
       year > now.getFullYear() ||
       (year === now.getFullYear() && month > now.getMonth() + 1);
+    const spend = (flow?: { expense?: number; leisure?: number }) =>
+      (flow?.expense ?? 0) + (flow?.leisure ?? 0);
     if (isFuture) {
       return {
         income: row?.projected.income ?? 0,
-        expense: row?.projected.expense ?? 0,
+        expense: spend(row?.projected),
         balance: row?.balanceProjected ?? 0,
         forecast: true,
       };
     }
     const hasReal =
       (row?.real.income ?? 0) > 0 ||
-      (row?.real.expense ?? 0) > 0 ||
+      spend(row?.real) > 0 ||
       Math.abs(row?.balanceReal ?? 0) > 0.001;
-    if (!hasReal && (row?.projected.income || row?.projected.expense)) {
+    if (!hasReal && (row?.projected.income || spend(row?.projected))) {
       return {
         income: row?.projected.income ?? 0,
-        expense: row?.projected.expense ?? 0,
+        expense: spend(row?.projected),
         balance: row?.balanceProjected ?? 0,
         forecast: true,
       };
     }
     return {
       income: row?.real.income ?? 0,
-      expense: row?.real.expense ?? 0,
+      expense: spend(row?.real),
       balance: row?.balanceReal ?? 0,
       forecast: false,
     };

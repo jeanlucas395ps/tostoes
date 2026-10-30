@@ -34,6 +34,16 @@ import {
 } from '../../core/utils/category-icon.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+import {
+  ICON_CHECK,
+  ICON_CLIPBOARD,
+  ICON_CLOSE,
+  ICON_EQUALS,
+  ICON_EXPENSE,
+  ICON_INCOME,
+  ICON_PENDING,
+} from '../../core/utils/flow-icons';
 import type { IconNode } from 'lucide';
 import { responsibleLabel } from '../../core/utils/responsible.util';
 import { isPastMonth } from '../../core/utils/month.util';
@@ -64,12 +74,21 @@ import {
     RouterLink,
     LucideSvgComponent,
     SkeletonComponent,
+    SafeHtmlPipe,
   ],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
 export class MovementsComponent implements OnInit {
   private api = inject(FinanceApiService);
+
+  readonly iconIncome = ICON_INCOME;
+  readonly iconExpense = ICON_EXPENSE;
+  readonly iconBalance = ICON_EQUALS;
+  readonly iconPending = ICON_PENDING;
+  readonly iconCheck = ICON_CHECK;
+  readonly iconClipboard = ICON_CLIPBOARD;
+  readonly iconClose = ICON_CLOSE;
 
   year = signal(new Date().getFullYear());
   month = signal(new Date().getMonth());
@@ -170,7 +189,13 @@ export class MovementsComponent implements OnInit {
   );
 
   paymentAccounts = computed(() =>
-    this.accounts().filter((a) => a.type === 'bank' || a.type === 'credit')
+    this.accounts().filter(
+      (a) => a.type === 'bank' || a.type === 'credit' || a.type === 'investment'
+    )
+  );
+
+  incomeAccounts = computed(() =>
+    this.accounts().filter((a) => a.type === 'bank' || a.type === 'investment')
   );
 
   investmentAccounts = computed(() =>
@@ -810,18 +835,25 @@ export class MovementsComponent implements OnInit {
     this.runConfirm(prompt.result);
   }
 
+  installmentEach(amount: number): number {
+    const n = clampInstallmentCount(this.installmentCount());
+    return Math.round((amount / n) * 100) / 100;
+  }
+
   confirmWithInstallment(): void {
     const prompt = this.installmentPrompt();
     if (!prompt) return;
     const n = clampInstallmentCount(this.installmentCount());
     const e = prompt.entry;
     const result = prompt.result;
+    const perInstallment = this.installmentEach(result.amount);
+    const kind = 'expense';
     const startMonth = `${this.year()}-${String(this.month() + 1).padStart(2, '0')}`;
     const endMonth = installmentEndMonth(this.year(), this.month(), n);
 
     this.api
       .saveRecurringItem({
-        kind: 'expense',
+        kind,
         name: e.name,
         category: e.category,
         region: e.region,
@@ -829,7 +861,7 @@ export class MovementsComponent implements OnInit {
         itemCategoryId: e.itemCategoryId ?? null,
         responsibleUserId: e.responsibleUserId ?? null,
         currency: result.currency,
-        amount: result.amount,
+        amount: perInstallment,
         dueDay: e.dueDay ?? prompt.account.dueDay ?? 10,
         sourceFinancialAccountId: result.accountId,
         isInstallment: true,
@@ -837,23 +869,55 @@ export class MovementsComponent implements OnInit {
         endDate: `${endMonth}-01`,
       })
       .subscribe({
-        next: () => {
+        next: (saved) => {
           this.installmentPrompt.set(null);
-          // Remove variável e confirma a parcela do mês via fluxo normal após reload
-          if (this.isVariablePending(e)) {
-            this.api.deleteMonthPlanEntry(e.id).subscribe({
-              next: () => {
+          const recurringId = saved.item?.id;
+          this.api.getLedger(this.year(), this.month() + 1, 'income,expense,leisure,investment,transfer').subscribe({
+            next: (ledger) => {
+              const created = ledger.pending.find((p) => p.recurringItemId === recurringId);
+              const dropOriginal = () => {
+                if (this.isVariablePending(e) && e.id !== created?.id) {
+                  this.api.deleteMonthPlanEntry(e.id).subscribe({
+                    next: () => {
+                      this.confirmEntry.set(null);
+                      this.load();
+                    },
+                    error: () => {
+                      this.confirmEntry.set(null);
+                      this.load();
+                    },
+                  });
+                  return;
+                }
                 this.confirmEntry.set(null);
                 this.load();
-              },
-              error: () => {
-                this.confirmEntry.set(null);
-                this.load();
-              },
-            });
-            return;
-          }
-          this.runConfirm(result);
+              };
+              if (!created) {
+                dropOriginal();
+                return;
+              }
+              this.api.confirmMonthPlanEntry(created.id, {
+                amount: perInstallment,
+                currency: result.currency,
+                amountOut: perInstallment,
+                currencyOut: result.currency,
+                amountIn: perInstallment,
+                currencyIn: result.currencyIn,
+                accountId: result.accountId,
+                targetAccountId: result.targetAccountId,
+              }).subscribe({
+                next: () => dropOriginal(),
+                error: () => {
+                  alert('A compra parcelada foi criada, mas a parcela deste mês não foi confirmada.');
+                  dropOriginal();
+                },
+              });
+            },
+            error: () => {
+              this.confirmEntry.set(null);
+              this.load();
+            },
+          });
         },
         error: () => {
           alert('Não foi possível criar a compra parcelada.');
@@ -1081,19 +1145,19 @@ export class MovementsComponent implements OnInit {
     notes?: string | null;
     transferPairMode?: string | null;
   }): string {
-    if (e.isGoal) return '◇ Meta';
-    if (e.isInstallment) return '▦ Parcel.';
+    if (e.isGoal) return 'Meta';
+    if (e.isInstallment) return 'Parcel.';
     if (
       e.kind === 'transfer' ||
       e.transferPairMode === 'aporte' ||
       e.transferPairMode === 'transfer' ||
       (e.kind === 'investment' && (e.notes ?? '').includes('Aporte →'))
     ) {
-      return '⇄ Transf.';
+      return 'Transf.';
     }
-    if (e.kind === 'income') return '↑ Receb.';
-    if (e.kind === 'investment') return '◆ Invest.';
-    return '↓ Gasto';
+    if (e.kind === 'income') return 'Receb.';
+    if (e.kind === 'investment') return 'Invest.';
+    return 'Gasto';
   }
 
   entryTagClass(e: {

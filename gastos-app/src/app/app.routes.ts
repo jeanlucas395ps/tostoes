@@ -78,13 +78,14 @@ export const routes: Routes = [
         data: { title: 'Conta e Cartão de Crédito' },
       },
       {
-        path: 'grafo-contas',
+        path: 'visualizacao-360',
         loadComponent: () =>
           import('./features/account-graph/account-graph.component').then(
             (m) => m.AccountGraphComponent
           ),
-        data: { title: 'Grafo de contas', contentBleed: true },
+        data: { title: 'Visualização 360', contentBleed: true },
       },
+      { path: 'grafo-contas', redirectTo: 'visualizacao-360', pathMatch: 'full' },
       {
         path: 'relatorios-ia',
         loadComponent: () =>

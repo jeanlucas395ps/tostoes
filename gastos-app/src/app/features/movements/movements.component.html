@@ -35,21 +35,21 @@
       <!-- ── Stats strip horizontal ── -->
       <div class="stats-strip">
         <div class="stat-card income-stat">
-          <span class="stat-icon">↑</span>
+          <span class="stat-icon" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></span>
           <div>
             <p class="stat-label">Recebimentos</p>
             <strong class="stat-value">{{ L.summary.incomeTotal | currencyBrl }}</strong>
           </div>
         </div>
         <div class="stat-card expense-stat">
-          <span class="stat-icon">↓</span>
+          <span class="stat-icon" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></span>
           <div>
             <p class="stat-label">Gastos</p>
             <strong class="stat-value">{{ L.summary.expenseTotal | currencyBrl }}</strong>
           </div>
         </div>
         <div class="stat-card balance-stat" [class.negative]="L.summary.balance < 0">
-          <span class="stat-icon">＝</span>
+          <span class="stat-icon" aria-hidden="true" [innerHTML]="iconBalance | safeHtml"></span>
           <div>
             <p class="stat-label">Saldo confirmado</p>
             <strong class="stat-value">{{ L.summary.balance | currencyBrl }}</strong>
@@ -57,7 +57,7 @@
         </div>
         @if (showProjected() && L.summary.pendingCount > 0) {
           <div class="stat-card pending-stat">
-            <span class="stat-icon">⏳</span>
+            <span class="stat-icon" aria-hidden="true" [innerHTML]="iconPending | safeHtml"></span>
             <div>
               <p class="stat-label">Pendentes</p>
               <strong class="stat-value">{{ L.summary.pendingCount }} itens</strong>
@@ -67,7 +67,7 @@
       </div>
 
       <!-- ── Linha de projeção (compacta) ── -->
-      @if (showProjected() && (L.summary.projected.income > 0 || L.summary.projected.expense > 0)) {
+      @if (showProjected() && (L.summary.projected.income > 0 || L.summary.projected.expense > 0 || (L.summary.projected.investment ?? 0) > 0)) {
         <div class="projected-strip">
           <span class="proj-tag">Previsto</span>
           <span>Receb. <strong>{{ L.summary.projected.income | currencyBrl }}</strong></span>
@@ -161,7 +161,7 @@
 
           @if (!sortedPending().length) {
             <div class="empty-panel">
-              <div class="empty-icon">✓</div>
+              <div class="empty-icon" aria-hidden="true" [innerHTML]="iconCheck | safeHtml"></div>
               <p>Nenhum item pendente</p>
               <small>Todos os fixos estão confirmados</small>
             </div>
@@ -232,7 +232,8 @@
                     }
                     <div class="item-actions">
                       <button type="button" class="btn-confirm" [disabled]="busyId() === e.id" (click)="confirm(e)">
-                        ✓ Confirmar
+                        <span class="btn-ico" aria-hidden="true" [innerHTML]="iconCheck | safeHtml"></span>
+                        Confirmar
                       </button>
                       @if (isVariablePending(e)) {
                         <button
@@ -252,7 +253,8 @@
                           title="Ignorar neste mês"
                           (click)="skip(e)"
                         >
-                          ✕
+                          <span class="btn-ico" aria-hidden="true" [innerHTML]="iconClose | safeHtml"></span>
+                          <span class="sr-only">Ignorar</span>
                         </button>
                       }
                     </div>
@@ -282,7 +284,7 @@
 
           @if (!sortedConfirmed().length) {
             <div class="empty-panel">
-              <div class="empty-icon">📋</div>
+              <div class="empty-icon empty-icon--muted" aria-hidden="true" [innerHTML]="iconClipboard | safeHtml"></div>
               <p>Sem lançamentos ainda</p>
               <small>Confirme os pendentes ou adicione um variável</small>
             </div>
@@ -410,7 +412,7 @@
         />
       </label>
       <p class="modal-hint">
-        Cada parcela: {{ ip.result.amount | number:'1.2-2':'pt-BR' }}
+        Cada parcela: {{ installmentEach(ip.result.amount) | number:'1.2-2':'pt-BR' }}
         {{ currencySymbol(ip.result.currency) }}
         · {{ installmentCount() }}x no cartão
       </p>

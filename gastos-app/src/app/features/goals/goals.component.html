@@ -58,7 +58,7 @@
             <strong>{{ g.currentAmountBrl | currencyBrl }}</strong>
             <span>/ {{ g.targetAmountBrl | currencyBrl }}</span>
             <em>{{ g.pct }}%</em>
-            @if (g.tracksAccountBalance && g.targetFinancialAccountName) {
+            @if (g.tracksAccountBalance && !g.sharesTargetAccount && g.targetFinancialAccountName) {
               <small class="goal-balance-hint">Saldo em {{ g.targetFinancialAccountName }}</small>
             }
           </div>

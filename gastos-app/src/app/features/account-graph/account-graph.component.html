@@ -11,13 +11,10 @@
       />
       <div class="graph-tabs" role="tablist">
         <button type="button" role="tab" [class.active]="mode() === 'current'" (click)="setMode('current')">
-          Mês atual
-        </button>
-        <button type="button" role="tab" [class.active]="mode() === 'planned'" (click)="setMode('planned')">
           Previsto
         </button>
         <button type="button" role="tab" [class.active]="mode() === 'confirmed'" (click)="setMode('confirmed')">
-          Real
+          Apenas confirmados
         </button>
       </div>
     </div>
@@ -54,7 +51,9 @@
         + Novo
       </button>
       <div class="zoom-group">
-        <button type="button" class="zoom-btn" (click)="fitView()" title="Ajustar">⛶</button>
+        <button type="button" class="zoom-btn" (click)="fitView()" title="Ajustar" aria-label="Ajustar zoom">
+          <span aria-hidden="true" [innerHTML]="iconMaximize | safeHtml"></span>
+        </button>
         <button type="button" class="zoom-btn" (click)="zoomIn()">+</button>
         <span class="zoom-pct">{{ zoomPct() }}%</span>
         <button type="button" class="zoom-btn" (click)="zoomOut()">−</button>
@@ -106,7 +105,12 @@
         </div>
       }
 
-      <div #cyContainer class="cy-container" [class.cy-container--linking]="linkMode()"></div>
+      <div
+        #cyContainer
+        class="cy-container"
+        [class.cy-container--linking]="linkMode()"
+        [class.cy-container--loading]="loading()"
+      ></div>
 
       @if (linkArrow(); as arrow) {
         <svg class="link-arrow" aria-hidden="true">
@@ -122,10 +126,12 @@
       }
 
       @for (card of flowCards(); track card.id) {
+        @if (!loading()) {
         <div
           class="flow-card"
           [class.flow-card--draft]="card.draft"
           [class.flow-card--dim]="card.dimmed"
+          [class.flow-card--editing]="inlineEdit()?.nodeId === card.id"
           [style.left.px]="card.x"
           [style.top.px]="card.y"
           [style.width.px]="card.w"
@@ -133,79 +139,117 @@
         >
           <div class="flow-card-inner" [style.transform]="'scale(' + card.scale + ')'">
             <span class="flow-card-icon" [style.background]="card.accent" [innerHTML]="card.icon | safeHtml"></span>
-            <span class="flow-card-rest" [class.flow-card-rest--check]="!!card.check">
-              <span class="flow-card-copy">
-                <span class="flow-card-title">{{ card.title }}</span>
-                @if (card.value) {
-                  <span class="flow-card-value" [class.flow-card-value--meta]="card.meta">{{ card.value }}</span>
-                }
-              </span>
-              @if (card.check; as check) {
-                <label
-                  class="node-check"
-                  [class.node-check--done]="check.happened"
-                  [title]="check.happened ? 'Desmarcar (ainda não aconteceu)' : 'Marcar como aconteceu neste mês'"
-                  (click)="$event.stopPropagation()"
+            <span class="flow-card-rest" [class.flow-card-rest--check]="!!card.check && inlineEdit()?.nodeId !== card.id">
+              @if (inlineEdit()?.nodeId === card.id) {
+                <span
+                  class="flow-card-copy flow-card-copy--edit"
                   (pointerdown)="$event.stopPropagation()"
+                  (focusout)="onInlineFocusOut($event)"
                 >
                   <input
-                    type="checkbox"
-                    [checked]="check.happened"
-                    [disabled]="check.busy"
-                    (change)="toggleHappened(card.id, $event)"
+                    class="flow-card-input flow-card-input--title"
+                    type="text"
+                    [ngModel]="inlineEdit()!.name"
+                    (ngModelChange)="onInlineName($event)"
+                    (keydown.enter)="commitInlineEdit()"
+                    (keydown.escape)="cancelInlineEdit()"
+                    [disabled]="inlineEdit()!.saving"
                   />
-                </label>
+                  <input
+                    class="flow-card-input flow-card-input--value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    [ngModel]="inlineEdit()!.amount"
+                    (ngModelChange)="onInlineAmount(+$event)"
+                    (keydown.enter)="commitInlineEdit()"
+                    (keydown.escape)="cancelInlineEdit()"
+                    [disabled]="inlineEdit()!.saving"
+                  />
+                </span>
+              } @else {
+                <span class="flow-card-copy">
+                  <span class="flow-card-title">{{ card.title }}</span>
+                  @if (card.value) {
+                    <span class="flow-card-value" [class.flow-card-value--meta]="card.meta">{{ card.value }}</span>
+                  }
+                </span>
+                @if (card.check; as check) {
+                  <label
+                    class="node-check"
+                    [class.node-check--done]="check.happened"
+                    [title]="check.happened ? 'Desmarcar (ainda não aconteceu)' : 'Marcar como aconteceu neste mês'"
+                    (click)="$event.stopPropagation()"
+                    (pointerdown)="$event.stopPropagation()"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="check.happened"
+                      [disabled]="check.busy"
+                      (change)="toggleHappened(card.id, $event)"
+                    />
+                  </label>
+                }
               }
             </span>
           </div>
         </div>
+        }
       }
 
-      <p class="canvas-hint">Arraste um bloco da direita ou dê duplo clique no fundo</p>
+      @if (!loading()) {
+        <p class="canvas-hint">Arraste um bloco da direita · clique para detalhes · duplo clique para editar</p>
+      }
 
       <!-- Portas de ligação (estilo Excalidraw) -->
       @for (port of linkPorts(); track port.nodeId) {
+        @if (!loading()) {
         <button
           type="button"
           class="link-port"
           [style.left.px]="port.x"
           [style.top.px]="port.y"
-          [style.width.px]="port.size"
-          [style.height.px]="port.size"
+          [style.--port-scale]="port.scale"
           title="Arrastar ligação / clicar para ligar"
           (pointerdown)="onPortPointerDown(port.nodeId, $event)"
         >+</button>
+        }
       }
 
-      <!-- Mini preview ao hover de banco/cartão -->
+      <!-- Preview do próximo bloco (só no hover; clique abre o formulário) -->
       @if (hubSpawnPreview(); as prev) {
-        <div
+        <button
+          type="button"
           class="hub-spawn"
           [style.left.px]="prev.x"
           [style.top.px]="prev.y"
           [style.width.px]="prev.w"
           [style.minHeight.px]="prev.h"
+          [style.--hub-spawn-accent]="prev.accent"
+          title="Clique para criar"
           (pointerenter)="pinHubSpawnPreview()"
           (pointerleave)="scheduleClearHubSpawnPreview()"
+          (click)="acceptSpawnPreview()"
         >
-          <div class="hub-spawn-ghost">
-            <span class="hub-spawn-ghost-title">Novo bloco</span>
-            <span class="hub-spawn-ghost-sub">ligado a esta conta</span>
-          </div>
-          <div class="hub-spawn-kinds">
-            @for (k of spawnKindsForPreview(); track k.kind) {
-              <button type="button" (click)="spawnFromHubPreview(k.kind)">{{ k.label }}</button>
-            }
-          </div>
-        </div>
+          <span class="hub-spawn-icon" [innerHTML]="prev.icon | safeHtml"></span>
+          <span class="hub-spawn-copy">
+            <span class="hub-spawn-ghost-title">{{ prev.title }}</span>
+            <span class="hub-spawn-ghost-sub">{{ prev.subtitle }}</span>
+          </span>
+        </button>
       }
 
       <!-- Ações flutuantes no nó selecionado -->
       @if (nodeActions(); as actions) {
         <div class="node-actions" [style.left.px]="actions.x" [style.top.px]="actions.y">
-          <button type="button" (click)="openEditPanel(actions.nodeId)">Editar</button>
-          <button type="button" (click)="startLinkFrom(actions.nodeId)">Ligar</button>
+          @if (canEditNode(actions.nodeId)) {
+            <button type="button" (click)="openEditPanel(actions.nodeId)">Editar</button>
+          }
+          <button type="button" (pointerdown)="onPortPointerDown(actions.nodeId, $event)">Ligar</button>
           <button type="button" (click)="openCreateFrom(actions.nodeId)">+ Novo ligado</button>
+          <button type="button" class="node-actions__danger" (click)="requestDeleteNode(actions.nodeId)">
+            Apagar
+          </button>
         </div>
       }
     </div>
@@ -215,6 +259,17 @@
         <header class="side-panel-head">
           @if (createStep() === 'form' && panelMode() === 'create') {
             <button type="button" class="side-back" (click)="backToTypePick()">
+              <span aria-hidden="true">←</span>
+              Voltar
+            </button>
+          } @else if (
+            createStep() === 'form' &&
+            panelMode() === 'edit' &&
+            formBlock() === 'bank' &&
+            accountMode() === 'new' &&
+            replacingHubId()
+          ) {
+            <button type="button" class="side-back" (click)="backToBankConfig()">
               <span aria-hidden="true">←</span>
               Voltar
             </button>
@@ -238,6 +293,7 @@
                     draggable="true"
                     [class.active]="formBlock() === item.id && createStep() === 'form'"
                     (dragstart)="onBlockDragStart(item.id, $event)"
+                    (dragend)="onBlockDragEnd()"
                     (click)="chooseBlock(item.id)"
                   >
                     <span class="type-card-icon" [innerHTML]="item.icon | safeHtml"></span>
@@ -253,27 +309,58 @@
           }
 
           @if (createStep() === 'form' && formBlock() === 'bank' && accountMode() === 'pick') {
-            <p class="type-note">
-              Escolha um banco que você já tem, ou cadastre um novo.
-            </p>
-            <div class="type-grid">
-              @for (a of bankAccounts(); track a.id) {
-                <button type="button" class="type-card" (click)="placeExistingBank(a)" [disabled]="formSaving()">
-                  <span class="type-card-swatch" [style.background]="a.color || '#3b82f6'" [innerHTML]="bankMenuIcon | safeHtml"></span>
+            @if (panelMode() === 'edit' && replacingHubId()) {
+              <p class="type-note">
+                Banco atual no grafo: <strong>{{ formName() }}</strong>. Edite os dados ou troque por outra conta.
+              </p>
+              <div class="type-grid">
+                <button type="button" class="type-card type-card--accent" (click)="beginEditBankDetails()" [disabled]="formSaving()">
+                  <span class="type-card-swatch" [style.background]="formColor()" [innerHTML]="bankMenuIcon | safeHtml"></span>
                   <span class="type-card-copy">
-                    <strong>{{ a.name }}</strong>
-                    <span>Usar este banco</span>
+                    <strong>Editar este banco</strong>
+                    <span>Nome, cor e saldo inicial</span>
                   </span>
                 </button>
-              }
-              <button type="button" class="type-card" (click)="accountMode.set('new')">
-                <span class="type-card-icon" [innerHTML]="bankMenuIcon | safeHtml"></span>
-                <span class="type-card-copy">
-                  <strong>Cadastrar novo</strong>
-                  <span>Nome, cor e saldo inicial</span>
-                </span>
-              </button>
-            </div>
+                @for (a of otherBankAccounts(); track a.id) {
+                  <button type="button" class="type-card" (click)="replaceBankHub(a)" [disabled]="formSaving()">
+                    <span class="type-card-swatch" [style.background]="a.color || '#3b82f6'" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                    <span class="type-card-copy">
+                      <strong>{{ a.name }}</strong>
+                      <span>Trocar para este</span>
+                    </span>
+                  </button>
+                }
+                <button type="button" class="type-card" (click)="startCreateReplacementBank()" [disabled]="formSaving()">
+                  <span class="type-card-icon" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                  <span class="type-card-copy">
+                    <strong>Cadastrar outro</strong>
+                    <span>Nova conta no lugar desta</span>
+                  </span>
+                </button>
+              </div>
+            } @else {
+              <p class="type-note">
+                Escolha um banco que você já tem, ou cadastre um novo.
+              </p>
+              <div class="type-grid">
+                @for (a of bankAccounts(); track a.id) {
+                  <button type="button" class="type-card" (click)="placeExistingBank(a)" [disabled]="formSaving()">
+                    <span class="type-card-swatch" [style.background]="a.color || '#3b82f6'" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                    <span class="type-card-copy">
+                      <strong>{{ a.name }}</strong>
+                      <span>Usar este banco</span>
+                    </span>
+                  </button>
+                }
+                <button type="button" class="type-card" (click)="accountMode.set('new')">
+                  <span class="type-card-icon" [innerHTML]="bankMenuIcon | safeHtml"></span>
+                  <span class="type-card-copy">
+                    <strong>Cadastrar novo</strong>
+                    <span>Nome, cor e saldo inicial</span>
+                  </span>
+                </button>
+              </div>
+            }
             @if (formError()) {
               <p class="form-error">{{ formError() }}</p>
             }
@@ -282,6 +369,19 @@
               <span>Nome</span>
               <input type="text" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="Ex.: Nubank, Itaú" />
             </label>
+            @if (formBlock() === 'bank' || formBlock() === 'investment-account') {
+              <label class="field">
+                <span>Tipo da conta</span>
+                <select [ngModel]="formAccountType()" (ngModelChange)="formAccountType.set($event)">
+                  <option value="bank">Banco / conta corrente</option>
+                  <option value="investment">Conta de investimento</option>
+                </select>
+              </label>
+              <p class="type-note">
+                Aporte = saída do banco com destino no investimento.
+                Recebimento e gasto também podem entrar ou sair direto da conta de investimento.
+              </p>
+            }
             <label class="field">
               <span>Cor</span>
               <input type="color" [ngModel]="formColor()" (ngModelChange)="formColor.set($event)" />
@@ -322,7 +422,49 @@
             @if (formError()) {
               <p class="form-error">{{ formError() }}</p>
             }
+          } @else if (createStep() === 'form' && formBlock() === 'goal') {
+            <p class="type-note">
+              Cria a meta e as parcelas mensais no plano. O progresso usa o saldo da conta de investimento.
+            </p>
+            <label class="field">
+              <span>Nome</span>
+              <input type="text" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="Ex.: Viagem, Reserva" />
+            </label>
+            <label class="field">
+              <span>Valor final (R$)</span>
+              <input type="number" min="0" step="0.01" [ngModel]="formAmount()" (ngModelChange)="formAmount.set(+$event)" />
+            </label>
+            <label class="field">
+              <span>Início</span>
+              <input type="date" [ngModel]="formStartDate()" (ngModelChange)="formStartDate.set($event)" />
+            </label>
+            <label class="field">
+              <span>Fim</span>
+              <input type="date" [ngModel]="formEndDate()" (ngModelChange)="formEndDate.set($event)" />
+            </label>
+            <label class="field">
+              <span>Banco de saída (opcional)</span>
+              <select [ngModel]="formAccountId()" (ngModelChange)="formAccountId.set($event)">
+                <option [ngValue]="null">Sem conta</option>
+                @for (a of bankAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Conta de investimento (destino)</span>
+              <select [ngModel]="formTargetAccountId()" (ngModelChange)="formTargetAccountId.set($event)">
+                <option [ngValue]="null">Selecione</option>
+                @for (a of investmentAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}</option>
+                }
+              </select>
+            </label>
+            @if (formError()) {
+              <p class="form-error">{{ formError() }}</p>
+            }
           } @else if (createStep() === 'form' || panelMode() === 'edit') {
+          @if (formBlock() !== 'goal') {
           <label class="field">
             <span>Tipo</span>
             <select [ngModel]="formKind()" (ngModelChange)="formKind.set($event)">
@@ -331,7 +473,9 @@
               }
             </select>
           </label>
+          }
 
+          @if (formKind() !== 'transfer' && formBlock() !== 'goal') {
           <label class="field">
             <span>Frequência</span>
             <div class="seg">
@@ -343,6 +487,7 @@
               </button>
             </div>
           </label>
+          }
 
           <label class="field">
             <span>Nome</span>
@@ -355,22 +500,30 @@
           </label>
 
           <label class="field">
-            <span>{{ formKind() === 'income' ? 'Conta que recebe' : (formKind() === 'investment' ? 'Banco de saída' : 'Conta / cartão') }}</span>
+            <span>{{
+              formKind() === 'income'
+                ? 'Conta que recebe'
+                : formKind() === 'investment'
+                  ? 'Banco de saída'
+                  : formKind() === 'transfer'
+                    ? 'Conta de saída'
+                    : 'Conta de saída'
+            }}</span>
             <select [ngModel]="formAccountId()" (ngModelChange)="formAccountId.set($event)">
               <option [ngValue]="null">Sem conta (definir depois)</option>
-              @for (a of bankAndCreditAccounts(); track a.id) {
+              @for (a of primaryFormAccounts(); track a.id) {
                 <option [ngValue]="a.id">{{ a.name }} ({{ a.type }})</option>
               }
             </select>
           </label>
 
-          @if (formKind() === 'investment') {
+          @if (formKind() === 'investment' || formKind() === 'transfer') {
             <label class="field">
-              <span>Conta de investimento (destino)</span>
+              <span>{{ formKind() === 'transfer' ? 'Conta de entrada' : 'Conta de investimento (destino)' }}</span>
               <select [ngModel]="formTargetAccountId()" (ngModelChange)="formTargetAccountId.set($event)">
                 <option [ngValue]="null">Selecione</option>
-                @for (a of investmentAccounts(); track a.id) {
-                  <option [ngValue]="a.id">{{ a.name }}</option>
+                @for (a of formKind() === 'transfer' ? bankAndCreditAccounts() : investmentAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}{{ formKind() === 'transfer' ? ' (' + a.type + ')' : '' }}</option>
                 }
               </select>
             </label>
@@ -384,7 +537,7 @@
 
         @if (createStep() === 'form' || panelMode() === 'edit') {
         <footer class="side-panel-foot">
-          @if (panelMode() === 'edit') {
+          @if (panelMode() === 'edit' && editingEntryId()) {
             <button type="button" class="tool-btn tool-btn--danger" (click)="requestDeleteFromPanel()" [disabled]="formSaving()">
               Excluir
             </button>
@@ -396,7 +549,7 @@
           <button type="button" class="tool-btn" (click)="closeSidePanel()" [disabled]="formSaving()">Cancelar</button>
           @if ((createStep() === 'form' || panelMode() === 'edit') && !(formBlock() === 'bank' && accountMode() === 'pick')) {
             <button type="button" class="tool-btn tool-btn--primary" (click)="submitCreate()" [disabled]="formSaving()">
-              {{ formSaving() ? 'Salvando…' : 'Salvar no grafo' }}
+              {{ formSaving() ? 'Salvando…' : (editingAccountId() || editingEntryId() ? 'Salvar' : 'Salvar no grafo') }}
             </button>
           }
         </footer>
@@ -408,27 +561,39 @@
     <div class="delete-modal-backdrop" (click)="cancelDelete()">
       <div class="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" (click)="$event.stopPropagation()">
         <h2 id="delete-title">Excluir {{ prompt.kindLabel }}</h2>
-        <p>
-          <strong>{{ prompt.name }}</strong> é um {{ prompt.kindLabel }}.
-          @if (prompt.isFixed) {
-            Item fixo: dá para tirar só deste mês ou deste mês em diante.
-            Meses já passados não são alterados.
-          } @else {
-            Item variável: a exclusão vale só para este mês.
-            Meses já passados e os próximos não são alterados.
-          }
-        </p>
-        <div class="delete-modal-actions">
-          <button type="button" class="tool-btn" (click)="cancelDelete()" [disabled]="deleteBusy()">Cancelar</button>
-          <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('month')" [disabled]="deleteBusy()">
-            Só este mês
-          </button>
-          @if (prompt.isFixed && prompt.recurringItemId) {
-            <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('upcoming')" [disabled]="deleteBusy()">
-              Este mês e os próximos
+        @if (prompt.isHub) {
+          <p>
+            Excluir a conta <strong>{{ prompt.name }}</strong>? Ela some do grafo e das demais telas.
+          </p>
+          <div class="delete-modal-actions">
+            <button type="button" class="tool-btn" (click)="cancelDelete()" [disabled]="deleteBusy()">Cancelar</button>
+            <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('month')" [disabled]="deleteBusy()">
+              Excluir conta
             </button>
-          }
-        </div>
+          </div>
+        } @else {
+          <p>
+            <strong>{{ prompt.name }}</strong> é um {{ prompt.kindLabel }}.
+            @if (prompt.isFixed) {
+              Item fixo: dá para tirar só deste mês ou deste mês em diante.
+              Meses já passados não são alterados.
+            } @else {
+              Item variável: a exclusão vale só para este mês.
+              Meses já passados e os próximos não são alterados.
+            }
+          </p>
+          <div class="delete-modal-actions">
+            <button type="button" class="tool-btn" (click)="cancelDelete()" [disabled]="deleteBusy()">Cancelar</button>
+            <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('month')" [disabled]="deleteBusy()">
+              Só este mês
+            </button>
+            @if (prompt.isFixed && prompt.recurringItemId) {
+              <button type="button" class="tool-btn tool-btn--danger" (click)="confirmDelete('upcoming')" [disabled]="deleteBusy()">
+                Este mês e os próximos
+              </button>
+            }
+          </div>
+        }
       </div>
     </div>
   }

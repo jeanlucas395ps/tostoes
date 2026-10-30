@@ -99,6 +99,11 @@ export class AccountsComponent implements OnInit {
     return formatMoneyWithBrl(a.balance, a.currency, a.balanceBrl);
   }
 
+  /** Dívida já lançada, a mesma da última linha do extrato. Parcelas futuras ficam só no limite usado. */
+  postedDebtLabel(a: FinancialAccount): string {
+    return formatMoneyWithBrl(a.balance, a.currency, a.balanceBrl);
+  }
+
   accountInitialLabel(a: FinancialAccount): string {
     const brl = a.initialBalanceBrl ?? previewBrl(a.initialBalance, a.currency, this.fxRateFor(a.currency));
     return formatMoneyWithBrl(a.initialBalance, a.currency, brl);

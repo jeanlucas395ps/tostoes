@@ -12,7 +12,7 @@ export function nodeTypeLabel(type: string, unassigned = false): string {
     transfer: 'TRANSF.',
     installment: 'PARCELA',
     balance: 'SALDO',
-    leisure: 'LAZER',
+    leisure: 'GASTO',
     totalizer: 'TOTAL',
   };
   return map[type] ?? type.toUpperCase();

@@ -220,6 +220,10 @@ export interface FinancialGoal {
   color: string;
   targetAmountBrl: number;
   currentAmountBrl: number;
+  /** Saldo da conta de destino, para somar cada conta uma vez no total da home. */
+  destinationBalanceBrl?: number | null;
+  /** Duas metas na mesma conta: o progresso usa aportes confirmados, não o saldo inteiro. */
+  sharesTargetAccount?: boolean;
   confirmedContributionsBrl: number;
   plannedAmountBrl: number;
   monthlyAmountBrl: number;
@@ -300,6 +304,8 @@ export interface AccountFlowGraphNode {
   isInstallment?: boolean;
   /** Valor do lançamento (útil quando o item ainda não tem aresta para uma conta). */
   amountBrl?: number;
+  /** Já confirmado no plano; continua no grafo previsto/atual. */
+  occurred?: boolean;
 }
 
 export interface AccountFlowGraphEdge {
@@ -373,6 +379,7 @@ export interface LedgerSummary {
   projected: {
     income: number;
     expense: number;
+    investment?: number;
     balance: number;
   };
 }

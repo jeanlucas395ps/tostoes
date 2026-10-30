@@ -18,6 +18,13 @@ import {
 } from '../../core/utils/planning-usage.util';
 import { formatMoney, isForeignCurrency } from '../../core/utils/money.util';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+import {
+  accountTypeIcon,
+  ICON_EXPENSE,
+  ICON_INCOME,
+  ICON_TREND,
+} from '../../core/utils/flow-icons';
 
 const BAR_H = 140; // pixel height of bar tracks
 
@@ -40,7 +47,14 @@ function donutArcPath(cx: number, cy: number, R: number, ri: number, a1: number,
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CurrencyBrlPipe, MonthNavComponent, RouterLink, YearCalendarComponent, SkeletonComponent],
+  imports: [
+    CurrencyBrlPipe,
+    MonthNavComponent,
+    RouterLink,
+    YearCalendarComponent,
+    SkeletonComponent,
+    SafeHtmlPipe,
+  ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -48,6 +62,10 @@ export class HomeComponent implements OnInit {
   private api = inject(FinanceApiService);
 
   readonly isPastMonth = isPastMonth;
+  readonly iconIncome = ICON_INCOME;
+  readonly iconExpense = ICON_EXPENSE;
+  readonly iconInvest = ICON_TREND;
+  readonly accountTypeIcon = accountTypeIcon;
 
   year  = signal(new Date().getFullYear());
   month = signal(new Date().getMonth());
@@ -160,6 +178,36 @@ export class HomeComponent implements OnInit {
     return formatMoney(a.balance, a.currency);
   }
 
+  /** Gastos da tela = expense + leisure. O saldo continua descontando os dois à parte na API. */
+  gastosReal(row: { real: { expense?: number; leisure?: number } }): number {
+    return (row.real.expense ?? 0) + (row.real.leisure ?? 0);
+  }
+
+  gastosProjected(row: { projected: { expense?: number; leisure?: number } }): number {
+    return (row.projected.expense ?? 0) + (row.projected.leisure ?? 0);
+  }
+
+  operacionalProjected(row: { projected: { income?: number; expense?: number; leisure?: number } }): number {
+    return (row.projected.income ?? 0) - this.gastosProjected(row);
+  }
+
+  /** Cada conta de destino entra uma vez no total confirmado. */
+  confirmedGoalsTotal(items: { targetFinancialAccountId?: number | null; destinationBalanceBrl?: number | null; currentAmountBrl: number }[]): number {
+    const seen = new Set<number>();
+    let total = 0;
+    for (const g of items) {
+      const id = g.targetFinancialAccountId;
+      if (id) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        total += g.destinationBalanceBrl ?? g.currentAmountBrl;
+        continue;
+      }
+      total += g.currentAmountBrl;
+    }
+    return total;
+  }
+
   /** Investimentos + metas, só para a tabela «Detalhe mensal». */
   investMetasReal(row: { real: { investment?: number; goals?: number } }): number {
     return (row.real.investment ?? 0) + (row.real.goals ?? 0);
@@ -186,9 +234,9 @@ export class HomeComponent implements OnInit {
     const maxVal = Math.max(
       ...activeMonths.flatMap((m) => [
         m.real.income,
-        m.real.expense,
+        m.real.expense + (m.real.leisure ?? 0),
         m.projected.income,
-        m.projected.expense,
+        m.projected.expense + (m.projected.leisure ?? 0),
       ]),
       1
     );
@@ -200,13 +248,13 @@ export class HomeComponent implements OnInit {
           month: m.month,
           inactive,
           incomeH: inactive ? 0 : Math.round((m.real.income / maxVal) * BAR_H),
-          expenseH: inactive ? 0 : Math.round((m.real.expense / maxVal) * BAR_H),
+          expenseH: inactive ? 0 : Math.round(((m.real.expense + (m.real.leisure ?? 0)) / maxVal) * BAR_H),
           incomeProjH: inactive ? 0 : Math.round((m.projected.income / maxVal) * BAR_H),
-          expenseProjH: inactive ? 0 : Math.round((m.projected.expense / maxVal) * BAR_H),
+          expenseProjH: inactive ? 0 : Math.round(((m.projected.expense + (m.projected.leisure ?? 0)) / maxVal) * BAR_H),
           incomeVal: m.real.income,
-          expenseVal: m.real.expense,
+          expenseVal: m.real.expense + (m.real.leisure ?? 0),
           incomeProjVal: m.projected.income,
-          expenseProjVal: m.projected.expense,
+          expenseProjVal: m.projected.expense + (m.projected.leisure ?? 0),
         };
       }),
     };
@@ -221,16 +269,17 @@ export class HomeComponent implements OnInit {
     const income = m.real.income;
     if (income === 0) return null;
 
-    const expense  = m.real.expense;
+    const expense  = m.real.expense + (m.real.leisure ?? 0);
     const invest   = m.real.investment;
     const goals    = m.real.goals ?? 0;
-    const surplus  = Math.max(0, income - expense - invest - goals);
+    const surplus  = income - expense - invest - goals;
 
     const raw = [
       { label: 'Gastos',        value: expense, color: '#E5342B' },
       { label: 'Investimentos', value: invest,  color: '#7C5CFC' },
+      { label: 'Metas',         value: goals,   color: '#00AB55' },
       { label: 'Sobra',         value: surplus, color: '#1BAA5C' },
-    ].filter(s => s.value > 0);
+    ].filter(s => s.value > 0.001);
 
     const total = raw.reduce((s, i) => s + i.value, 0) || 1;
     let angle = -90;
@@ -244,8 +293,19 @@ export class HomeComponent implements OnInit {
     }).filter(p => p.path);
 
     const months = d.months.map(mo => ({ month: mo.month, label: mo.label.slice(0, 3) }));
-
-    return { paths, income, balance: m.balanceReal, label: m.label, months };
+    const legend = [...paths];
+    if (surplus < -0.001) {
+      legend.push({
+        label: 'Sobra',
+        value: surplus,
+        color: '#EF4444',
+        path: '',
+        pct: Math.round((surplus / income) * 100),
+      });
+    }
+    const drawn = raw.reduce((s, i) => s + i.value, 0);
+    const slicesCoverIncome = surplus >= -0.001 && Math.abs(drawn - income) < 0.05;
+    return { paths, legend, income, balance: surplus, label: m.label, months, slicesCoverIncome };
   });
 
   /** "2026-06-03" → "3 jun. 2026" */
@@ -265,7 +325,7 @@ export class HomeComponent implements OnInit {
     const monthProjected = items.reduce((s, g) => s + g.projectedMonthBrl, 0);
 
     return {
-      totalCurrent: items.reduce((s, g) => s + g.currentAmountBrl, 0),
+      totalCurrent: this.confirmedGoalsTotal(items),
       totalTarget: items.reduce((s, g) => s + g.targetAmountBrl, 0),
       monthProjected,
       items: items.map((g) => {

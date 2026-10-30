@@ -174,7 +174,7 @@
               <h2>{{ st.name }}</h2>
               @if (st.type === 'credit') {
                 <p class="stmt-balance">
-                  Dívida atual: <strong>{{ accountBalanceLabel(st) }}</strong>
+                  Dívida atual: <strong>{{ postedDebtLabel(st) }}</strong>
                   · Disponível: <strong>{{ availableLabel(st) }}</strong>
                 </p>
                 @if (st.monthForecast; as fc) {
@@ -203,7 +203,6 @@
                     <option value="income">{{ st.type === 'credit' ? 'Pagamentos' : 'Entradas' }}</option>
                     <option value="expense">{{ st.type === 'credit' ? 'Compras' : 'Saídas' }}</option>
                     <option value="investment">Aportes</option>
-                    <option value="leisure">Lazer</option>
                     <option value="transfer">Transferências</option>
                   </select>
                 </label>

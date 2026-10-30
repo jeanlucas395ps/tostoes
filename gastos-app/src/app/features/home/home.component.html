@@ -23,7 +23,7 @@
                 <div class="patrimony-panel-header">
                   <div>
                     <h2>Patrimônio</h2>
-                    <p class="patrimony-total">{{ acc.totals.all | currencyBrl }}</p>
+                    <p class="patrimony-total">{{ (acc.totals.bank + acc.totals.investment - (acc.totals.creditUsed ?? 0)) | currencyBrl }}</p>
                   </div>
                   <a routerLink="/contas" class="patrimony-link">Extratos →</a>
                 </div>
@@ -49,34 +49,15 @@
                       [style.--acc-color]="a.color || (a.type === 'investment' ? '#a371f7' : a.type === 'credit' ? '#f59e0b' : '#3b82f6')"
                       [title]="a.name"
                     >
-                      <span class="account-mini-icon" aria-hidden="true">
-                        @if (a.type === 'investment') {
-                          <!-- Trending up, investimento -->
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
-                            <polyline points="16 7 22 7 22 13"/>
-                          </svg>
-                        } @else if (a.type === 'credit') {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="5" width="20" height="14" rx="2"/>
-                            <line x1="2" y1="10" x2="22" y2="10"/>
-                          </svg>
-                        } @else {
-                          <!-- Bank building, conta bancária -->
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="3" y1="22" x2="21" y2="22"/>
-                            <line x1="6" y1="18" x2="6" y2="11"/>
-                            <line x1="10" y1="18" x2="10" y2="11"/>
-                            <line x1="14" y1="18" x2="14" y2="11"/>
-                            <line x1="18" y1="18" x2="18" y2="11"/>
-                            <polygon points="12 2 20 7 4 7"/>
-                          </svg>
-                        }
-                      </span>
+                      <span
+                        class="account-mini-icon"
+                        aria-hidden="true"
+                        [innerHTML]="accountTypeIcon(a.type) | safeHtml"
+                      ></span>
                       <span class="account-mini-name">{{ a.name }}</span>
                       <strong class="account-mini-balance" [class.credit-usage]="a.type === 'credit'">
                         @if (a.type === 'credit') {
-                          {{ (a.usedLimitBrl ?? a.balanceBrl) | currencyBrl }}
+                          {{ a.balanceBrl | currencyBrl }}
                           <span class="limit-ratio">/ {{ (a.creditLimitBrl ?? a.creditLimit ?? 0) | currencyBrl }}</span>
                         } @else {
                           {{ isForeignCurrency(a.currency) ? (a.balanceBrl | currencyBrl) : (a.balance | currencyBrl) }}
@@ -118,7 +99,7 @@
       <!-- 3. KPIs do mês -->
       <div class="kpi-trio">
         <a routerLink="/movimentos" class="kpi kpi-income">
-          <div class="kpi-icon">↑</div>
+          <div class="kpi-icon" aria-hidden="true" [innerHTML]="iconIncome | safeHtml"></div>
           <span class="kpi-label">Recebimentos</span>
           <strong class="kpi-value">{{ m.real.income | currencyBrl }}</strong>
           @if (m.projected.income > 0) {
@@ -126,15 +107,15 @@
           }
         </a>
         <a routerLink="/movimentos" class="kpi kpi-expense">
-          <div class="kpi-icon">↓</div>
+          <div class="kpi-icon" aria-hidden="true" [innerHTML]="iconExpense | safeHtml"></div>
           <span class="kpi-label">Gastos</span>
-          <strong class="kpi-value">{{ m.real.expense | currencyBrl }}</strong>
-          @if (m.projected.expense > 0) {
-            <small class="projected-line">Previsto {{ m.projected.expense | currencyBrl }}</small>
+          <strong class="kpi-value">{{ gastosReal(m) | currencyBrl }}</strong>
+          @if (gastosProjected(m) > 0) {
+            <small class="projected-line">Previsto {{ gastosProjected(m) | currencyBrl }}</small>
           }
         </a>
         <a routerLink="/investimentos-fixos" class="kpi kpi-invest">
-          <div class="kpi-icon">◆</div>
+          <div class="kpi-icon" aria-hidden="true" [innerHTML]="iconInvest | safeHtml"></div>
           <span class="kpi-label">Investimentos</span>
           <strong class="kpi-value">{{ m.real.investment | currencyBrl }}</strong>
           @if (m.projected.investment > 0) {
@@ -218,7 +199,7 @@
 
                 <!-- Legend -->
                 <div class="donut-legend">
-                  @for (arc of dnt.paths; track arc.label) {
+                  @for (arc of dnt.legend; track arc.label) {
                     <div class="donut-leg-item">
                       <span class="donut-leg-dot" [style.background]="arc.color"></span>
                       <span class="donut-leg-label">{{ arc.label }}</span>
@@ -229,7 +210,9 @@
                   <div class="donut-leg-item income-line">
                     <span class="donut-leg-dot" style="background:var(--income);"></span>
                     <span class="donut-leg-label">Recebimentos</span>
-                    <span class="donut-leg-pct" style="color:var(--income-dark)">100%</span>
+                    @if (dnt.slicesCoverIncome) {
+                      <span class="donut-leg-pct" style="color:var(--income-dark)">100%</span>
+                    }
                     <span class="donut-leg-val">{{ dnt.income | currencyBrl }}</span>
                   </div>
                 </div>
@@ -424,10 +407,10 @@
                     <td class="income" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.real.income, !!row.beforePlanningStart) }}</td>
                   }
                   @if (detailTableShowProjected()) {
-                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.projected.expense, !!row.beforePlanningStart) }}</td>
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(gastosProjected(row), !!row.beforePlanningStart) }}</td>
                   }
                   @if (detailTableShowReal()) {
-                    <td class="expense" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(row.real.expense, !!row.beforePlanningStart) }}</td>
+                    <td class="expense" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(gastosReal(row), !!row.beforePlanningStart) }}</td>
                   }
                   @if (detailTableShowProjected()) {
                     <td class="muted projected-cell invest" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(investMetasProjected(row), !!row.beforePlanningStart) }}</td>
@@ -436,8 +419,8 @@
                     <td class="invest" [class.na-cell]="row.beforePlanningStart">{{ formatBrlOrDash(investMetasReal(row), !!row.beforePlanningStart) }}</td>
                   }
                   @if (detailTableShowProjected()) {
-                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart" [class.positive]="!row.beforePlanningStart && (row.projected.income - row.projected.expense) >= 0">
-                      {{ formatBrlOrDash(row.projected.income - row.projected.expense, !!row.beforePlanningStart) }}
+                    <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart" [class.positive]="!row.beforePlanningStart && operacionalProjected(row) >= 0">
+                      {{ formatBrlOrDash(operacionalProjected(row), !!row.beforePlanningStart) }}
                     </td>
                     <td class="muted projected-cell" [class.na-cell]="row.beforePlanningStart" [class.positive]="!row.beforePlanningStart && row.balanceProjected >= 0">{{ formatBrlOrDash(row.balanceProjected, !!row.beforePlanningStart) }}</td>
                   }

@@ -37,6 +37,8 @@ import {
 } from '../../core/utils/donut-chart.util';
 import { LucideSvgComponent } from '../../shared/components/lucide-svg/lucide-svg.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+import { ICON_ADVANCE, ICON_CLOSE, ICON_GRID, ICON_PENCIL } from '../../core/utils/flow-icons';
 import type { IconNode } from 'lucide';
 
 export interface FixedPageMeta {
@@ -73,6 +75,7 @@ type CategoryFilter = 'all' | 'sem' | number;
     UserAvatarComponent,
     LucideSvgComponent,
     SkeletonComponent,
+    SafeHtmlPipe,
   ],
   templateUrl: './fixed-items.component.html',
   styleUrl: './fixed-items.component.scss',
@@ -80,6 +83,11 @@ type CategoryFilter = 'all' | 'sem' | number;
 export class FixedItemsComponent implements OnInit {
   private api = inject(FinanceApiService);
   private route = inject(ActivatedRoute);
+
+  readonly iconGrid = ICON_GRID;
+  readonly iconAdvance = ICON_ADVANCE;
+  readonly iconPencil = ICON_PENCIL;
+  readonly iconClose = ICON_CLOSE;
 
   meta = signal<FixedPageMeta>({
     kind: 'expense',
@@ -235,7 +243,7 @@ export class FixedItemsComponent implements OnInit {
       name: string;
       icon: string;
       count: number;
-    }[] = [{ id: 'all', name: 'Todas', icon: '⊞', count: list.length }];
+    }[] = [{ id: 'all', name: 'Todas', icon: 'clipboard-list', count: list.length }];
     for (const cat of this.itemCategories()) {
       const n = counts.get(cat.id) ?? 0;
       if (n > 0) {
@@ -380,13 +388,17 @@ export class FixedItemsComponent implements OnInit {
     this.api.getHouseholdUsers().subscribe((r) => this.householdUsers.set(r.items));
     this.api.getAccounts().subscribe((r) => {
       const kind = this.meta().kind;
-      const paymentTypes =
-        kind === 'expense' || kind === 'leisure' || this.isInstallmentMode()
-          ? (['bank', 'credit'] as const)
-          : (['bank'] as const);
-      this.bankFinancialAccounts.set(
-        r.items.filter((a) => (paymentTypes as readonly string[]).includes(a.type))
-      );
+      let allowed: readonly string[];
+      if (this.isInstallmentMode()) {
+        allowed = ['credit'];
+      } else if (kind === 'expense' || kind === 'leisure') {
+        allowed = ['bank', 'credit', 'investment'];
+      } else if (kind === 'income') {
+        allowed = ['bank', 'investment'];
+      } else {
+        allowed = ['bank'];
+      }
+      this.bankFinancialAccounts.set(r.items.filter((a) => allowed.includes(a.type)));
     });
     if (this.isInvestment()) {
       this.api.getInvestmentTypes().subscribe((r) => this.investmentTypes.set(r.items));

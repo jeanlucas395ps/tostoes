@@ -86,8 +86,13 @@ describe('ConfirmAccountDialogComponent', () => {
     setup();
   });
 
-  it('lists bank and credit as payment accounts', () => {
-    expect(cmp.paymentAccounts().map((a) => a.type).sort()).toEqual(['bank', 'bank', 'credit']);
+  it('lists bank, credit and investment as payment accounts', () => {
+    expect(cmp.paymentAccounts().map((a) => a.type).sort()).toEqual([
+      'bank',
+      'bank',
+      'credit',
+      'investment',
+    ]);
   });
 
   it('lists investment and all accounts', () => {
@@ -95,8 +100,13 @@ describe('ConfirmAccountDialogComponent', () => {
     expect(cmp.allAccounts().length).toBe(4);
   });
 
-  it('lists only banks for income sources', () => {
+  it('lists bank and investment for income destinations', () => {
     expect(cmp.bankAccounts().map((a) => a.id).sort()).toEqual([1, 4]);
+    expect(cmp.incomeAccounts().map((a) => a.type).sort()).toEqual(['bank', 'bank', 'investment']);
+    cmp.editKind.set('income');
+    expect(cmp.defaultAccountOptions()).toEqual(cmp.incomeAccounts());
+    cmp.editKind.set('expense');
+    expect(cmp.defaultAccountOptions()).toEqual(cmp.paymentAccounts());
   });
 
   it('accountBalanceLabel for bank and credit', () => {
@@ -312,7 +322,7 @@ describe('ConfirmAccountDialogComponent', () => {
   });
 
   it('kind labels cover all kinds', () => {
-    expect(cmp.kindLabels.leisure).toContain('Lazer');
+    expect(cmp.kindLabels.leisure).toContain('Gasto');
     expect(cmp.kindOptions).toContain('transfer');
   });
 });

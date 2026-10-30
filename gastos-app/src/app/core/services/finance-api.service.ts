@@ -209,6 +209,8 @@ export class FinanceApiService {
     month: number;
     mode: AccountFlowGraphMode;
     positions: Array<{ nodeKey: string; x: number; y: number }>;
+    /** Remove chaves antigas (ex.: bank:3 ao virar inv:3). */
+    removeNodeKeys?: string[];
     viewport?: { zoom: number; x: number; y: number };
   }): Observable<{ ok: boolean; saved: number }> {
     return this.http.put<{ ok: boolean; saved: number }>(
@@ -221,19 +223,41 @@ export class FinanceApiService {
     year: number;
     month: number;
     mode: AccountFlowGraphMode;
-    kind: 'income' | 'expense' | 'investment' | 'leisure' | 'totalizer';
-    recurrence: 'fixed' | 'variable';
+    kind: 'income' | 'expense' | 'investment' | 'transfer' | 'goal' | 'totalizer';
+    recurrence?: 'fixed' | 'variable';
     name: string;
     amount: number;
     currency?: string;
     accountId?: number | string | null;
     targetAccountId?: number | null;
+    targetFinancialAccountId?: number | null;
     linkAccountNodeId?: string | null;
     dueDay?: number;
+    startDate?: string;
+    endDate?: string;
+    targetAmountBrl?: number;
+    color?: string;
     x?: number;
     y?: number;
   }): Observable<AccountFlowGraph> {
     return this.http.post<AccountFlowGraph>(`${this.base}/accounts/flow-graph/nodes`, body);
+  }
+
+  updateAccountFlowGraphNode(body: {
+    year: number;
+    month: number;
+    mode: AccountFlowGraphMode;
+    entryId: number;
+    nodeId?: string;
+    name: string;
+    amount?: number;
+    kind?: 'income' | 'expense' | 'investment' | 'transfer';
+    recurrence?: 'fixed' | 'variable';
+    currency?: string;
+    accountId?: number | null;
+    targetAccountId?: number | null;
+  }): Observable<AccountFlowGraph> {
+    return this.http.put<AccountFlowGraph>(`${this.base}/accounts/flow-graph/nodes`, body);
   }
 
   linkAccountFlowGraphNodes(body: {
